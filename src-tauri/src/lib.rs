@@ -128,7 +128,7 @@ pub fn run() {
                 let state = app.state::<OpenFiles>();
                 if let Ok(mut queue) = state.0.lock() {
                     queue.extend(files);
-                }
+                };
             }
             Ok(())
         });
