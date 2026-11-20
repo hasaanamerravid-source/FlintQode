@@ -44,7 +44,6 @@ fn win_new_window(app: tauri::AppHandle) -> Result<bool, String> {
         .inner_size(1240.0, 820.0)
         .min_inner_size(720.0, 480.0)
         .decorations(false)
-        .drag_drop_enabled(true)
         .center()
         .build()
         .map_err(|error| error.to_string())?;

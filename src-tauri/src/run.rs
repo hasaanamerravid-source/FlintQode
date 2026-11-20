@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::{Child, Command};
 use tokio::sync::{oneshot, Mutex};
@@ -771,9 +771,4 @@ pub async fn run_stop(app: AppHandle, state: State<'_, RunState>) -> Result<bool
     Ok(true)
 }
 
-/// Keep the compiler from complaining about the unused import on platforms
-/// where the async write is optimized away.
-#[allow(dead_code)]
-fn _write_helper() {
-    let _ = AsyncWriteExt::flush;
-}
+// AsyncWriteExt is used through the trait methods on child.stdin.

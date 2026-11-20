@@ -212,7 +212,7 @@ pub async fn terminal_start(
             return Ok(TerminalStartResult {
                 ok: false,
                 cwd: folder.to_string_lossy().to_string(),
-                shell: spec.kind_name(),
+                shell: spec.kind.kind_name(),
                 error: Some(error.to_string()),
             });
         }
