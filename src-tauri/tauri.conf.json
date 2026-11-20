@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "OpenNotes",
+  "version": "1.0.0",
+  "identifier": "dev.opennotes.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "OpenNotes",
+        "width": 1240,
+        "height": 820,
+        "minWidth": 720,
+        "minHeight": 480,
+        "center": true,
+        "resizable": true,
+        "decorations": false,
+        "transparent": false,
+        "dragDropEnabled": true,
+        "visible": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Utility",
+    "shortDescription": "A fast, native all-in-one text editor",
+    "longDescription": "OpenNotes is a lightweight desktop editor for code, markdown and plain text. It combines tabbed editing, project search, language servers, an integrated terminal and a modern, quiet interface.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["txt", "md", "markdown", "json", "jsonc", "js", "jsx", "ts", "tsx", "css", "scss", "less", "html", "htm", "xml", "yaml", "yml", "toml", "ini", "py", "go", "rs", "java", "kt", "kts", "c", "h", "cpp", "hpp", "cs", "php", "rb", "lua", "sh", "bash", "ps1", "bat", "sql", "log", "diff", "csv"],
+        "name": "Text and source file",
+        "role": "Editor"
+      }
+    ]
+  }
+}

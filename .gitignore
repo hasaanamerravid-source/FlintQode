@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+out/
+release/
+src-tauri/target/
+src-tauri/gen/
+
+# Local tooling
+*.log
+*.tsbuildinfo
+.DS_Store
+.vite/
+
+# Test leftovers
+.test-vault/
+.probe/
+.stress/
+.lang-vault/
+.i18n-work/
+scripts/.docs-smoke.mjs
+scripts/.vault-smoke.mjs
+
+# Native launcher binary (legacy)
+bin/
