@@ -32,11 +32,32 @@ const EXTENSIONS = ['.ts', '.tsx', '.mts', '.mjs', '.js', '.json']
 
 let typescript = null
 
+/** The places a TypeScript compiler may live. The npm dependency is the
+ * preferred one, but TypeScript 7 dropped `transpileModule`, so a 5/6
+ * compiler (such as the one bundled with VS Code) is used as a fallback. */
+const TYPESCRIPT_CANDIDATES = [
+  'typescript',
+  '/usr/share/code/resources/app/extensions/node_modules/typescript',
+  '/usr/lib/node_modules/typescript',
+  '/usr/local/lib/node_modules/typescript',
+]
+
 /** Load the compiler once (the loader thread cannot use the module cache of
  * the test thread, so it is kept here). */
 function compiler() {
-  if (!typescript) typescript = require('typescript')
-  return typescript
+  if (typescript) return typescript
+  for (const candidate of TYPESCRIPT_CANDIDATES) {
+    try {
+      const loaded = require(candidate)
+      if (loaded && typeof loaded.transpileModule === 'function') {
+        typescript = loaded
+        return typescript
+      }
+    } catch {
+      /* try the next candidate */
+    }
+  }
+  throw new Error('No TypeScript compiler with transpileModule was found.')
 }
 
 /** Find the file of an import that has no extension. */

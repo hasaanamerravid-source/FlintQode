@@ -12,10 +12,10 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Emitter, State};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::{Child, Command};
 use tokio::sync::{oneshot, Mutex};
-use tauri::{AppHandle, Emitter, State};
 
 use crate::process::{find_executable, has_executable};
 
@@ -98,7 +98,11 @@ fn missing_tool(command: &str) -> String {
 }
 
 fn tool_path(request: &RunRequest, key: &str, fallback: &str) -> String {
-    let Some(configured) = request.toolchain.get(key).map(|value| value.trim()).filter(|value| !value.is_empty())
+    let Some(configured) = request
+        .toolchain
+        .get(key)
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
     else {
         return fallback.to_string();
     };
@@ -119,7 +123,11 @@ fn tool_path(request: &RunRequest, key: &str, fallback: &str) -> String {
 
 fn find_local_bin(start: &Path, name: &str) -> Option<PathBuf> {
     let names: Vec<String> = if cfg!(windows) {
-        vec![format!("{name}.cmd"), format!("{name}.exe"), name.to_string()]
+        vec![
+            format!("{name}.cmd"),
+            format!("{name}.exe"),
+            name.to_string(),
+        ]
     } else {
         vec![name.to_string()]
     };
@@ -190,7 +198,11 @@ fn temp_binary(source: &Path) -> PathBuf {
 
 fn has_main_method(path: &str) -> bool {
     std::fs::read_to_string(path)
-        .map(|text| regex::Regex::new(r"\bvoid\s+main\s*\(").map(|regex| regex.is_match(&text)).unwrap_or(true))
+        .map(|text| {
+            regex::Regex::new(r"\bvoid\s+main\s*\(")
+                .map(|regex| regex.is_match(&text))
+                .unwrap_or(true)
+        })
         .unwrap_or(true)
 }
 
@@ -200,8 +212,16 @@ fn base_command(spec: &PlannedCommand, capture: bool) -> Command {
         .args(&spec.args)
         .current_dir(&spec.cwd)
         .stdin(Stdio::null())
-        .stdout(if capture { Stdio::piped() } else { Stdio::piped() })
-        .stderr(if capture { Stdio::piped() } else { Stdio::piped() })
+        .stdout(if capture {
+            Stdio::piped()
+        } else {
+            Stdio::piped()
+        })
+        .stderr(if capture {
+            Stdio::piped()
+        } else {
+            Stdio::piped()
+        })
         .kill_on_drop(true);
     for (key, value) in &spec.env {
         command.env(key, value);
@@ -249,7 +269,11 @@ fn resolve_plan(request: &RunRequest) -> Result<RunPlan, String> {
         "sh" | "bash" => "shell",
         _ => "",
     };
-    let language = if language.is_empty() { from_extension } else { language.as_str() };
+    let language = if language.is_empty() {
+        from_extension
+    } else {
+        language.as_str()
+    };
     let dir = source.parent().unwrap_or(Path::new(".")).to_path_buf();
 
     if matches!(
@@ -308,7 +332,10 @@ fn resolve_plan(request: &RunRequest) -> Result<RunPlan, String> {
                 return Ok(RunPlan {
                     display: format!("tsx {file_path}"),
                     prepare: None,
-                    command: command(local.to_string_lossy().to_string(), vec![file_path.to_string()]),
+                    command: command(
+                        local.to_string_lossy().to_string(),
+                        vec![file_path.to_string()],
+                    ),
                     cleanup: Vec::new(),
                 });
             }
@@ -324,14 +351,23 @@ fn resolve_plan(request: &RunRequest) -> Result<RunPlan, String> {
                 let node = tool_path(request, "node", "node");
                 let mut spec = command(
                     "npx".to_string(),
-                    vec!["--no-install".to_string(), "tsx".to_string(), file_path.to_string()],
+                    vec![
+                        "--no-install".to_string(),
+                        "tsx".to_string(),
+                        file_path.to_string(),
+                    ],
                 );
-                spec.env.push(("npm_config_offline".to_string(), "true".to_string()));
-                spec.env.push(("npm_config_update_notifier".to_string(), "false".to_string()));
+                spec.env
+                    .push(("npm_config_offline".to_string(), "true".to_string()));
+                spec.env.push((
+                    "npm_config_update_notifier".to_string(),
+                    "false".to_string(),
+                ));
                 if node != "node" {
                     if let Some(parent) = Path::new(&node).parent() {
                         let path = std::env::var("PATH").unwrap_or_default();
-                        spec.env.push(("PATH".to_string(), format!("{}:{path}", parent.display())));
+                        spec.env
+                            .push(("PATH".to_string(), format!("{}:{path}", parent.display())));
                     }
                 }
                 return Ok(RunPlan {
@@ -398,7 +434,9 @@ fn resolve_plan(request: &RunRequest) -> Result<RunPlan, String> {
                 (&["g++", "clang++"], "a C++ compiler (g++ or Clang++)")
             };
             let Some(compiler) = compilers.iter().find(|name| has_executable(name)) else {
-                return Err(format!("{label} was not found on this machine. Install it and try again."));
+                return Err(format!(
+                    "{label} was not found on this machine. Install it and try again."
+                ));
             };
             let binary = temp_binary(source);
             Ok(RunPlan {
@@ -495,7 +533,10 @@ fn resolve_plan(request: &RunRequest) -> Result<RunPlan, String> {
                 Ok(RunPlan {
                     display: format!("cmd /c {file_path}"),
                     prepare: None,
-                    command: command("cmd.exe".to_string(), vec!["/c".to_string(), file_path.to_string()]),
+                    command: command(
+                        "cmd.exe".to_string(),
+                        vec!["/c".to_string(), file_path.to_string()],
+                    ),
                     cleanup: Vec::new(),
                 })
             } else {
@@ -515,7 +556,12 @@ fn resolve_plan(request: &RunRequest) -> Result<RunPlan, String> {
                 prepare: None,
                 command: command(
                     shell.to_string(),
-                    vec!["-ExecutionPolicy".to_string(), "Bypass".to_string(), "-File".to_string(), file_path.to_string()],
+                    vec![
+                        "-ExecutionPolicy".to_string(),
+                        "Bypass".to_string(),
+                        "-File".to_string(),
+                        file_path.to_string(),
+                    ],
                 ),
                 cleanup: Vec::new(),
             })
@@ -568,7 +614,12 @@ async fn stop_current(app: &AppHandle, state: &RunState) {
     let Some(current) = current else {
         return;
     };
-    let CurrentRun { stop, done, cleanup, .. } = current;
+    let CurrentRun {
+        stop,
+        done,
+        cleanup,
+        ..
+    } = current;
     let _ = stop.send(());
     let _ = tokio::time::timeout(Duration::from_secs(2), done).await;
     for file in cleanup {
@@ -689,14 +740,23 @@ pub async fn run_start(
     Ok(true)
 }
 
-async fn read_stream(app: AppHandle, mut stream: impl tokio::io::AsyncRead + Unpin, is_stdout: bool) {
+async fn read_stream(
+    app: AppHandle,
+    mut stream: impl tokio::io::AsyncRead + Unpin,
+    is_stdout: bool,
+) {
     let mut buffer = vec![0u8; 8192];
     loop {
         match stream.read(&mut buffer).await {
             Ok(0) => break,
             Ok(read) => {
                 let text = String::from_utf8_lossy(&buffer[..read]).to_string();
-                emit(&app, if is_stdout { "stdout" } else { "stderr" }, Some(text), None);
+                emit(
+                    &app,
+                    if is_stdout { "stdout" } else { "stderr" },
+                    Some(text),
+                    None,
+                );
             }
             Err(_) => break,
         }

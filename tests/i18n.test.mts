@@ -19,7 +19,7 @@ import {
   translate,
   translateWith,
   translationProgress,
-} from '../src/shared/i18n/index.ts'
+} from '../src/shared/i18n/index'
 
 test('every language is known', () => {
   for (const locale of LOCALES) {

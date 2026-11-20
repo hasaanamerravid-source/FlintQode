@@ -17,6 +17,7 @@ src-tauri/gen/
 
 # Test leftovers
 .test-vault/
+.test-out/
 .probe/
 .stress/
 .lang-vault/

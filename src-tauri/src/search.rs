@@ -117,7 +117,9 @@ fn matcher_of(request: &SearchRequest) -> Option<Regex> {
     if !request.case_sensitive.unwrap_or(false) {
         source = format!("(?i){source}");
     }
-    Regex::new(&source).ok().or_else(|| Regex::new(&format!("(?i){}", regex::escape(query))).ok())
+    Regex::new(&source)
+        .ok()
+        .or_else(|| Regex::new(&format!("(?i){}", regex::escape(query))).ok())
 }
 
 fn matches_glob(name: &str, glob: &str) -> bool {
@@ -225,7 +227,11 @@ pub fn search_in_files(request: &SearchRequest) -> SearchResult {
     }
 
     let limit = request.max_results.unwrap_or(MAX_RESULTS).min(MAX_RESULTS);
-    let files = collect_files(&request.folder, request.include.as_deref().unwrap_or(""), MAX_FILES);
+    let files = collect_files(
+        &request.folder,
+        request.include.as_deref().unwrap_or(""),
+        MAX_FILES,
+    );
     let scanned = files.len();
 
     let per_file: Vec<(bool, Vec<SearchMatch>)> = files
@@ -300,7 +306,11 @@ pub fn replace_in_files(request: &SearchRequest) -> ReplaceResult {
         };
     }
 
-    let files = collect_files(&request.folder, request.include.as_deref().unwrap_or(""), MAX_FILES);
+    let files = collect_files(
+        &request.folder,
+        request.include.as_deref().unwrap_or(""),
+        MAX_FILES,
+    );
     let replacement = request.replacement.as_deref().unwrap_or("");
     let mut changed = 0usize;
     let mut replaced = 0usize;

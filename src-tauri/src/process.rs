@@ -38,7 +38,12 @@ pub fn find_executable(name: &str) -> Option<PathBuf> {
                     // The Microsoft Store installs empty alias files that open
                     // the store instead of the program.
                     if let Ok(metadata) = full.metadata() {
-                        if metadata.len() == 0 && full.to_string_lossy().to_lowercase().contains("windowsapps") {
+                        if metadata.len() == 0
+                            && full
+                                .to_string_lossy()
+                                .to_lowercase()
+                                .contains("windowsapps")
+                        {
                             continue;
                         }
                     }

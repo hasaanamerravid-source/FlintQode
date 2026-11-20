@@ -6,7 +6,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseShortcut, fromVSCode } from '../src/renderer/src/core/keybindings.ts'
+import { parseShortcut, fromVSCode } from '../src/renderer/src/core/keybindings'
 
 test('a shortcut is read', () => {
   const shortcut = parseShortcut('Ctrl+Shift+S')

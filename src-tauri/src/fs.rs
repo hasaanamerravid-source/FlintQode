@@ -18,7 +18,15 @@ use tauri::{AppHandle, Emitter, State};
 
 const MAX_EDIT_BYTES: u64 = 24 * 1024 * 1024;
 const IGNORED: [&str; 9] = [
-    "node_modules", ".git", ".svn", ".hg", "dist", "out", ".cache", ".next", "target",
+    "node_modules",
+    ".git",
+    ".svn",
+    ".hg",
+    "dist",
+    "out",
+    ".cache",
+    ".next",
+    "target",
 ];
 
 #[derive(Debug, Serialize)]
@@ -143,7 +151,11 @@ fn decode_with(bytes: &[u8], encoding: &str) -> String {
     // The labels the settings offer are mostly the WHATWG labels, so they can
     // be looked up directly. cp437 is not part of encoding_rs; Latin-1 is the
     // closest printable fallback.
-    let mapped = if label == "cp437" { "windows-1252" } else { label.as_str() };
+    let mapped = if label == "cp437" {
+        "windows-1252"
+    } else {
+        label.as_str()
+    };
     match Encoding::for_label(mapped.as_bytes()) {
         Some(codec) => codec.decode(bytes).0.into_owned(),
         None => encoding_rs::UTF_8.decode(bytes).0.into_owned(),
@@ -278,7 +290,12 @@ pub fn fs_read_file(path: String) -> FilePayload {
 }
 
 #[tauri::command]
-pub fn fs_write_file(path: String, content: String, encoding: String, eol: String) -> Result<(), String> {
+pub fn fs_write_file(
+    path: String,
+    content: String,
+    encoding: String,
+    eol: String,
+) -> Result<(), String> {
     let payload = apply_eol(&normalize_eol(&content), &eol);
     let bytes = encode_text(&payload, &encoding);
     if let Some(parent) = Path::new(&path).parent() {
@@ -376,7 +393,9 @@ pub fn fs_rename(from: String, to: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn fs_copy_file(from: String, to: String) -> Result<(), String> {
-    fs::copy(&from, &to).map(|_| ()).map_err(|error| error.to_string())
+    fs::copy(&from, &to)
+        .map(|_| ())
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -389,8 +408,12 @@ pub fn fs_show_in_folder(path: String) -> Result<(), String> {
     }
     #[cfg(target_os = "macos")]
     {
-        crate::process::spawn_detached("open", &["-R".to_string(), target.display().to_string()], None)
-            .map_err(|error| error.to_string())
+        crate::process::spawn_detached(
+            "open",
+            &["-R".to_string(), target.display().to_string()],
+            None,
+        )
+        .map_err(|error| error.to_string())
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
@@ -417,17 +440,19 @@ pub fn fs_write_text_file(path: String, text: String) -> Result<(), String> {
 pub fn fs_watch(app: AppHandle, state: State<'_, Watchers>, path: String) -> Result<(), String> {
     let watched = path.clone();
     let handle = app.clone();
-    let mut watcher = notify::recommended_watcher(move |result: notify::Result<notify::Event>| {
-        match result {
+    let mut watcher =
+        notify::recommended_watcher(move |result: notify::Result<notify::Event>| match result {
             Ok(event) => {
-                if matches!(event.kind, EventKind::Modify(_) | EventKind::Create(_) | EventKind::Remove(_)) {
+                if matches!(
+                    event.kind,
+                    EventKind::Modify(_) | EventKind::Create(_) | EventKind::Remove(_)
+                ) {
                     let _ = handle.emit("fs:changed", watched.clone());
                 }
             }
             Err(error) => eprintln!("[opennotes] watcher: {error}"),
-        }
-    })
-    .map_err(|error| error.to_string())?;
+        })
+        .map_err(|error| error.to_string())?;
 
     watcher
         .watch(Path::new(&path), RecursiveMode::NonRecursive)

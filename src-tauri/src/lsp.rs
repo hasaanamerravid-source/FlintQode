@@ -219,9 +219,7 @@ fn install_hint(command: &str) -> Option<String> {
         "clangd" => "Install the LLVM toolchain - clangd comes with it.",
         "phpactor" => "Install it with `composer global require phpactor/phpactor`.",
         "ruby-lsp" => "Install it with `gem install ruby-lsp`.",
-        "kotlin-language-server" => {
-            "Install the Kotlin language server and put it on the PATH."
-        }
+        "kotlin-language-server" => "Install the Kotlin language server and put it on the PATH.",
         "sourcekit-lsp" => "It is part of the Swift toolchain.",
         "lua-language-server" => "Install it with `npm install -g lua-language-server`.",
         _ => return None,
@@ -233,7 +231,11 @@ fn install_hint(command: &str) -> Option<String> {
 /// install), the same fallback the Electron build had.
 fn find_local_executable(name: &str) -> Option<PathBuf> {
     let names: Vec<String> = if cfg!(windows) {
-        vec![format!("{name}.cmd"), format!("{name}.exe"), name.to_string()]
+        vec![
+            format!("{name}.cmd"),
+            format!("{name}.exe"),
+            name.to_string(),
+        ]
     } else {
         vec![name.to_string()]
     };
@@ -347,9 +349,7 @@ fn common_suffix(old: &str, new: &str, prefix: usize) -> usize {
     let old_bytes = old.as_bytes();
     let new_bytes = new.as_bytes();
     let mut suffix = 0usize;
-    while suffix < max
-        && old_bytes[old.len() - 1 - suffix] == new_bytes[new.len() - 1 - suffix]
-    {
+    while suffix < max && old_bytes[old.len() - 1 - suffix] == new_bytes[new.len() - 1 - suffix] {
         suffix += 1;
     }
     while suffix > 0 && !old.is_char_boundary(old.len() - suffix) {
@@ -476,7 +476,10 @@ impl LanguageServer {
     }
 
     fn state(&self) -> String {
-        self.state.lock().map(|value| value.clone()).unwrap_or_else(|_| "stopped".to_string())
+        self.state
+            .lock()
+            .map(|value| value.clone())
+            .unwrap_or_else(|_| "stopped".to_string())
     }
 
     fn set_state(&self, state: &str, message: Option<String>, hint: Option<String>) {
@@ -513,7 +516,10 @@ impl LanguageServer {
         if command.trim().is_empty() {
             self.set_state(
                 "error",
-                Some(format!("No language server command was configured for {}.", self.key)),
+                Some(format!(
+                    "No language server command was configured for {}.",
+                    self.key
+                )),
                 None,
             );
             return false;
@@ -559,7 +565,11 @@ impl LanguageServer {
         };
 
         let Some(stdin) = child.stdin.take() else {
-            self.set_state("error", Some("The language server has no input stream.".to_string()), None);
+            self.set_state(
+                "error",
+                Some("The language server has no input stream.".to_string()),
+                None,
+            );
             let _ = child.start_kill();
             return false;
         };
@@ -576,7 +586,12 @@ impl LanguageServer {
             });
         }
 
-        if let Some(mut stderr) = self.child.lock().ok().and_then(|mut guard| guard.as_mut().and_then(|child| child.stderr.take())) {
+        if let Some(mut stderr) = self
+            .child
+            .lock()
+            .ok()
+            .and_then(|mut guard| guard.as_mut().and_then(|child| child.stderr.take()))
+        {
             tokio::spawn(async move {
                 let mut buffer = [0u8; 4096];
                 while matches!(stderr.read(&mut buffer).await, Ok(read) if read > 0) {
@@ -589,7 +604,10 @@ impl LanguageServer {
     }
 
     fn initialize_params(&self) -> Value {
-        let root = self.root.as_ref().map(|path| path.to_string_lossy().to_string());
+        let root = self
+            .root
+            .as_ref()
+            .map(|path| path.to_string_lossy().to_string());
         let root_uri = root.as_deref().map(to_file_uri);
         let name = self
             .root
@@ -614,7 +632,11 @@ impl LanguageServer {
 
     async fn initialize(self: &Arc<Self>) -> bool {
         let reply = self
-            .send_request("initialize", self.initialize_params(), Duration::from_secs(20))
+            .send_request(
+                "initialize",
+                self.initialize_params(),
+                Duration::from_secs(20),
+            )
             .await;
         if !reply.ok {
             let message = reply
@@ -654,7 +676,8 @@ impl LanguageServer {
     async fn stop(&self) {
         self.fail_pending("The language server was stopped.");
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        let shutdown = json!({ "jsonrpc": "2.0", "id": id, "method": "shutdown", "params": Value::Null });
+        let shutdown =
+            json!({ "jsonrpc": "2.0", "id": id, "method": "shutdown", "params": Value::Null });
         let _ = self.send_raw(&shutdown).await;
         let exit = json!({ "jsonrpc": "2.0", "method": "exit", "params": Value::Null });
         let _ = self.send_raw(&exit).await;
@@ -875,7 +898,10 @@ impl LanguageServer {
             match documents.get(uri) {
                 Some(document) => (document.language.clone(), document.text.clone()),
                 None => (
-                    self.languages.first().cloned().unwrap_or_else(|| "lsp".to_string()),
+                    self.languages
+                        .first()
+                        .cloned()
+                        .unwrap_or_else(|| "lsp".to_string()),
                     String::new(),
                 ),
             }
@@ -987,10 +1013,7 @@ fn severity_of(value: Option<u64>) -> &'static str {
 fn to_problem(raw: &Value, text: &str, language: &str) -> Option<LspProblem> {
     let start = raw.get("range").and_then(|range| range.get("start"))?;
     let start_line = start.get("line").and_then(Value::as_u64)? as usize;
-    let start_character = start
-        .get("character")
-        .and_then(Value::as_u64)
-        .unwrap_or(0) as usize;
+    let start_character = start.get("character").and_then(Value::as_u64).unwrap_or(0) as usize;
     let end = raw.get("range").and_then(|range| range.get("end"));
     let end_line = end
         .and_then(|value| value.get("line"))
@@ -1041,7 +1064,11 @@ pub fn to_file_uri(value: &str) -> String {
         .split_once(':')
         .map(|(scheme, _)| {
             !scheme.is_empty()
-                && scheme.chars().next().map(|c| c.is_ascii_alphabetic()).unwrap_or(false)
+                && scheme
+                    .chars()
+                    .next()
+                    .map(|c| c.is_ascii_alphabetic())
+                    .unwrap_or(false)
                 && scheme
                     .chars()
                     .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
@@ -1332,7 +1359,10 @@ pub async fn lsp_request(
 }
 
 #[tauri::command]
-pub async fn lsp_stop(state: State<'_, LspState>, language: Option<String>) -> Result<bool, String> {
+pub async fn lsp_stop(
+    state: State<'_, LspState>,
+    language: Option<String>,
+) -> Result<bool, String> {
     let target = language
         .map(|value| value.trim().to_lowercase())
         .filter(|value| !value.is_empty());

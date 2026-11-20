@@ -17,7 +17,7 @@ import {
   removeLineNumbers,
   sortLines,
   trimTrailingWhitespace,
-} from '../src/renderer/src/core/transforms.ts'
+} from '../src/renderer/src/core/transforms'
 
 test('the lines are sorted', () => {
   assert.equal(sortLines('b\na\nc'), 'a\nb\nc')

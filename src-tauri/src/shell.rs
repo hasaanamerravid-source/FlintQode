@@ -16,8 +16,16 @@ fn open_terminal_at(directory: &Path) -> Result<(), String> {
     }
     #[cfg(target_os = "macos")]
     {
-        spawn_detached("open", &["-a".to_string(), "Terminal".to_string(), directory.display().to_string()], None)
-            .map_err(|error| error.to_string())
+        spawn_detached(
+            "open",
+            &[
+                "-a".to_string(),
+                "Terminal".to_string(),
+                directory.display().to_string(),
+            ],
+            None,
+        )
+        .map_err(|error| error.to_string())
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {

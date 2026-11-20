@@ -410,7 +410,7 @@ export function createApi(): OpenNotesApi {
       let unlisten: UnlistenFn | undefined
       void getCurrentWebview()
         .onDragDropEvent((event) => {
-          if (event.payload.type === 'drop') cb(event.payload.paths)
+          if (event.payload.type === 'drop') cb(event.payload.paths ?? [])
         })
         .then((stop) => {
           if (disposed) stop()

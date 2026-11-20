@@ -9,10 +9,10 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 use serde::Serialize;
+use tauri::{AppHandle, Emitter, State};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, Command};
 use tokio::sync::Mutex;
-use tauri::{AppHandle, Emitter, State};
 
 use crate::process::{find_executable, home_dir};
 
@@ -183,7 +183,10 @@ pub async fn terminal_start(
         .filter(|path| path.is_dir())
         .unwrap_or_else(home_dir);
     let spec = pick_shell();
-    let token = state.token.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+    let token = state
+        .token
+        .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+        + 1;
 
     {
         let mut guard = state.inner.lock().await;
@@ -348,12 +351,19 @@ pub async fn terminal_write(state: State<'_, TerminalState>, text: String) -> Re
         .write_all(session.eol.as_bytes())
         .await
         .map_err(|error| error.to_string())?;
-    session.stdin.flush().await.map_err(|error| error.to_string())?;
+    session
+        .stdin
+        .flush()
+        .await
+        .map_err(|error| error.to_string())?;
     Ok(true)
 }
 
 #[tauri::command]
-pub async fn terminal_interrupt(app: AppHandle, state: State<'_, TerminalState>) -> Result<bool, String> {
+pub async fn terminal_interrupt(
+    app: AppHandle,
+    state: State<'_, TerminalState>,
+) -> Result<bool, String> {
     let mut guard = state.inner.lock().await;
     let Some(session) = guard.as_mut() else {
         return Ok(false);
@@ -382,7 +392,10 @@ pub async fn terminal_interrupt(app: AppHandle, state: State<'_, TerminalState>)
 }
 
 #[tauri::command]
-pub async fn terminal_stop(app: AppHandle, state: State<'_, TerminalState>) -> Result<bool, String> {
+pub async fn terminal_stop(
+    app: AppHandle,
+    state: State<'_, TerminalState>,
+) -> Result<bool, String> {
     let mut guard = state.inner.lock().await;
     if let Some(mut session) = guard.take() {
         kill_session(&mut session);

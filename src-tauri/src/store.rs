@@ -38,7 +38,10 @@ pub struct PluginManifest {
 }
 
 pub fn app_data(app: &AppHandle) -> Result<PathBuf, String> {
-    let directory = app.path().app_data_dir().map_err(|error| error.to_string())?;
+    let directory = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| error.to_string())?;
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
     Ok(directory)
 }
@@ -125,7 +128,11 @@ fn recent_read(app: &AppHandle) -> Vec<String> {
 }
 
 fn recent_write(app: &AppHandle, list: &[String]) -> Result<(), String> {
-    let value = Value::Array(list.iter().map(|entry| Value::String(entry.clone())).collect());
+    let value = Value::Array(
+        list.iter()
+            .map(|entry| Value::String(entry.clone()))
+            .collect(),
+    );
     write_value(&store_path(app, "recent.json")?, &value)
 }
 
@@ -170,7 +177,12 @@ pub fn plugins_list(app: AppHandle) -> Result<Vec<PluginManifest>, String> {
             continue;
         };
         let manifest = read_value(&directory.join("plugin.json")).unwrap_or(Value::Null);
-        let text = |key: &str| manifest.get(key).and_then(Value::as_str).map(str::to_string);
+        let text = |key: &str| {
+            manifest
+                .get(key)
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        };
         let folder_name = directory
             .file_name()
             .map(|name| name.to_string_lossy().to_string())
