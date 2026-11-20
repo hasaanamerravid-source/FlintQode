@@ -26,7 +26,7 @@ export default defineConfig({
     outDir: resolve(__dirname, 'dist'),
     emptyOutDir: true,
     target: 'es2021',
-    minify: 'esbuild',
+    minify: 'oxc',
     sourcemap: false,
     chunkSizeWarningLimit: 4096,
   },
