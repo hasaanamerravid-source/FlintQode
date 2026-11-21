@@ -39,6 +39,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `launcher/`, `CMakeLists.txt`, `electron.vite.config.ts`,
   `electron-builder.local.json` and the Electron test harnesses.
 
+## [1.1.0] - 2026-11-21
+
+### Fixed
+- **Window close button** now reliably closes the window; added a guard so the
+  control never fails silently when the webview handle is unavailable.
+- **Theme switching** applies immediately to the whole window (frame, title
+  bar and editor) when you change it in Settings.
+- Window controls show the right glyph and state after maximise/restore.
+
+### Added
+- GitHub Pages website with download links, glass effects and animations.
+
 ## [Unreleased]
 
 ### Removed

@@ -124,7 +124,12 @@ function applyZoom(factor: number): number {
 }
 
 function currentWindow(): ReturnType<typeof getCurrentWindow> | null {
-  return isTauri() ? getCurrentWindow() : null
+  if (!isTauri()) return null
+  const win = getCurrentWindow()
+  if (!win) {
+    console.warn('[opennotes] Tauri window handle unavailable')
+  }
+  return win
 }
 
 /* ------------------------------------------------------------------ *
@@ -335,13 +340,16 @@ export function createApi(): OpenNotesApi {
       newWindow: () => call<boolean>('win_new_window'),
       setMenuBar: async () => true,
       minimize: () => {
-        void currentWindow()?.minimize()
+        const win = currentWindow()
+        if (win) void win.minimize().catch((error) => console.warn('[opennotes] minimize failed', error))
       },
       toggleMaximize: () => {
-        void currentWindow()?.toggleMaximize()
+        const win = currentWindow()
+        if (win) void win.toggleMaximize().catch((error) => console.warn('[opennotes] toggleMaximize failed', error))
       },
       close: () => {
-        void currentWindow()?.close()
+        const win = currentWindow()
+        if (win) void win.close().catch((error) => console.warn('[opennotes] close failed', error))
       },
       isMaximized: async () => {
         const win = currentWindow()
@@ -356,11 +364,13 @@ export function createApi(): OpenNotesApi {
         return true
       },
       setTitle: (title: string) => {
-        void currentWindow()?.setTitle(title)
+        const win = currentWindow()
+        if (win) void win.setTitle(title).catch((error) => console.warn('[opennotes] setTitle failed', error))
       },
-      setTheme: () => {
+      setTheme: (color: string) => {
         // The webview paints the whole window, including the frame, so there
-        // is no native colour to update.
+        // is no native colour to update. The CSS `data-theme` attribute handles
+        // the visual theme; this call is kept for API compatibility.
       },
       onMaximizeChange: (cb: (maximized: boolean) => void) => {
         const win = currentWindow()
