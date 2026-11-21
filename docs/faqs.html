@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FAQs — OpenNotes</title>
+  <meta name="description" content="Frequently asked questions about OpenNotes." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="icon" href="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="nav-brand">Open<span class="accent">Notes</span></a>
+      <nav class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="downloads.html">Downloads</a>
+        <a href="versions.html">Versions</a>
+        <a href="faqs.html" class="active">FAQs</a>
+        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases" class="btn btn-primary" target="_blank" rel="noopener">Releases</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-head">
+        <span class="kicker">Help</span>
+        <h2>Frequently asked questions</h2>
+        <p>Common questions about installing, using and building OpenNotes.</p>
+      </div>
+
+      <div class="faq-list">
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>What is OpenNotes?</span>
+            <span style="font-size:1.2rem;">▾</span>
+          </div>
+          <div class="faq-answer">
+            OpenNotes is a lightweight, native desktop editor for code, Markdown and plain text. It is built with Tauri 2 (a small Rust backend plus your system's webview) and a React + CodeMirror 6 interface. It avoids the Electron bloat of shipping a whole Chromium runtime.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Which platforms are supported?</span>
+            <span style="font-size:1.2rem;">▾</span>
+          </div>
+          <div class="faq-answer">
+            Windows (.exe, .msi), Linux (.deb, .AppImage, .rpm) and macOS. The interface is identical on every platform because the window frame is drawn by the application itself.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Is it really not Electron?</span>
+            <span style="font-size:1.2rem;">▾</span>
+          </div>
+          <div class="faq-answer">
+            Correct. The first OpenNotes releases were Electron, but OpenNotes 2 replaced Electron with Tauri 2. The renderer stays React + CodeMirror 6, while the native layer is Rust. There is no Node.js runtime in the webview.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>How do I install on Linux?</span>
+            <span style="font-size:1.2rem;">▾</span>
+          </div>
+          <div class="faq-answer">
+            Download the .deb (Debian/Ubuntu), .rpm (Fedora/openSUSE) or .AppImage (any distro) from the Downloads page or the GitHub release. For .deb/.rpm use your package manager; for .AppImage, mark it executable and run it.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Can I build from source?</span>
+            <span style="font-size:1.2rem;">▾</span>
+          </div>
+          <div class="faq-answer">
+            Yes. You need Node.js 20+, Rust stable, and (on Linux) WebKitGTK 4.1 and GTK 3 dev packages. Then run <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">npm install && npm run build:app</code>.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Does it support language servers?</span>
+            <span style="font-size:1.2rem;">▾</span>
+          </div>
+          <div class="faq-answer">
+            Yes. OpenNotes hosts LSP servers (clangd, pyright, tsserver, gopls, rust-analyzer and more) natively in the Rust backend and shows diagnostics, go-to-definition and find-references in the editor.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Is there a plugin system?</span>
+            <span style="font-size:1.2rem;">▾</span>
+          </div>
+          <div class="faq-answer">
+            Yes. Plugins are JavaScript files placed in the plugins folder of your user-data directory. They can register commands, read the editor, show toasts and use the window.api bridge.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Where are settings stored?</span>
+            <span style="font-size:1.2rem;">▾</span>
+          </div>
+          <div class="faq-answer">
+            In the platform application-data folder: <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">%APPDATA%\dev.opennotes.app</code> on Windows, <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">~/Library/Application Support/dev.opennotes.app</code> on macOS, and <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">~/.local/share/dev.opennotes.app</code> on Linux.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">Open<span class="accent">Notes</span></div>
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="downloads.html">Downloads</a>
+        <a href="versions.html">Versions</a>
+        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <p class="footer-note">MIT Licensed · Built with Tauri 2, React and CodeMirror 6.</p>
+    </div>
+  </footer>
+
+  <script>
+    document.querySelectorAll('.faq-question').forEach((q) => {
+      q.addEventListener('click', () => {
+        const item = q.parentElement;
+        const open = item.classList.toggle('open');
+        q.querySelector('span:last-child').textContent = open ? '▴' : '▾';
+      });
+    });
+  </script>
+
+</body>
+</html>

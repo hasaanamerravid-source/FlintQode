@@ -4,260 +4,139 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OpenNotes — A fast, native text editor</title>
-  <meta name="description" content="OpenNotes is a lightweight, native desktop editor for code, Markdown and plain text. Built with Tauri 2, React and CodeMirror. Download .deb, .AppImage, .rpm, .exe and .msi installers." />
+  <meta name="description" content="OpenNotes is a lightweight, native desktop editor for code, Markdown and plain text. Built with Tauri 2, React and CodeMirror 6." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css" />
   <link rel="icon" href="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" />
 </head>
 <body>
-  <!-- Background mesh gradient -->
-  <div class="mesh"></div>
-  <div class="mesh"></div>
-  <div class="mesh"></div>
 
-  <nav class="nav" id="nav">
-    <div class="nav-inner">
-      <a href="#" class="nav-logo">Open<span class="logo-accent">Notes</span></a>
-      <button class="nav-toggle" aria-label="Toggle menu" id="navToggle">
-        <span></span><span></span><span></span>
-      </button>
-      <ul class="nav-links" id="navLinks">
-        <li><a href="#features">Features</a></li>
-        <li><a href="#download">Download</a></li>
-        <li><a href="#docs">Docs</a></li>
-        <li><a href="#about">About</a></li>
-        <li class="theme-switch"><button class="theme-btn" aria-label="Toggle theme" id="themeToggle">🌓</button></li>
-        <li><a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases" class="nav-cta" target="_blank" rel="noopener">Releases</a></li>
-      </ul>
-    </div>
-  </nav>
-
-  <header class="hero">
-    <div class="hero-inner">
-      <div class="hero-badge">Native · Fast · Lightweight</div>
-      <h1 class="hero-title">OpenNotes<span class="glow">.</span></h1>
-      <p class="hero-sub">A fast, native desktop editor for code, Markdown and plain text.
-      Built with <strong>Tauri 2</strong>, <strong>React</strong> and <strong>CodeMirror 6</strong>.
-      No Electron bloat — just a quiet, native shell that stays out of your way.</p>
-      <div class="hero-actions">
-        <a href="#download" class="btn btn-primary">Download v1.1.0</a>
-        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode" class="btn btn-ghost" target="_blank" rel="noopener">View on GitHub</a>
-      </div>
-      <div class="hero-stats">
-        <div class="stat"><span class="stat-value">5 MB</span><span class="stat-label">installed size</span></div>
-        <div class="stat"><span class="stat-value">5</span><span class="stat-label">languages</span></div>
-        <div class="stat"><span class="stat-value">100+</span><span class="stat-label">syntax modes</span></div>
-      </div>
-    </div>
-    <div class="hero-window">
-      <div class="window-frame">
-        <div class="window-titlebar">
-          <div class="window-controls">
-            <div class="dot dot-close"></div>
-            <div class="dot dot-min"></div>
-            <div class="dot dot-max"></div>
-          </div>
-          <div class="window-title">Untitled — OpenNotes</div>
-        </div>
-        <div class="window-body">
-          <div class="editor-preview">
-            <div class="gutter"></div>
-            <div class="code">
-<span class="token-comment">// OpenNotes — a fast native editor</span><br />
-<span class="token-keyword">const</span> <span class="token-variable">name</span> <span class="token-operator">=</span> <span class="token-string">"OpenNotes"</span>;<br />
-<span class="token-keyword">console</span><span class="token-operator">.</span><span class="token-function">log</span><span class="token-punctuation">(</span><span class="token-string">`Hello, ${name}`</span><span class="token-punctuation">)</span>;
-            </div>
-          </div>
-        </div>
-      </div>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="#" class="nav-brand">Open<span class="accent">Notes</span></a>
+      <nav class="nav-links">
+        <a href="#features" class="active">Features</a>
+        <a href="downloads.html">Downloads</a>
+        <a href="versions.html">Versions</a>
+        <a href="faqs.html">FAQs</a>
+        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases" class="btn btn-primary" target="_blank" rel="noopener">Download v1.1.0</a>
+      </nav>
     </div>
   </header>
 
-  <section id="features" class="features">
-    <div class="container">
-      <div class="section-header">
-        <h2>Built for writing,<br />designed for focus.</h2>
+  <section class="section hero" id="home">
+    <div class="hero-inner">
+      <div class="hero-text">
+        <span class="eyebrow">Native editor</span>
+        <h1>A fast, <span class="accent-word">quiet</span> text editor.</h1>
+        <p class="lead">OpenNotes is a lightweight desktop editor for code, Markdown and plain text.
+        Built with <strong>Tauri 2</strong>, <strong>React</strong> and <strong>CodeMirror 6</strong>.
+        No Electron bloat — just a native shell that stays out of your way.</p>
+        <div class="hero-actions">
+          <a href="downloads.html" class="btn btn-primary btn-block">Download v1.1.0</a>
+          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode" class="btn btn-ghost btn-block" target="_blank" rel="noopener">View on GitHub</a>
+        </div>
+      </div>
+      <div class="hero-window" aria-label="Editor preview">
+        <div class="window-bar">
+          <div class="window-dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        </div>
+        <div class="window-body">
+          <div class="gutter">1</div>
+          <div class="code">
+<span class="c">// OpenNotes — a fast native editor</span><br />
+<span class="kw">const</span> <span class="pl">name</span> <span class="op">=</span> <span class="str">"OpenNotes"</span>;<br />
+<span class="pl">console</span><span class="punc">.</span><span class="fn">log</span><span class="punc">(</span><span class="str">`Hello, ${name}`</span><span class="punc">)</span>;
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section features" id="features">
+    <div class="section-inner">
+      <div class="section-head">
+        <span class="kicker">What it does</span>
+        <h2>Built for writing, designed for focus.</h2>
         <p>Everything you need in a native window. Nothing you don't.</p>
       </div>
-      <div class="features-grid">
+      <div class="feature-grid">
         <div class="feature-card">
-          <div class="feature-icon">⚡</div>
+          <span class="feature-icon">⚡</span>
           <h3>Instant start</h3>
-          <p>Native Tauri shell with the system webview. Opens in milliseconds, not seconds.</p>
+          <p>Native Tauri shell with the system webview. Opens in milliseconds.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🏷️</div>
+          <span class="feature-icon">🏷️</span>
           <h3>100+ syntax modes</h3>
           <p>CodeMirror-powered highlighting for JavaScript, Python, Rust, Go, Markdown and more.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🔍</div>
+          <span class="feature-icon">🔍</span>
           <h3>Project search</h3>
           <p>Search and replace across your whole project, powered by Rust and Rayon.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">💬</div>
+          <span class="feature-icon">💬</span>
           <h3>Language servers</h3>
-          <p>Go to definition, find references and diagnostics via LSP — clingd, pyright, tsserver and more.</p>
+          <p>Go to definition, find references and diagnostics via LSP.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🖥️</div>
+          <span class="feature-icon">🖥️</span>
           <h3>Integrated terminal</h3>
           <p>Piped shell inside the editor. Run commands without leaving OpenNotes.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">▶️</div>
+          <span class="feature-icon">▶️</span>
           <h3>Run files</h3>
-          <p>Run Python, JS, Go, Rust, C/C++, Java, PHP, Ruby and more with a single click.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🌍</div>
-          <h3>Five languages</h3>
-          <p>English, German, Spanish, Russian and Simplified Chinese — fully translated.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🧩</div>
-          <h3>Plugins</h3>
-          <p>Extend OpenNotes with JavaScript plugins. Register commands, show toasts, edit text.</p>
+          <p>Run Python, JS, Go, Rust, C/C++, Java, PHP, Ruby and more with one click.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <section id="download" class="download">
-    <div class="container">
-      <div class="section-header">
-        <h2>Download OpenNotes 1.1.0</h2>
-        <p>Choose your installer. All builds are signed by the GitHub Actions workflow.</p>
-      </div>
-      <div class="download-grid">
-        <div class="download-card">
-          <div class="download-chip">Linux</div>
-          <h3>.deb</h3>
-          <p class="download-size">3.16 MiB · Debian / Ubuntu</p>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_amd64.deb" class="btn btn-primary btn-full" target="_blank" rel="noopener">Download .deb</a>
-        </div>
-        <div class="download-card">
-          <div class="download-chip">Linux</div>
-          <h3>.AppImage</h3>
-          <p class="download-size">78 MiB · Any distro</p>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_amd64.AppImage" class="btn btn-primary btn-full" target="_blank" rel="noopener">Download AppImage</a>
-        </div>
-        <div class="download-card">
-          <div class="download-chip">Linux</div>
-          <h3>.rpm</h3>
-          <p class="download-size">~3 MiB · Fedora / openSUSE</p>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes-1.1.0-1.x86_64.rpm" class="btn btn-primary btn-full" target="_blank" rel="noopener">Download .rpm</a>
-        </div>
-        <div class="download-card">
-          <div class="download-chip">Windows</div>
-          <h3>.exe</h3>
-          <p class="download-size">2.33 MiB · NSIS installer</p>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_x64-setup.exe" class="btn btn-primary btn-full" target="_blank" rel="noopener">Download .exe</a>
-        </div>
-        <div class="download-card">
-          <div class="download-chip">Windows</div>
-          <h3>.msi</h3>
-          <p class="download-size">3.07 MiB · Windows Installer</p>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_x64_en-US.msi" class="btn btn-primary btn-full" target="_blank" rel="noopener">Download .msi</a>
-        </div>
-        <div class="download-card">
-          <div class="download-chip">Source</div>
-          <h3>Source code</h3>
-          <p class="download-size">Git repository</p>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/archive/refs/tags/v1.1.0.zip" class="btn btn-ghost btn-full" target="_blank" rel="noopener">Download ZIP</a>
-        </div>
-      </div>
-      <div class="download-note">
-        <p><strong>Requirements:</strong> Node.js 20+, Rust stable. On Linux you need WebKitGTK 4.1 and GTK 3 dev packages to build from source.</p>
-      </div>
-    </div>
-  </section>
-
-  <section id="screenshots" class="screenshots">
-    <div class="container">
-      <div class="section-header">
+  <section class="section gallery">
+    <div class="section-inner">
+      <div class="section-head">
+        <span class="kicker">Interface</span>
         <h2>See it in action</h2>
-        <p>A clean, quiet editor that gets out of your way.</p>
+        <p>A clean, flat interface that gets out of your way.</p>
       </div>
-      <div class="screenshot-grid">
-        <div class="screenshot-card">
-          <div class="screenshot-placeholder">Dark theme</div>
-          <p>Flat, quiet dark interface — no glass, no gradients, no distractions.</p>
+      <div class="gallery-grid">
+        <div class="gallery-item">
+          <img src="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" alt="Dark theme preview" loading="lazy" />
+          <div class="gallery-caption">Dark theme — flat, quiet, no distractions.</div>
         </div>
-        <div class="screenshot-card">
-          <div class="screenshot-placeholder">Light theme</h3>
-          <p>Clean light interface with hairline borders and subtle accents.</p>
+        <div class="gallery-item">
+          <img src="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" alt="Light theme preview" loading="lazy" />
+          <div class="gallery-caption">Light theme — hairline borders, subtle accents.</div>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="docs" class="docs">
-    <div class="container">
-      <div class="section-header">
-        <h2>Documentation</h2>
-        <p>Architecture, keyboard shortcuts, plugin API and testing guide.</p>
-      </div>
-      <div class="docs-grid">
-        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/tree/main/docs" class="doc-card" target="_blank" rel="noopener">
-          <span class="doc-icon">📘</span>
-          <h3>Architecture</h3>
-          <p>How the Tauri shell, bridge and renderer fit together.</p>
-        </a>
-        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/tree/main/docs/keyboard-shortcuts.md" class="doc-card" target="_blank" rel="noopener">
-          <span class="doc-icon">⌨️</span>
-          <h3>Keyboard shortcuts</h3>
-          <p>The complete reference of every built-in binding.</p>
-        </a>
-        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/tree/main/docs/extension-api.md" class="doc-card" target="_blank" rel="noopener">
-          <span class="doc-icon">🧩</span>
-          <h3>Plugin API</h3>
-          <p>Extend OpenNotes with JavaScript plugins.</p>
-        </a>
-        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/tree/main/docs/testing.md" class="doc-card" target="_blank" rel="noopener">
-          <span class="doc-icon">🧪</span>
-          <h3>Testing</h3>
-          <p>Unit tests, i18n checks and the full release gate.</p>
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <section id="about" class="about">
-    <div class="container">
-      <div class="about-inner">
-        <div class="about-text">
-          <h2>Why OpenNotes?</h2>
-          <p>Most editors ship a whole Chromium and Node.js runtime. OpenNotes doesn't.
-          It's a Tauri 2 app — a small Rust backend plus your system's webview.
-          The result: a few megabytes on disk, low memory use and a native-feeling
-          window on every platform.</p>
-          <p>The interface stays React + CodeMirror 6, so you get a modern editor
-          with tabs, syntax highlighting, a minimap, language servers and a command
-          palette — without the Electron weight.</p>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode" class="btn btn-ghost" target="_blank" rel="noopener">Star on GitHub →</a>
+        <div class="gallery-item">
+          <img src="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" alt="Command palette" loading="lazy" />
+          <div class="gallery-caption">Command palette — Ctrl+Shift+P.</div>
+        </div>
+        <div class="gallery-item">
+          <img src="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" alt="Settings" loading="lazy" />
+          <div class="gallery-caption">Settings — themes, language, keybindings.</div>
         </div>
       </div>
     </div>
   </section>
 
-  <footer class="footer">
-    <div class="container">
-      <div class="footer-inner">
-        <div class="footer-brand">Open<span class="logo-accent">Notes</span></div>
-        <p class="footer-text">MIT Licensed · Built with Tauri 2, React and CodeMirror 6.</p>
-        <div class="footer-links">
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode" target="_blank" rel="noopener">GitHub</a>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases" target="_blank" rel="noopener">Releases</a>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/issues" target="_blank" rel="noopener">Issues</a>
-        </div>
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">Open<span class="accent">Notes</span></div>
+      <div class="footer-links">
+        <a href="downloads.html">Downloads</a>
+        <a href="versions.html">Versions</a>
+        <a href="faqs.html">FAQs</a>
+        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode" target="_blank" rel="noopener">GitHub</a>
       </div>
+      <p class="footer-note">MIT Licensed · Built with Tauri 2, React and CodeMirror 6.</p>
     </div>
   </footer>
 
-  <script src="assets/js/main.js"></script>
 </body>
 </html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Versions — OpenNotes release history</title>
+  <meta name="description" content="OpenNotes release history and changelog." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="icon" href="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="nav-brand">Open<span class="accent">Notes</span></a>
+      <nav class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="downloads.html">Downloads</a>
+        <a href="versions.html" class="active">Versions</a>
+        <a href="faqs.html">FAQs</a>
+        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases" class="btn btn-primary" target="_blank" rel="noopener">Releases</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-head">
+        <span class="kicker">Release history</span>
+        <h2>Versions</h2>
+        <p>All OpenNotes releases, newest first.</p>
+      </div>
+
+      <table class="versions-table">
+        <thead>
+          <tr>
+            <th>Version</th>
+            <th>Released</th>
+            <th>Notes</th>
+            <th>Installers</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="version-badge">v1.1.0</span></td>
+            <td class="date-cell">2026-11-21</td>
+            <td>Fixed window close / minimize / maximize controls; added GitHub Pages website.</td>
+            <td>
+              <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/tag/v1.1.0" class="btn btn-outline" style="padding:0.35rem 0.7rem; font-size:0.8rem;" target="_blank" rel="noopener">Assets →</a>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="version-badge">v1.0.0</span></td>
+            <td class="date-cell">2026-10-19</td>
+            <td>First public release. Tabbed editing, 100+ syntax themes, LSP, terminal, run panel, plugins.</td>
+            <td>
+              <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/tag/v1.0.0" class="btn btn-outline" style="padding:0.35rem 0.7rem; font-size:0.8rem;" target="_blank" rel="noopener">Assets →</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:var(--space-6);">
+        <h3 style="font-size:1rem; font-weight:700; margin-bottom:var(--space-2); color:var(--ink);">About versioning</h3>
+        <p style="color:var(--ink-soft); font-size:0.95rem; line-height:1.7;">
+          OpenNotes follows <a href="https://semver.org" style="color:var(--primary);" target="_blank" rel="noopener">Semantic Versioning</a>. Breaking changes bump the major version, new features bump the minor version, and fixes bump the patch version.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">Open<span class="accent">Notes</span></div>
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="downloads.html">Downloads</a>
+        <a href="faqs.html">FAQs</a>
+        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <p class="footer-note">MIT Licensed · Built with Tauri 2, React and CodeMirror 6.</p>
+    </div>
+  </footer>
+
+</body>
+</html>
