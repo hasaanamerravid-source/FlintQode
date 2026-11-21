@@ -40,12 +40,13 @@
         </div>
       </div>
       <div class="hero-window" aria-label="Editor preview">
-        <div class="window-bar">
-          <div class="window-dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
-        </div>
-        <div class="window-body">
-          <div class="gutter">1</div>
-          <div class="code">
+        <div class="editor-window">
+          <div class="editor-bar">
+            <div class="editor-dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+          </div>
+          <div class="editor-body">
+            <div class="gutter">1</div>
+            <div class="code">
 <span class="c">// OpenNotes — a fast native editor</span><br />
 <span class="kw">const</span> <span class="pl">name</span> <span class="op">=</span> <span class="str">"OpenNotes"</span>;<br />
 <span class="pl">console</span><span class="punc">.</span><span class="fn">log</span><span class="punc">(</span><span class="str">`Hello, ${name}`</span><span class="punc">)</span>;
@@ -106,19 +107,69 @@
       </div>
       <div class="gallery-grid">
         <div class="gallery-item">
-          <img src="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" alt="Dark theme preview" loading="lazy" />
+          <div class="editor-window">
+            <div class="editor-bar">
+              <div class="editor-dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+            </div>
+            <div class="editor-body">
+              <div class="gutter">1</div>
+              <div class="code">
+<span class="c">// OpenNotes — fast native editor</span><br />
+<span class="kw">const</span> <span class="pl">name</span> <span class="op">=</span> <span class="str">"OpenNotes"</span>;<br />
+<span class="pl">console</span><span class="punc">.</span><span class="fn">log</span><span class="punc">(</span><span class="str">`Hello, ${name}`</span><span class="punc">)</span>;
+              </div>
+            </div>
+          </div>
           <div class="gallery-caption">Dark theme — flat, quiet, no distractions.</div>
         </div>
         <div class="gallery-item">
-          <img src="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" alt="Light theme preview" loading="lazy" />
+          <div class="editor-window light">
+            <div class="editor-bar">
+              <div class="editor-dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+            </div>
+            <div class="editor-body">
+              <div class="gutter">1</div>
+              <div class="code">
+<span class="c">// OpenNotes — light theme</span><br />
+<span class="kw">const</span> <span class="pl">name</span> <span class="op">=</span> <span class="str">"OpenNotes"</span>;<br />
+<span class="pl">console</span><span class="punc">.</span><span class="fn">log</span><span class="punc">(</span><span class="str">`Hello, ${name}`</span><span class="punc">)</span>;
+              </div>
+            </div>
+          </div>
           <div class="gallery-caption">Light theme — hairline borders, subtle accents.</div>
         </div>
         <div class="gallery-item">
-          <img src="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" alt="Command palette" loading="lazy" />
+          <div class="editor-window">
+            <div class="editor-bar">
+              <div class="editor-dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+            </div>
+            <div class="editor-body">
+              <div class="gutter">1</div>
+              <div class="code">
+<span class="c">// Command palette — Ctrl+Shift+P</span><br />
+<span class="kw">import</span> <span class="punc">{</span> <span class="pl">runCommand</span> <span class="punc">}</span> <span class="kw">from</span> <span class="str">'./core/commands'</span>;<br />
+<span class="pl">runCommand</span><span class="punc">(</span><span class="str">'file.open'</span><span class="punc">)</span>;
+              </div>
+            </div>
+          </div>
           <div class="gallery-caption">Command palette — Ctrl+Shift+P.</div>
         </div>
         <div class="gallery-item">
-          <img src="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" alt="Settings" loading="lazy" />
+          <div class="editor-window light">
+            <div class="editor-bar">
+              <div class="editor-dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+            </div>
+            <div class="editor-body">
+              <div class="gutter">1</div>
+              <div class="code">
+<span class="c">// Settings — theme &amp; keybindings</span><br />
+<span class="kw">const</span> <span class="pl">settings</span> <span class="op">=</span> <span class="punc">{</span><br />
+<span class="punc">&nbsp;&nbsp;</span><span class="pl">theme</span><span class="op">:</span> <span class="str">'system'</span><span class="punc">,</span><br />
+<span class="punc">&nbsp;&nbsp;</span><span class="pl">syntaxTheme</span><span class="op">:</span> <span class="str">'intellij-light'</span><br />
+<span class="punc">}</span>;
+              </div>
+            </div>
+          </div>
           <div class="gallery-caption">Settings — themes, language, keybindings.</div>
         </div>
       </div>
