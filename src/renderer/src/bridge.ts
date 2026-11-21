@@ -340,20 +340,20 @@ export function createApi(): OpenNotesApi {
       newWindow: () => call<boolean>('win_new_window'),
       setMenuBar: async () => true,
       minimize: () => {
-        const win = currentWindow()
-        if (win) void win.minimize().catch((error) => console.warn('[opennotes] minimize failed', error))
+        void call<void>('win_minimize').catch((error) => console.warn('[opennotes] minimize failed', error))
       },
       toggleMaximize: () => {
-        const win = currentWindow()
-        if (win) void win.toggleMaximize().catch((error) => console.warn('[opennotes] toggleMaximize failed', error))
+        void call<void>('win_toggle_maximize').catch((error) => console.warn('[opennotes] toggleMaximize failed', error))
       },
       close: () => {
-        const win = currentWindow()
-        if (win) void win.close().catch((error) => console.warn('[opennotes] close failed', error))
+        void call<void>('win_close').catch((error) => console.warn('[opennotes] close failed', error))
       },
       isMaximized: async () => {
-        const win = currentWindow()
-        return win ? win.isMaximized() : false
+        try {
+          return await call<boolean>('win_is_maximized')
+        } catch {
+          return false
+        }
       },
       zoom: (delta: number) => {
         void applyZoom(zoomFactor + delta)
@@ -373,24 +373,24 @@ export function createApi(): OpenNotesApi {
         // the visual theme; this call is kept for API compatibility.
       },
       onMaximizeChange: (cb: (maximized: boolean) => void) => {
-        const win = currentWindow()
-        if (!win) return () => undefined
         let disposed = false
-        let unlisten: UnlistenFn | undefined
+        let last: boolean | null = null
         const report = (): void => {
-          void win.isMaximized().then((maximized) => {
-            if (!disposed) cb(maximized)
-          })
+          void call<boolean>('win_is_maximized')
+            .then((maximized) => {
+              if (disposed) return
+              if (last === null || maximized !== last) {
+                last = maximized
+                cb(maximized)
+              }
+            })
+            .catch(() => undefined)
         }
         report()
-        void win.onResized(report).then((stop) => {
-          if (disposed) stop()
-          else unlisten = stop
-        })
+        const timer = window.setInterval(report, 500)
         return () => {
           disposed = true
-          unlisten?.()
-          unlisten = undefined
+          window.clearInterval(timer)
         }
       },
     },

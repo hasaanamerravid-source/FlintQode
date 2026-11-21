@@ -1,6 +1,6 @@
 [package]
 name = "opennotes"
-version = "1.0.0"
+version = "1.2.0"
 description = "OpenNotes - a fast, native all-in-one text editor"
 authors = ["OpenNotes"]
 license = "MIT"

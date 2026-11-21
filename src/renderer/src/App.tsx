@@ -69,6 +69,8 @@ export default function App(): JSX.Element {
   const compareData = useAppStore((s) => s.compareData)
   const charMapOpen = useAppStore((s) => s.charMapOpen)
   const setDialog = useAppStore((s) => s.setDialog)
+  const externalChange = useAppStore((s) => s.externalChange)
+  const resolveExternalChange = useAppStore((s) => s.resolveExternalChange)
   const setActiveTab = useAppStore((s) => s.setActiveTab)
   const toast = useAppStore((s) => s.toast)
   const [dragging, setDragging] = useState(false)
@@ -426,6 +428,28 @@ export default function App(): JSX.Element {
       <WelcomeDialog />
       <PromptHost />
       <Toasts />
+
+      {externalChange && (
+        <Modal
+          title={t('dialog.externalChange.title')}
+          onClose={() => resolveExternalChange('keep')}
+          footer={
+            <>
+              <button className="btn btn-ghost" onClick={() => resolveExternalChange('keep')}>
+                {t('dialog.externalChange.keep')}
+              </button>
+              <button className="btn btn-primary" onClick={() => resolveExternalChange('reload')}>
+                {t('dialog.externalChange.reload')}
+              </button>
+              <button className="btn btn-ghost" onClick={() => resolveExternalChange('compare')}>
+                {t('dialog.externalChange.compare')}
+              </button>
+            </>
+          }
+        >
+          <p className="hint">{t('dialog.externalChange.message', { name: externalChange.name })}</p>
+        </Modal>
+      )}
 
       {charMapOpen && (
         <Modal title={t('dialog.charMap.title')} onClose={() => setDialog('charMap', false)}>

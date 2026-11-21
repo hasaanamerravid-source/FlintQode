@@ -156,16 +156,17 @@ fn clean_text(text: &str) -> String {
     out
 }
 
-fn kill_session(session: &mut TerminalSession) {
+async fn kill_session(session: &mut TerminalSession) {
+    // Stop the shell process group, escalating from SIGTERM to SIGKILL while
+    // the child is confirmed to still be running.
     #[cfg(unix)]
     {
-        if let Some(pid) = session.child.id() {
-            unsafe {
-                libc::kill(-(pid as i32), libc::SIGKILL);
-            }
-        }
+        crate::process::stop_process_tree(&mut session.child, libc::SIGKILL).await;
     }
-    let _ = session.child.start_kill();
+    #[cfg(not(unix))]
+    {
+        let _ = session.child.start_kill();
+    }
 }
 
 fn emit(app: &AppHandle, event: TerminalEvent) {
@@ -191,7 +192,7 @@ pub async fn terminal_start(
     {
         let mut guard = state.inner.lock().await;
         if let Some(mut previous) = guard.take() {
-            kill_session(&mut previous);
+            kill_session(&mut previous).await;
         }
     }
 
@@ -370,11 +371,7 @@ pub async fn terminal_interrupt(
     };
     #[cfg(unix)]
     {
-        if let Some(pid) = session.child.id() {
-            unsafe {
-                libc::kill(-(pid as i32), libc::SIGINT);
-            }
-        }
+        let _ = crate::process::interrupt_process_tree(&mut session.child, libc::SIGINT).await;
     }
     #[cfg(not(unix))]
     {
@@ -398,7 +395,7 @@ pub async fn terminal_stop(
 ) -> Result<bool, String> {
     let mut guard = state.inner.lock().await;
     if let Some(mut session) = guard.take() {
-        kill_session(&mut session);
+        kill_session(&mut session).await;
         emit(
             &app,
             TerminalEvent {

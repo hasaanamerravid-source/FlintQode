@@ -117,7 +117,14 @@ fn detect_bom(bytes: &[u8]) -> (&'static str, usize) {
 }
 
 fn is_probably_binary(bytes: &[u8]) -> bool {
-    bytes.iter().take(8000).any(|byte| *byte == 0)
+    // A single stray null byte in the first 8 KB no longer makes a file binary.
+    // Only a high density of null bytes (typical of real binary data) does.
+    let sample: Vec<u8> = bytes.iter().copied().take(8000).collect();
+    if sample.is_empty() {
+        return false;
+    }
+    let nulls = sample.iter().filter(|b| **b == 0).count();
+    (nulls * 100) / sample.len() > 5
 }
 
 /// Decode a buffer. Returns the text, the encoding and whether it is binary.
@@ -244,6 +251,11 @@ fn empty_payload(path: &str) -> FilePayload {
 
 #[tauri::command]
 pub fn fs_read_file(path: String) -> FilePayload {
+    // Canonicalize so that the same file opened with different casing always
+    // resolves to the same path everywhere in the renderer.
+    let path = std::fs::canonicalize(&path)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or(path);
     let mut buffer = Vec::new();
     let mut size = 0u64;
     let mut limit = 0u64;
@@ -296,6 +308,9 @@ pub fn fs_write_file(
     encoding: String,
     eol: String,
 ) -> Result<(), String> {
+    let path = std::fs::canonicalize(&path)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or(path);
     let payload = apply_eol(&normalize_eol(&content), &eol);
     let bytes = encode_text(&payload, &encoding);
     if let Some(parent) = Path::new(&path).parent() {
@@ -438,6 +453,9 @@ pub fn fs_write_text_file(path: String, text: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn fs_watch(app: AppHandle, state: State<'_, Watchers>, path: String) -> Result<(), String> {
+    let path = std::fs::canonicalize(&path)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or(path);
     let watched = path.clone();
     let handle = app.clone();
     let mut watcher =
@@ -469,6 +487,9 @@ pub fn fs_watch(app: AppHandle, state: State<'_, Watchers>, path: String) -> Res
 
 #[tauri::command]
 pub fn fs_unwatch(state: State<'_, Watchers>, path: String) -> Result<(), String> {
+    let path = std::fs::canonicalize(&path)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or(path);
     if let Ok(mut watchers) = state.0.lock() {
         if let Some(mut watcher) = watchers.remove(&path) {
             let _ = watcher.unwatch(Path::new(&path));

@@ -181,6 +181,17 @@ The native app stores its data in the platform application-data folder:
 live there. The formats are the same JSON documents the earlier builds used, so
 an existing profile keeps working.
 
+## Known limitations
+
+- The integrated terminal is a piped shell, not a full PTY: interactive,
+  full-screen programs (vim, top, anything that calls `isatty()`) are not
+  supported. Use an external terminal for those.
+- Opening the same editor in several windows shares a single Rust state
+  (terminals, language servers, run state and settings). Treat multi-window
+  use as experimental.
+- Files larger than 24 MB are truncated on load; saving is disabled for those
+  buffers to avoid destroying the rest of the file.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

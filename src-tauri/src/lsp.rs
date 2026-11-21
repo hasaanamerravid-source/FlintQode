@@ -989,13 +989,12 @@ fn parse_content_length(header: &str) -> Option<usize> {
 async fn kill_tree(child: &mut Child) {
     #[cfg(unix)]
     {
-        if let Some(pid) = child.id() {
-            unsafe {
-                libc::kill(-(pid as i32), libc::SIGTERM);
-            }
-        }
+        crate::process::stop_process_tree(child, libc::SIGTERM).await;
     }
-    let _ = child.kill().await;
+    #[cfg(not(unix))]
+    {
+        let _ = child.kill().await;
+    }
 }
 
 /* ------------------------------------------------------------------ *
@@ -1110,6 +1109,9 @@ pub fn from_file_uri(value: &str) -> String {
  * ------------------------------------------------------------------ */
 
 fn client_capabilities() -> Value {
+    // Only advertise what this client actually implements. Advertising a
+    // capability whose handler is missing makes language servers send requests
+    // we can never answer, which can stall the server or disable features.
     json!({
         "general": { "positionEncodings": ["utf-16"] },
         "workspace": {
@@ -1136,27 +1138,8 @@ fn client_capabilities() -> Value {
                 "codeDescriptionSupport": true,
                 "dataSupport": true
             },
-            "hover": { "dynamicRegistration": false, "contentFormat": ["markdown", "plaintext"] },
-            "completion": {
-                "dynamicRegistration": false,
-                "completionItem": {
-                    "snippetSupport": true,
-                    "documentationFormat": ["markdown", "plaintext"],
-                    "resolveSupport": { "properties": ["documentation", "detail", "additionalTextEdits"] }
-                }
-            },
             "definition": { "dynamicRegistration": false, "linkSupport": true },
-            "typeDefinition": { "dynamicRegistration": false, "linkSupport": true },
-            "implementation": { "dynamicRegistration": false, "linkSupport": true },
-            "references": { "dynamicRegistration": false },
-            "documentSymbol": { "dynamicRegistration": false, "hierarchicalDocumentSymbolSupport": true },
-            "signatureHelp": { "dynamicRegistration": false },
-            "formatting": { "dynamicRegistration": false },
-            "rangeFormatting": { "dynamicRegistration": false },
-            "codeAction": { "dynamicRegistration": false },
-            "codeLens": { "dynamicRegistration": false },
-            "rename": { "dynamicRegistration": false },
-            "inlayHint": { "dynamicRegistration": false }
+            "references": { "dynamicRegistration": false }
         },
         "window": {
             "workDoneProgress": true,

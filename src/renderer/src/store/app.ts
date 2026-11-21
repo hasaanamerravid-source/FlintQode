@@ -46,6 +46,8 @@ interface AppState {
   compareOpen: boolean
   charMapOpen: boolean
   welcomeOpen: boolean
+  /** An external change (the file changed on disk) waiting for the user. */
+  externalChange: { path: string; name: string; content: string } | null
   statusBarVisible: boolean
   distractionFree: boolean
   splitView: boolean
@@ -75,6 +77,8 @@ interface AppState {
   setPaletteMode: (mode: 'commands' | 'files') => void
   setCompareData: (data: { left: string; right: string; leftName: string; rightName: string } | null) => void
   setDialog: (which: 'settings' | 'about' | 'compare' | 'charMap' | 'welcome', open: boolean) => void
+  setExternalChange: (change: { path: string; name: string; content: string } | null) => void
+  resolveExternalChange: (action: 'keep' | 'reload' | 'compare') => void
   setDistractionFree: (on: boolean) => void
   setSplitView: (on: boolean) => void
   setZoom: (z: number) => void
@@ -84,33 +88,36 @@ interface AppState {
   persistSession: () => Promise<void>
 }
 
-let tabSeq = 0
 function nextTabId(): string {
-  tabSeq += 1
-  return `tab-${Date.now().toString(36)}-${tabSeq}`
+  // A UUID keeps ids unique even for very rapid tab creation sequences.
+  return `tab-${crypto.randomUUID()}`
 }
 
 /** File watchers, one per open file, used to detect external changes. */
-const watchers = new Map<string, () => void>()
+const watchers = new Map<string, Promise<() => void>>()
 
 function watchFile(path: string): void {
   if (watchers.has(path)) return
   let timer: number | null = null
-  const stop = window.api.fs
-    .watch(path, () => {
-      if (timer !== null) window.clearTimeout(timer)
-      timer = window.setTimeout(() => {
-        void reloadIfChanged(path)
-      }, 250)
-    })
-    .then((unwatch) => {
-      watchers.set(path, () => {
-        if (timer !== null) window.clearTimeout(timer)
-        void unwatch()
-        watchers.delete(path)
-      })
-    })
-    .catch(() => undefined)
+  const stop = window.api.fs.watch(path, () => {
+    if (timer !== null) window.clearTimeout(timer)
+    timer = window.setTimeout(() => {
+      timer = null
+      void reloadIfChanged(path)
+    }, 250)
+  })
+  // The promise is stored right away: if the tab is closed before the watcher
+  // finished starting, the cleanup below can still dispose of it.
+  watchers.set(path, stop)
+  stop.catch((err) => console.warn('[watcher] failed to watch', path, err))
+}
+
+/** Stop watching a file. Safe to call multiple times. */
+function unwatchFile(path: string): void {
+  const entry = watchers.get(path)
+  if (!entry) return
+  watchers.delete(path)
+  entry.then((unwatch) => unwatch()).catch(() => undefined)
 }
 
 /** Reload the file when it changed on disk and the buffer is clean. */
@@ -122,7 +129,13 @@ async function reloadIfChanged(path: string): Promise<void> {
     const payload = await window.api.fs.readFile(path)
     if (payload.content === tab.content) return
     if (tab.dirty) {
-      state.toast(tr('toast.fileChanged', { name: tab.name }), 'error')
+      // The file changed on disk while the user had unsaved edits: ask before
+      // overwriting anything.
+      state.setExternalChange({
+        path: tab.path ?? path,
+        name: tab.name,
+        content: payload.content,
+      })
       return
     }
     state.updateTab(tab.id, { content: payload.content, encoding: payload.encoding, eol: payload.eol })
@@ -385,6 +398,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   compareOpen: false,
   charMapOpen: false,
   welcomeOpen: false,
+  externalChange: null,
   statusBarVisible: true,
   distractionFree: false,
   splitView: false,
@@ -516,8 +530,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     }
     if (tab.path) {
-      const stop = watchers.get(tab.path)
-      if (stop) stop()
+      unwatchFile(tab.path)
     }
     set((s) => {
       const index = s.tabs.findIndex((t) => t.id === id)
@@ -552,6 +565,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     get().flushTab(id)
     const fresh = get().tabs.find((t) => t.id === id)
     if (!fresh) return false
+
+    // A truncated or read-only buffer must never be written back to disk: the
+    // content is only a prefix of the real file, so saving would destroy the
+    // rest of it.
+    if (!saveAs && (fresh.readonly || fresh.truncatedBytes)) {
+      get().toast(tr('toast.truncatedFile'), 'error')
+      return false
+    }
 
     let target = fresh.path
     if (!target || saveAs) {
@@ -616,6 +637,33 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPalette: (open) => set({ paletteOpen: open }),
   setPaletteMode: (mode) => set({ paletteMode: mode, paletteOpen: true }),
   setCompareData: (data) => set({ compareData: data }),
+  setExternalChange: (change) => set({ externalChange: change }),
+  resolveExternalChange: (action) => {
+    const change = get().externalChange
+    set({ externalChange: null })
+    if (!change) return
+    // The user decided to keep the version in the editor.
+    if (action === 'keep') return
+    const state = get()
+    const tab = state.tabs.find((t) => t.path?.toLowerCase() === change.path.toLowerCase())
+    if (action === 'reload') {
+      if (tab) {
+        state.updateTab(tab.id, { content: change.content, dirty: false })
+        state.toast(tr('toast.fileReloaded', { name: tab.name }))
+      }
+      return
+    }
+    // Open the comparison of the in-editor version against the disk version.
+    if (tab) {
+      state.setCompareData({
+        left: tab.content,
+        right: change.content,
+        leftName: tab.name,
+        rightName: change.name,
+      })
+      state.setDialog('compare', true)
+    }
+  },
   setDialog: (which, open) => {
     if (which === 'settings') set({ settingsOpen: open })
     if (which === 'about') set({ aboutOpen: open })

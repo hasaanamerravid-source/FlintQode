@@ -19,6 +19,8 @@ jobs:
             args: ''
           - platform: windows-latest
             args: ''
+          - platform: macos-latest
+            args: ''
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
@@ -41,6 +43,9 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm install --no-audit --no-fund
+
+      - name: Sync version
+        run: node scripts/sync-version.mjs
 
       - name: Generate icons
         run: npm run icons

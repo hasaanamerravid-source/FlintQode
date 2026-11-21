@@ -36,19 +36,28 @@ fn open_files_pending(state: tauri::State<'_, OpenFiles>) -> Vec<String> {
 }
 
 #[tauri::command]
-fn win_new_window(app: tauri::AppHandle) -> Result<bool, String> {
-    let index = WINDOW_COUNTER.fetch_add(1, Ordering::SeqCst) + 1;
-    let label = format!("main-{index}");
-    let window = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App("index.html".into()))
-        .title("OpenNotes")
-        .inner_size(1240.0, 820.0)
-        .min_inner_size(720.0, 480.0)
-        .decorations(false)
-        .center()
-        .build()
-        .map_err(|error| error.to_string())?;
-    window.show().map_err(|error| error.to_string())?;
-    Ok(true)
+fn win_minimize(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.minimize().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn win_toggle_maximize(window: tauri::WebviewWindow) -> Result<(), String> {
+    let maximized = window.is_maximized().unwrap_or(false);
+    if maximized {
+        window.unmaximize().map_err(|error| error.to_string())
+    } else {
+        window.maximize().map_err(|error| error.to_string())
+    }
+}
+
+#[tauri::command]
+fn win_close(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.close().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn win_is_maximized(window: tauri::WebviewWindow) -> Result<bool, String> {
+    window.is_maximized().map_err(|error| error.to_string())
 }
 
 fn command_line_files() -> Vec<String> {
@@ -120,6 +129,10 @@ pub fn run() {
             lsp::lsp_stop,
             lsp::lsp_configure,
             win_new_window,
+            win_minimize,
+            win_toggle_maximize,
+            win_close,
+            win_is_maximized,
             open_files_pending,
         ])
         .setup(|app| {

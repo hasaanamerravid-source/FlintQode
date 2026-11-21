@@ -1,8 +1,11 @@
-//! Small helpers for finding programs on the PATH.
+//! Small helpers for finding programs on the PATH and for stopping child processes safely.
 
 use std::path::{Path, PathBuf};
+#[cfg(unix)]
+use std::time::Duration;
 
 use std::process::Command;
+use tokio::process::Child;
 
 /// The extensions Windows appends to a program name.
 #[cfg(windows)]
@@ -92,4 +95,58 @@ pub fn spawn_detached(command: &str, args: &[String], cwd: Option<&Path>) -> std
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
     cmd.spawn().map(|_| ())
+}
+
+/* ------------------------------------------------------------------ *
+ * Child process termination
+ * ------------------------------------------------------------------ */
+
+/// Send a signal to a running child process group (POSIX only).
+///
+/// The signal is only delivered after the child has been confirmed to still be
+/// running via `try_wait`, which avoids signalling a recycled PID. Returns
+/// `true` when the child was alive and the signal was dispatched.
+#[cfg(unix)]
+async fn send_group_signal(child: &mut Child, signal: i32) -> bool {
+    let alive = child.try_wait().ok().flatten().is_none();
+    if alive {
+        if let Some(pid) = child.id() {
+            // SAFETY: `pid` belongs to a child process we spawned ourselves with
+            // its own process group, and we only signal it after confirming via
+            // `try_wait` that it is still running (which avoids PID reuse).
+            let _ = unsafe { libc::kill(-(pid as i32), signal) };
+        }
+    }
+    alive
+}
+
+/// Stop a child process and its process group (POSIX process-group aware).
+///
+/// Sends `terminate_signal` to the child's process group and escalates to
+/// SIGKILL when the child is still alive after a short grace period. The final
+/// fallback is tokio's own kill machinery, so a child we spawned is never
+/// signalled through a PID we did not confirm to belong to it.
+#[cfg(unix)]
+pub async fn stop_process_tree(child: &mut Child, terminate_signal: i32) {
+    if send_group_signal(child, terminate_signal).await {
+        tokio::time::sleep(Duration::from_millis(150)).await;
+        if child.try_wait().ok().flatten().is_none() {
+            if let Some(pid) = child.id() {
+                let _ = unsafe { libc::kill(-(pid as i32), libc::SIGKILL) };
+            }
+        }
+    }
+    let _ = child.kill().await;
+}
+
+/// Interrupt a running child process group (POSIX only).
+#[cfg(unix)]
+pub async fn interrupt_process_tree(child: &mut Child, signal: i32) -> bool {
+    send_group_signal(child, signal).await
+}
+
+/// Stop a child process without a graceful phase (portable fallback).
+#[cfg(not(unix))]
+pub async fn stop_process_tree(child: &mut Child, _terminate_signal: i32) {
+    let _ = child.kill().await;
 }

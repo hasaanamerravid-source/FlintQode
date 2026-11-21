@@ -42,8 +42,26 @@ if (mediaQuery) {
   });
 }
 
-/* ---------- FAQ accordion ---------- */
-const faqQuestions = document.querySelectorAll('.faq-question');
+const ua = (navigator.userAgent || '').toLowerCase();
+let os = 'linux';
+if (ua.includes('win')) os = 'windows';
+else if (ua.includes('mac')) os = 'macos';
+document.documentElement.setAttribute('data-os', os);
+
+const assetFor = {
+  windows: 'https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.2.0/OpenNotes_1.2.0_x64-setup.exe',
+  linux: 'https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.2.0/OpenNotes_1.2.0_amd64.AppImage',
+};
+document.querySelectorAll('a.btn-primary[href="downloads.html"]').forEach((link) => {
+  const url = assetFor[os];
+  if (url) {
+    link.setAttribute('href', url);
+    link.setAttribute('target', '_blank');
+    link.setAttribute('rel', 'noopener');
+    const label = os === 'windows' ? 'Download for Windows' : 'Download for Linux';
+    link.textContent = label;
+  }
+});
 faqQuestions.forEach((question) => {
   question.addEventListener('click', () => {
     const item = question.parentElement;

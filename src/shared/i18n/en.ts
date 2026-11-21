@@ -494,6 +494,11 @@ export const en = {
   'dialog.confirm.unsaved.hint': 'Click OK to save, Cancel to discard, or leave the window open to decide later.',
   'dialog.confirm.deleteFile.title': 'Delete the file?',
   'dialog.confirm.deleteFile.message': '“{{name}}” will be moved to the recycle bin.',
+  'dialog.externalChange.title': 'File changed on disk',
+  'dialog.externalChange.message': '“{{name}}” was changed outside OpenNotes while you had unsaved changes.',
+  'dialog.externalChange.keep': 'Keep my changes',
+  'dialog.externalChange.reload': 'Reload from disk',
+  'dialog.externalChange.compare': 'Compare',
 
   /* ------------------------------ notifications --------------------------- */
   'toast.saved': 'Saved {{name}}',
@@ -506,6 +511,7 @@ export const en = {
   'toast.couldNotOpen': 'Could not open {{name}}: {{error}}',
   'toast.binaryFile': 'This file looks binary and cannot be opened as text.',
   'toast.largeFile': 'Large file ({{size}} MB) — opened read-only, highlighting off.',
+  'toast.truncatedFile': 'This file was truncated because it is too large. Saving is disabled to prevent data loss.',
   'toast.runStarted': 'Started: {{command}}',
   'toast.runFailed': 'Could not start: {{reason}}',
   'toast.macroStarted': 'Recording a macro',

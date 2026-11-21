@@ -55,17 +55,21 @@ function buildContext(manifest: PluginManifest): PluginContext {
  *
  * The plugin is a plain script, so `export default { … }` is translated into
  * `module.exports = { … }`: that is the syntax the documentation shows.
+ *
+ * SECURITY: the script runs with a deliberately minimal scope. It gets the
+ * module object, its exports, a `require` that always fails and the console.
+ * The renderer `window` (and with it the whole Tauri bridge) is intentionally
+ * NOT passed in, so a plugin cannot read files or run processes through it.
  */
 export function evaluatePlugin(source: string): PluginModule {
   const module = { exports: {} as PluginModule }
-  const fn = new Function('module', 'exports', 'require', 'window', 'console', normalizePlugin(source))
+  const fn = new Function('module', 'exports', 'require', 'console', normalizePlugin(source))
   fn(
     module,
     module.exports,
     () => {
       throw new Error('require() is not available inside plugins')
     },
-    window,
     console,
   )
   const exported = module.exports as PluginModule
@@ -122,6 +126,9 @@ export function activatePlugin(id: string): string | null {
       ids.push(command.id)
     }
     commandIds.set(id, ids)
+    // SECURITY: log every activation so a suspicious plugin is visible in the
+    // diagnostics, and never auto-activate plugins from untrusted sources.
+    console.warn(`[security] plugin "${id}" activated with restricted scope`)
     entry.module.activate?.(buildContext(entry.manifest))
     entry.active = true
     return null
@@ -145,6 +152,9 @@ export function deactivatePlugin(id: string): void {
   for (const commandId of commandIds.get(id) ?? []) unregisterCommand(commandId)
   commandIds.delete(id)
   entry.active = false
+  // Drop the module reference so the (possibly large) plugin source can be
+  // garbage-collected once it is deactivated.
+  entry.module = {} as PluginModule
 }
 
 /** Activate the plugins listed in the settings. */

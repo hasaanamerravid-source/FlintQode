@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Downloads — OpenNotes v1.1.0</title>
+  <title>Downloads — OpenNotes v1.2.0</title>
   <meta name="description" content="Download OpenNotes installers for Linux (.deb, .AppImage, .rpm) and Windows (.exe, .msi). Built with Tauri 2, React and CodeMirror 6." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,6 +12,7 @@
   <link rel="icon" href="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" />
 </head>
 <body>
+  <a href="#main" class="skip-link">Skip to content</a>
 
   <header class="site-header">
     <div class="header-inner">
@@ -26,11 +27,11 @@
     </div>
   </header>
 
-  <section class="section">
+  <section class="section" id="main">
     <div class="section-inner">
       <div class="section-head">
         <span class="kicker">Download</span>
-        <h2>OpenNotes 1.1.0</h2>
+        <h2>OpenNotes 1.2.0</h2>
         <p>Choose your installer. All builds are produced by GitHub Actions and attached to the release.</p>
       </div>
 
@@ -39,37 +40,37 @@
           <span class="download-chip">Linux</span>
           <h3>.deb</h3>
           <span class="download-size">~3 MiB · Debian / Ubuntu</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_amd64.deb" class="btn btn-primary btn-block" target="_blank" rel="noopener">Download .deb</a>
+          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.2.0/OpenNotes_1.2.0_amd64.deb" class="btn btn-primary btn-block" target="_blank" rel="noopener">Download .deb</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Linux</span>
           <h3>.AppImage</h3>
           <span class="download-size">~78 MiB · Any distro</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_amd64.AppImage" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download AppImage</a>
+          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.2.0/OpenNotes_1.2.0_amd64.AppImage" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download AppImage</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Linux</span>
           <h3>.rpm</h3>
           <span class="download-size">~3 MiB · Fedora / openSUSE</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes-1.1.0-1.x86_64.rpm" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download .rpm</a>
+          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.2.0/OpenNotes-1.2.0-1.x86_64.rpm" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download .rpm</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Windows</span>
           <h3>.exe</h3>
           <span class="download-size">~2 MiB · NSIS installer</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_x64-setup.exe" class="btn btn-primary btn-block" target="_blank" rel="noopener">Download .exe</a>
+          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.2.0/OpenNotes_1.2.0_x64-setup.exe" class="btn btn-primary btn-block" target="_blank" rel="noopener">Download .exe</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Windows</span>
           <h3>.msi</h3>
           <span class="download-size">~3 MiB · Windows Installer</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_x64_en-US.msi" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download .msi</a>
+          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.2.0/OpenNotes_1.2.0_x64_en-US.msi" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download .msi</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Source</span>
           <h3>Source code</h3>
           <span class="download-size">Git repository</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/archive/refs/tags/v1.1.0.zip" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download ZIP</a>
+          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/archive/refs/tags/v1.2.0.zip" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download ZIP</a>
         </div>
       </div>
 
@@ -83,19 +84,19 @@
           <span class="feature-icon">🐧</span>
           <h3>Debian / Ubuntu</h3>
           <p>Install the .deb with APT and let it pull the runtime dependencies.</p>
-          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">sudo apt install ./OpenNotes_1.1.0_amd64.deb</code>
+          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">sudo apt install ./OpenNotes_1.2.0_amd64.deb</code>
         </div>
         <div class="feature-card">
           <span class="feature-icon">🎛️</span>
           <h3>Fedora / openSUSE</h3>
           <p>Install the RPM through the native package manager.</p>
-          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">sudo dnf install ./OpenNotes-1.1.0-1.x86_64.rpm</code>
+          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">sudo dnf install ./OpenNotes-1.2.0-1.x86_64.rpm</code>
         </div>
         <div class="feature-card">
           <span class="feature-icon">🧩</span>
           <h3>Any Linux · AppImage</h3>
           <p>Download the AppImage, mark it executable and run it.</p>
-          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">chmod +x OpenNotes_1.1.0_amd64.AppImage &amp;&amp; ./OpenNotes_1.1.0_amd64.AppImage</code>
+          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">chmod +x OpenNotes_1.2.0_amd64.AppImage &amp;&amp; ./OpenNotes_1.2.0_amd64.AppImage</code>
         </div>
         <div class="feature-card">
           <span class="feature-icon">🪟</span>

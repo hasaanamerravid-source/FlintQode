@@ -101,9 +101,7 @@ export function EditorPane(): JSX.Element {
             </button>
           </div>
 
-          <p className="welcome-hint">
-            Drag files here, or open a folder from the sidebar to search a whole project.
-          </p>
+          <p className="welcome-hint">Drag files here, or open a folder from the sidebar to search a whole project.</p>
         </div>
       </div>
     )
@@ -153,7 +151,7 @@ export function EditorPane(): JSX.Element {
             {tab.size ? ` (${(tab.size / 1024 / 1024).toFixed(1)} MB)` : ''} — opened read-only, syntax highlighting is
             off
             {tab.truncatedBytes
-              ? `, showing the first ${(tab.size ? (tab.size - tab.truncatedBytes) / 1024 / 1024 : 0).toFixed(0)} MB`
+              ? `, showing the first ${(tab.size ? (tab.size - tab.truncatedBytes) / 1024 / 1024 : 0).toFixed(0)} MB — saving is disabled to avoid data loss`
               : ''}
             .
           </span>

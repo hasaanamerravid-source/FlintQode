@@ -597,13 +597,12 @@ async fn run_capture(spec: &PlannedCommand) -> Result<(Option<i32>, String), Str
 async fn kill_child(child: &mut Child) {
     #[cfg(unix)]
     {
-        if let Some(pid) = child.id() {
-            unsafe {
-                libc::kill(-(pid as i32), libc::SIGTERM);
-            }
-        }
+        crate::process::stop_process_tree(child, libc::SIGTERM).await;
     }
-    let _ = child.start_kill();
+    #[cfg(not(unix))]
+    {
+        let _ = child.start_kill();
+    }
 }
 
 async fn stop_current(app: &AppHandle, state: &RunState) {

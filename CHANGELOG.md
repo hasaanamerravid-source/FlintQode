@@ -5,6 +5,29 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-11-21
+
+### Added
+- Safer child-process termination (liveness-checked, no raw negative-PID signals).
+- Strict Content Security Policy in the webview.
+- External file-change dialog (Reload / Keep / Compare) instead of a toast.
+- Version sync script (`scripts/sync-version.mjs`) with `VERSION` as single source of truth.
+- macOS builds in the CI matrix.
+- Platform-aware download button on the website.
+
+### Changed
+- LSP client now only advertises implemented capabilities.
+- File watchers are cleaned up reliably (no leaks on tab close).
+- Binary detection uses a density threshold instead of a single null byte.
+- Truncated files can no longer be saved (data-loss guard).
+- Tab IDs use `crypto.randomUUID()`.
+- Path canonicalization avoids case-sensitivity bugs.
+- Plugin evaluation no longer exposes `window` to plugins.
+
+### Fixed
+- Window control buttons (minimize / maximize / close) now use native Rust commands.
+- Large-file banner notes that saving is disabled.
+
 ## [2.0.0] - 2026-11-20
 
 ### Added

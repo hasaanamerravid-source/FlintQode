@@ -20,7 +20,7 @@ What the application actually needs from the protocol is narrow:
 
 ## Decision
 
-The client is written by hand in `src/main/ipc/lsp.ts`. The framing is the one of the specification:
+The client is written by hand in `src-tauri/src/lsp.rs`. The framing is the one of the specification:
 
 ```text
 Content-Length: <n>\r\n\r\n<json>
@@ -37,7 +37,7 @@ The renderer never speaks the protocol. It keeps the state (`src/renderer/src/co
 * The protocol surface is exactly the surface the application uses. There is no hidden state, no dependency on a host API and no behaviour that the application does not control.
 * The document model stays in one place. The renderer owns the buffer, the main process keeps a copy of the text of every open document (the host bridge exposes `getText` and `getLanguage`) because the diagnostics have to be turned into character offsets, and the offset computation needs the text.
 * The server table, the search for the executable, the handling of the Windows `.cmd` shims, the "the server is not installed" message with the install hint and the restart after a configuration change are application-specific and would have to be written anyway.
-* The cost is a large file: `src/main/ipc/lsp.ts` is roughly 1200 lines, and the transport, the protocol and the configuration live in it.
+* The cost is a large file: `src-tauri/src/lsp.rs` is roughly 1400 lines, and the transport, the protocol and the configuration live in it.
 * The client capabilities are a fixed subset. A server that needs a capability the client does not advertise — semantic tokens, for example — will not use it.
 * The incremental synchronisation only covers `textDocumentSync` kinds 0, 1 and 2. A server that asks for something else is treated as a full synchronisation.
 * The behaviour of a server is only as good as the table. `phpactor` is used for PHP because `intelephense` does not speak the protocol, and `ruby-lsp` is used because `solargraph` only speaks the older one. Those judgements live in the application, next to the table.
