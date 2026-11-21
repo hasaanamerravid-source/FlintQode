@@ -21,7 +21,8 @@
         <a href="downloads.html" class="active">Downloads</a>
         <a href="versions.html">Versions</a>
         <a href="faqs.html">FAQs</a>
-        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases" class="btn btn-primary" target="_blank" rel="noopener">Releases</a>
+        <button class="theme-btn" aria-label="Toggle theme" id="themeToggle">🌓</button>
+        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases" class="nav-btn" target="_blank" rel="noopener">Releases</a>
       </nav>
     </div>
   </header>
@@ -100,6 +101,38 @@
       <p class="footer-note">MIT Licensed · Built with Tauri 2, React and CodeMirror 6.</p>
     </div>
   </footer>
+
+  <script>
+    const THEME_KEY = 'opennotes-website-theme';
+    const themeToggle = document.getElementById('themeToggle');
+    const root = document.documentElement;
+
+    function getSavedTheme() {
+      try { return localStorage.getItem(THEME_KEY); } catch { return null; }
+    }
+    function setTheme(theme) {
+      root.setAttribute('data-theme', theme);
+      try { localStorage.setItem(THEME_KEY, theme); } catch {}
+      if (themeToggle) themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    const saved = getSavedTheme();
+    if (saved) {
+      setTheme(saved);
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark');
+    } else {
+      setTheme('light');
+    }
+
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const current = root.getAttribute('data-theme') || 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        setTheme(next);
+      });
+    }
+  </script>
 
 </body>
 </html>

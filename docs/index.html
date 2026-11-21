@@ -21,7 +21,8 @@
         <a href="downloads.html">Downloads</a>
         <a href="versions.html">Versions</a>
         <a href="faqs.html">FAQs</a>
-        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases" class="btn btn-primary" target="_blank" rel="noopener">Download v1.1.0</a>
+        <button class="theme-btn" aria-label="Toggle theme" id="themeToggle">🌓</button>
+        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases" class="nav-btn" target="_blank" rel="noopener">Download v1.1.0</a>
       </nav>
     </div>
   </header>
@@ -114,7 +115,7 @@
             <div class="editor-body">
               <div class="gutter">1</div>
               <div class="code">
-<span class="c">// OpenNotes — fast native editor</span><br />
+<span class="c">// Dark theme — quiet, flat</span><br />
 <span class="kw">const</span> <span class="pl">name</span> <span class="op">=</span> <span class="str">"OpenNotes"</span>;<br />
 <span class="pl">console</span><span class="punc">.</span><span class="fn">log</span><span class="punc">(</span><span class="str">`Hello, ${name}`</span><span class="punc">)</span>;
               </div>
@@ -130,7 +131,7 @@
             <div class="editor-body">
               <div class="gutter">1</div>
               <div class="code">
-<span class="c">// OpenNotes — light theme</span><br />
+<span class="c">// Light theme — clean, subtle</span><br />
 <span class="kw">const</span> <span class="pl">name</span> <span class="op">=</span> <span class="str">"OpenNotes"</span>;<br />
 <span class="pl">console</span><span class="punc">.</span><span class="fn">log</span><span class="punc">(</span><span class="str">`Hello, ${name}`</span><span class="punc">)</span>;
               </div>
@@ -180,6 +181,7 @@
     <div class="footer-inner">
       <div class="footer-brand">Open<span class="accent">Notes</span></div>
       <div class="footer-links">
+        <a href="index.html">Home</a>
         <a href="downloads.html">Downloads</a>
         <a href="versions.html">Versions</a>
         <a href="faqs.html">FAQs</a>
@@ -188,6 +190,51 @@
       <p class="footer-note">MIT Licensed · Built with Tauri 2, React and CodeMirror 6.</p>
     </div>
   </footer>
+
+  <script>
+    /* ---------- Theme toggle ---------- */
+    const THEME_KEY = 'opennotes-website-theme';
+    const themeToggle = document.getElementById('themeToggle');
+    const root = document.documentElement;
+
+    function getSavedTheme() {
+      try { return localStorage.getItem(THEME_KEY); } catch { return null; }
+    }
+    function setTheme(theme) {
+      root.setAttribute('data-theme', theme);
+      try { localStorage.setItem(THEME_KEY, theme); } catch {}
+      if (themeToggle) themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    const saved = getSavedTheme();
+    if (saved) {
+      setTheme(saved);
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark');
+    } else {
+      setTheme('light');
+    }
+
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const current = root.getAttribute('data-theme') || 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        setTheme(next);
+      });
+    }
+
+    /* ---------- Smooth anchor scroll ---------- */
+    document.querySelectorAll('a[href^="#"]').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        const id = a.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if (el) {
+          e.preventDefault();
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
 
 </body>
 </html>
