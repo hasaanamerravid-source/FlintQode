@@ -60,6 +60,22 @@ fn win_is_maximized(window: tauri::WebviewWindow) -> Result<bool, String> {
     window.is_maximized().map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+fn win_new_window(app: tauri::AppHandle) -> Result<bool, String> {
+    let index = WINDOW_COUNTER.fetch_add(1, Ordering::SeqCst) + 1;
+    let label = format!("main-{index}");
+    let window = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App("index.html".into()))
+        .title("OpenNotes")
+        .inner_size(1240.0, 820.0)
+        .min_inner_size(720.0, 480.0)
+        .decorations(false)
+        .center()
+        .build()
+        .map_err(|error| error.to_string())?;
+    window.show().map_err(|error| error.to_string())?;
+    Ok(true)
+}
+
 fn command_line_files() -> Vec<String> {
     std::env::args()
         .skip(1)
