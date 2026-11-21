@@ -17,11 +17,11 @@
     <div class="header-inner">
       <a href="index.html" class="nav-brand">Open<span class="accent">Notes</span></a>
       <nav class="nav-links">
-        <a href="index.html">Home</a>
+        <a href="index.html#features">Features</a>
         <a href="downloads.html">Downloads</a>
         <a href="versions.html">Versions</a>
         <a href="faqs.html" class="active">FAQs</a>
-        <button class="theme-btn" aria-label="Toggle theme" id="themeToggle">🌓</button>
+        <button class="theme-btn" aria-label="Toggle colour theme" id="themeToggle" type="button">🌙</button>
         <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases" class="nav-btn" target="_blank" rel="noopener">Releases</a>
       </nav>
     </div>
@@ -78,7 +78,7 @@
             <span style="font-size:1.2rem;">▾</span>
           </div>
           <div class="faq-answer">
-            Yes. You need Node.js 20+, Rust stable, and (on Linux) WebKitGTK 4.1 and GTK 3 dev packages. Then run <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">npm install && npm run build:app</code>.
+            Yes. You need Node.js 20+, Rust stable, and (on Linux) WebKitGTK 4.1 and GTK 3 dev packages. Then run <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">npm install &amp;&amp; npm run build:app</code>.
           </div>
         </div>
         <div class="faq-item">
@@ -119,51 +119,14 @@
         <a href="index.html">Home</a>
         <a href="downloads.html">Downloads</a>
         <a href="versions.html">Versions</a>
+        <a href="faqs.html">FAQs</a>
         <a href="https://github.com/hasaanamerravid-source/OpenNotesCode" target="_blank" rel="noopener">GitHub</a>
       </div>
       <p class="footer-note">MIT Licensed · Built with Tauri 2, React and CodeMirror 6.</p>
     </div>
   </footer>
 
-  <script>
-    const THEME_KEY = 'opennotes-website-theme';
-    const themeToggle = document.getElementById('themeToggle');
-    const root = document.documentElement;
-
-    function getSavedTheme() {
-      try { return localStorage.getItem(THEME_KEY); } catch { return null; }
-    }
-    function setTheme(theme) {
-      root.setAttribute('data-theme', theme);
-      try { localStorage.setItem(THEME_KEY, theme); } catch {}
-      if (themeToggle) themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-    }
-
-    const saved = getSavedTheme();
-    if (saved) {
-      setTheme(saved);
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
-    } else {
-      setTheme('light');
-    }
-
-    if (themeToggle) {
-      themeToggle.addEventListener('click', () => {
-        const current = root.getAttribute('data-theme') || 'light';
-        const next = current === 'dark' ? 'light' : 'dark';
-        setTheme(next);
-      });
-    }
-
-    document.querySelectorAll('.faq-question').forEach((q) => {
-      q.addEventListener('click', () => {
-        const item = q.parentElement;
-        const open = item.classList.toggle('open');
-        q.querySelector('span:last-child').textContent = open ? '▴' : '▾';
-      });
-    });
-  </script>
+  <script src="assets/js/site.js" defer></script>
 
 </body>
 </html>

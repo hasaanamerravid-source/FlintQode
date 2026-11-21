@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Downloads — OpenNotes v1.1.0</title>
-  <meta name="description" content="Download OpenNotes installers for Linux (.deb, .AppImage, .rpm) and Windows (.exe, .msi)." />
+  <meta name="description" content="Download OpenNotes installers for Linux (.deb, .AppImage, .rpm) and Windows (.exe, .msi). Built with Tauri 2, React and CodeMirror 6." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
@@ -17,11 +17,11 @@
     <div class="header-inner">
       <a href="index.html" class="nav-brand">Open<span class="accent">Notes</span></a>
       <nav class="nav-links">
-        <a href="index.html">Home</a>
+        <a href="index.html#features">Features</a>
         <a href="downloads.html" class="active">Downloads</a>
         <a href="versions.html">Versions</a>
         <a href="faqs.html">FAQs</a>
-        <button class="theme-btn" aria-label="Toggle theme" id="themeToggle">🌓</button>
+        <button class="theme-btn" aria-label="Toggle colour theme" id="themeToggle" type="button">🌙</button>
         <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases" class="nav-btn" target="_blank" rel="noopener">Releases</a>
       </nav>
     </div>
@@ -40,31 +40,31 @@
           <span class="download-chip">Linux</span>
           <h3>.deb</h3>
           <span class="download-size">~3 MiB · Debian / Ubuntu</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_amd64.deb" class="btn btn-outline btn-block" target="_blank" rel="noopener">Download .deb</a>
+          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_amd64.deb" class="btn btn-primary btn-block" target="_blank" rel="noopener">Download .deb</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Linux</span>
           <h3>.AppImage</h3>
           <span class="download-size">~78 MiB · Any distro</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_amd64.AppImage" class="btn btn-outline btn-block" target="_blank" rel="noopener">Download AppImage</a>
+          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_amd64.AppImage" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download AppImage</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Linux</span>
           <h3>.rpm</h3>
           <span class="download-size">~3 MiB · Fedora / openSUSE</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes-1.1.0-1.x86_64.rpm" class="btn btn-outline btn-block" target="_blank" rel="noopener">Download .rpm</a>
+          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes-1.1.0-1.x86_64.rpm" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download .rpm</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Windows</span>
           <h3>.exe</h3>
           <span class="download-size">~2 MiB · NSIS installer</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_x64-setup.exe" class="btn btn-outline btn-block" target="_blank" rel="noopener">Download .exe</a>
+          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_x64-setup.exe" class="btn btn-primary btn-block" target="_blank" rel="noopener">Download .exe</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Windows</span>
           <h3>.msi</h3>
           <span class="download-size">~3 MiB · Windows Installer</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_x64_en-US.msi" class="btn btn-outline btn-block" target="_blank" rel="noopener">Download .msi</a>
+          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.1.0/OpenNotes_1.1.0_x64_en-US.msi" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download .msi</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Source</span>
@@ -75,17 +75,50 @@
       </div>
 
       <div class="section-head" style="margin-top:var(--space-6);">
+        <span class="kicker">Install</span>
+        <h2>Get it running</h2>
+        <p>One command on most Linux distributions, a script on anything else, or a plain installer on Windows.</p>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <span class="feature-icon">🐧</span>
+          <h3>Debian / Ubuntu</h3>
+          <p>Install the .deb with APT and let it pull the runtime dependencies.</p>
+          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">sudo apt install ./OpenNotes_1.1.0_amd64.deb</code>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🎛️</span>
+          <h3>Fedora / openSUSE</h3>
+          <p>Install the RPM through the native package manager.</p>
+          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">sudo dnf install ./OpenNotes-1.1.0-1.x86_64.rpm</code>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🧩</span>
+          <h3>Any Linux · AppImage</h3>
+          <p>Download the AppImage, mark it executable and run it.</p>
+          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">chmod +x OpenNotes_1.1.0_amd64.AppImage &amp;&amp; ./OpenNotes_1.1.0_amd64.AppImage</code>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🪟</span>
+          <h3>Windows</h3>
+          <p>Run the NSIS <code style="font-family:var(--font-mono);">.exe</code> installer or the <code style="font-family:var(--font-mono);">.msi</code>.</p>
+          <p style="margin-top:var(--space-2); font-size:0.85rem; color:var(--muted);">Both installers are self-contained and install to the usual Program Files location.</p>
+        </div>
+      </div>
+
+      <div class="section-head" style="margin-top:var(--space-6);">
         <span class="kicker">Build from source</span>
         <h2>Requirements</h2>
+        <p>What you need to compile OpenNotes yourself.</p>
       </div>
-      <ul style="color:var(--ink-soft); font-size:0.95rem; line-height:1.8; margin-left:1.4rem;">
+      <ul style="color:var(--ink-soft); font-size:0.95rem; line-height:1.8; margin-left:1.4rem; max-width:70ch;">
         <li><strong>Node.js</strong> 20 or newer</li>
         <li><strong>Rust</strong> stable (rustup)</li>
         <li>Linux: WebKitGTK 4.1 and GTK 3 development packages</li>
         <li>Windows: WebView2 and the MSVC build tools</li>
         <li>macOS: Xcode command line tools</li>
       </ul>
-      <p style="margin-top:var(--space-3); color:var(--ink-soft); font-size:0.9rem;">Clone the repo, run <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">npm install && npm run build:app</code>.</p>
+      <p style="margin-top:var(--space-3); color:var(--ink-soft); font-size:0.9rem;">Clone the repo, run <code style="font-family:var(--font-mono); background:var(--surface-2); color:var(--ink); padding:0.15rem 0.4rem; border-radius:0;">npm install &amp;&amp; npm run build:app</code>.</p>
     </div>
   </section>
 
@@ -94,6 +127,7 @@
       <div class="footer-brand">Open<span class="accent">Notes</span></div>
       <div class="footer-links">
         <a href="index.html">Home</a>
+        <a href="downloads.html">Downloads</a>
         <a href="versions.html">Versions</a>
         <a href="faqs.html">FAQs</a>
         <a href="https://github.com/hasaanamerravid-source/OpenNotesCode" target="_blank" rel="noopener">GitHub</a>
@@ -102,37 +136,7 @@
     </div>
   </footer>
 
-  <script>
-    const THEME_KEY = 'opennotes-website-theme';
-    const themeToggle = document.getElementById('themeToggle');
-    const root = document.documentElement;
-
-    function getSavedTheme() {
-      try { return localStorage.getItem(THEME_KEY); } catch { return null; }
-    }
-    function setTheme(theme) {
-      root.setAttribute('data-theme', theme);
-      try { localStorage.setItem(THEME_KEY, theme); } catch {}
-      if (themeToggle) themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-    }
-
-    const saved = getSavedTheme();
-    if (saved) {
-      setTheme(saved);
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
-    } else {
-      setTheme('light');
-    }
-
-    if (themeToggle) {
-      themeToggle.addEventListener('click', () => {
-        const current = root.getAttribute('data-theme') || 'light';
-        const next = current === 'dark' ? 'light' : 'dark';
-        setTheme(next);
-      });
-    }
-  </script>
+  <script src="assets/js/site.js" defer></script>
 
 </body>
 </html>

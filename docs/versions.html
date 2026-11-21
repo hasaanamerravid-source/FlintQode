@@ -17,11 +17,11 @@
     <div class="header-inner">
       <a href="index.html" class="nav-brand">Open<span class="accent">Notes</span></a>
       <nav class="nav-links">
-        <a href="index.html">Home</a>
+        <a href="index.html#features">Features</a>
         <a href="downloads.html">Downloads</a>
         <a href="versions.html" class="active">Versions</a>
         <a href="faqs.html">FAQs</a>
-        <button class="theme-btn" aria-label="Toggle theme" id="themeToggle">🌓</button>
+        <button class="theme-btn" aria-label="Toggle colour theme" id="themeToggle" type="button">🌙</button>
         <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases" class="nav-btn" target="_blank" rel="noopener">Releases</a>
       </nav>
     </div>
@@ -79,6 +79,7 @@
       <div class="footer-links">
         <a href="index.html">Home</a>
         <a href="downloads.html">Downloads</a>
+        <a href="versions.html">Versions</a>
         <a href="faqs.html">FAQs</a>
         <a href="https://github.com/hasaanamerravid-source/OpenNotesCode" target="_blank" rel="noopener">GitHub</a>
       </div>
@@ -86,37 +87,7 @@
     </div>
   </footer>
 
-  <script>
-    const THEME_KEY = 'opennotes-website-theme';
-    const themeToggle = document.getElementById('themeToggle');
-    const root = document.documentElement;
-
-    function getSavedTheme() {
-      try { return localStorage.getItem(THEME_KEY); } catch { return null; }
-    }
-    function setTheme(theme) {
-      root.setAttribute('data-theme', theme);
-      try { localStorage.setItem(THEME_KEY, theme); } catch {}
-      if (themeToggle) themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-    }
-
-    const saved = getSavedTheme();
-    if (saved) {
-      setTheme(saved);
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
-    } else {
-      setTheme('light');
-    }
-
-    if (themeToggle) {
-      themeToggle.addEventListener('click', () => {
-        const current = root.getAttribute('data-theme') || 'light';
-        const next = current === 'dark' ? 'light' : 'dark';
-        setTheme(next);
-      });
-    }
-  </script>
+  <script src="assets/js/site.js" defer></script>
 
 </body>
 </html>
