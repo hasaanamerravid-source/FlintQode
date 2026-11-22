@@ -59,6 +59,7 @@ export default function App(): JSX.Element {
   const settings = useAppStore((s) => s.settings)
   const tabs = useAppStore((s) => s.tabs)
   const activeTabId = useAppStore((s) => s.activeTabId)
+  const workspaceRoot = useAppStore((s) => s.workspaceRoot)
   const paletteOpen = useAppStore((s) => s.paletteOpen)
   const paletteMode = useAppStore((s) => s.paletteMode)
   const setPalette = useAppStore((s) => s.setPalette)
@@ -90,9 +91,9 @@ export default function App(): JSX.Element {
     if (bottomTab !== 'terminal') return
     void import('./core/terminalState').then(({ useTerminalStore }) => {
       const terminal = useTerminalStore.getState()
-      if (!terminal.running) terminal.start(projectFolder() ?? undefined)
+      if (!terminal.running) terminal.start(workspaceRoot ?? projectFolder() ?? undefined)
     })
-  }, [bottomTab])
+  }, [bottomTab, workspaceRoot])
   const statusSet = useStatusStore((s) => s.set)
   const statusReset = useStatusStore((s) => s.reset)
   const initRef = useRef(false)
@@ -411,7 +412,7 @@ export default function App(): JSX.Element {
                 }}
               />
             ) : bottomTab === 'terminal' ? (
-              <LazyTerminalPanel cwd={projectFolder() ?? undefined} />
+              <LazyTerminalPanel cwd={workspaceRoot ?? projectFolder() ?? undefined} />
             ) : (
               <LazyRunPanel
                 onRun={() => void runCommand('tools.run')}
