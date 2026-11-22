@@ -18,7 +18,7 @@
     "version:check": "node scripts/sync-version.mjs && git diff --exit-code -- VERSION package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.test.json",
     "test:unit": "node --import ./scripts/register-ts.mjs --test tests/*.test.mts",
-    "icons": "node scripts/make-icon.mjs && tauri icon build/icon.png",
+    "icons": "tauri icon src-tauri/icons/icon-source.png",
     "i18n:check": "node scripts/i18n.mjs check",
     "i18n:coverage": "node scripts/i18n.mjs coverage",
     "i18n:template": "node scripts/i18n.mjs template",
