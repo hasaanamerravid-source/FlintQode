@@ -224,7 +224,6 @@ pub async fn terminal_write(
     } else {
         format!("echo {}\r\n", session.marker)
     };
-    let _ = marker_cmd;
     session
         .writer
         .write_all(payload.as_bytes())
