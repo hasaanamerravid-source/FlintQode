@@ -166,7 +166,12 @@ for (let y = 0; y < SIZE; y++) {
   }
 }
 
-mkdirSync(dirname(out), { recursive: true })
+try {
+  mkdirSync(dirname(out), { recursive: true })
+} catch (err) {
+  // The folder may already exist (a previous run or a checked-in build/).
+  if (err && err.code !== 'EEXIST') throw err
+}
 const png = encodePng(SIZE, SIZE, rgba)
 writeFileSync(out, png)
 console.log('wrote', out)

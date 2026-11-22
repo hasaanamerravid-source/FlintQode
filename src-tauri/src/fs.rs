@@ -306,7 +306,7 @@ pub fn fs_read_file(path: String) -> Result<FilePayload, String> {
     // A missing or unreadable file is an error, not an empty document. The
     // renderer shows the message in a toast instead of opening a fake empty
     // tab that the user could overwrite.
-    let mut file = File::open(&path)
+    let file = File::open(&path)
         .map_err(|error| format!("Could not open {}: {error}", path))?;
     if let Ok(metadata) = file.metadata() {
         size = metadata.len();

@@ -166,7 +166,7 @@ fn collect_files(folder: &str, glob: &str, limit: usize) -> Vec<PathBuf> {
                 if name.starts_with('.') && name.len() > 1 && !lower.starts_with(".github") {
                     continue;
                 }
-                queue.push(entry.path());
+                queue.push_back(entry.path());
                 continue;
             }
             if !file_type.is_file() {
