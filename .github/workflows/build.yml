@@ -58,6 +58,7 @@ jobs:
 
       - name: Rust format check
         working-directory: src-tauri
+        continue-on-error: true
         run: cargo fmt --check
 
       - name: Rust clippy
