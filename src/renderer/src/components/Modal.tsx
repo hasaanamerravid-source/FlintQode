@@ -32,7 +32,7 @@ export interface ModalProps {
 /**
  * A dialog of the application.
  *
- * Every dialog of OpenNotes is a modal one:
+ * Every dialog of FlintQode is a modal one:
  *
  * * the keyboard focus stays inside it (the tab key cycles through it),
  * * the escape key closes it,

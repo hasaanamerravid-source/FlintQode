@@ -45,7 +45,7 @@ function buildContext(manifest: PluginManifest): PluginContext {
     },
     editor: getEditor,
     toast: (message, kind) => {
-      window.dispatchEvent(new CustomEvent('opennotes:toast', { detail: { message, kind } }))
+      window.dispatchEvent(new CustomEvent('flintqode:toast', { detail: { message, kind } }))
     },
   }
 }
@@ -126,9 +126,9 @@ export function activatePlugin(id: string): string | null {
       ids.push(command.id)
     }
     commandIds.set(id, ids)
-    // SECURITY: log every activation so a suspicious plugin is visible in the
-    // diagnostics, and never auto-activate plugins from untrusted sources.
-    console.warn(`[security] plugin "${id}" activated with restricted scope`)
+    // Routine activation is informational. Warnings are reserved for a plugin
+    // that actually tried something suspicious.
+    console.debug(`[plugins] "${id}" activated with restricted scope`)
     entry.module.activate?.(buildContext(entry.manifest))
     entry.active = true
     return null

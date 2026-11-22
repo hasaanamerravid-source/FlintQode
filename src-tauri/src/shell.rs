@@ -7,7 +7,14 @@ use crate::process::{find_executable, home_dir, spawn_detached};
 fn open_terminal_at(directory: &Path) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        let line = format!("cd /d {}", directory.display());
+        // cmd.exe splits the command at unquoted whitespace, so a path such as
+        // "C:\My Documents" must be quoted. A trailing backslash would escape
+        // the closing quote in some parsers, so it is doubled first.
+        let mut directory_text = directory.display().to_string();
+        if directory_text.ends_with('\\') {
+            directory_text.push('\\');
+        }
+        let line = format!("cd /d \"{directory_text}\"");
         std::process::Command::new("cmd")
             .args(["/C", "start", "", "cmd", "/K", &line])
             .spawn()
@@ -89,9 +96,14 @@ fn command_for(file_path: &str) -> Option<(String, Vec<String>)> {
 }
 
 #[tauri::command]
-pub fn shell_run(file_path: String) -> Option<String> {
-    let (command, args) = command_for(&file_path)?;
+pub fn shell_run(file_path: String) -> Result<Option<String>, String> {
+    let Some((command, args)) = command_for(&file_path) else {
+        return Ok(None);
+    };
     let folder = Path::new(&file_path).parent().map(Path::to_path_buf);
-    let _ = spawn_detached(&command, &args, folder.as_deref());
-    Some(format!("{command} {}", args.join(" ")))
+    // A failed spawn must be reported: the caller used to show the command
+    // string as if the program had started, which hid a missing interpreter.
+    spawn_detached(&command, &args, folder.as_deref())
+        .map_err(|error| format!("Could not start {command}: {error}"))?;
+    Ok(Some(format!("{command} {}", args.join(" "))))
 }

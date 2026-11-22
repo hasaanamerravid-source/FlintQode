@@ -3,7 +3,7 @@
  *
  * The bindings live in a plain text file (`keybindings.json` in the folder of
  * the settings), so they can be copied, changed by hand and put into a
- * project. The project file (`.opennotes.json`) wins over the global one.
+ * project. The project file (`.flintqode.json`) wins over the global one.
  *
  * The format is simple:
  *
@@ -29,7 +29,7 @@ export type Keybindings = Record<string, string>
 /** The name of the file the global bindings live in. */
 export const KEYBINDINGS_FILE = 'keybindings.json'
 
-/** The commands of the other editor that OpenNotes knows. */
+/** The commands of the other editor that FlintQode knows. */
 const VS_CODE_COMMANDS: Record<string, string> = {
   'workbench.action.files.newUntitledFile': 'file.new',
   'workbench.action.files.openFile': 'file.open',
@@ -132,7 +132,7 @@ export function matchesShortcut(event: KeyboardEvent, shortcut: string): boolean
 
 /**
  * Translate the keybindings of the other editor (the format with "key" and
- * "command" objects) into the commands of OpenNotes.
+ * "command" objects) into the commands of FlintQode.
  */
 export function fromVSCode(text: string): Keybindings {
   const out: Keybindings = {}

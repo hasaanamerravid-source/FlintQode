@@ -64,6 +64,15 @@ export interface CodeEditorProps {
 function buildTheme(settings: {
   fontFamily: string
   fontSize: number
+  fontWeight: number
+  fontStyle: 'normal' | 'italic'
+  lineHeight: number
+  letterSpacing: number
+  fontLigatures: boolean
+  editorForeground: string
+  editorBackgroundColor: string
+  editorCaretColor: string
+  editorSelectionColor: string
   tabSize: number
   syntaxTheme: string
   editorBackground: 'app' | 'theme'
@@ -87,24 +96,41 @@ function buildTheme(settings: {
   const searchMatch = app ? 'var(--accent-soft)' : c.searchMatch
   const indentGuide = app ? 'var(--border)' : c.indentGuide
   const lineNumber = app ? 'var(--fg-muted)' : c.lineNumber
+  // Every user colour is validated: an invalid value can never break the
+  // stylesheet, it simply falls back to the theme colour.
+  const custom = (value: string, fallback: string): string => (/^#[0-9a-f]{3,8}$/i.test(value ?? '') ? value : fallback)
+  const textColor = custom(settings.editorForeground, foreground)
+  const surface = custom(settings.editorBackgroundColor, background)
+  const caretColor = custom(settings.editorCaretColor, caret)
+  const selectionColor = custom(settings.editorSelectionColor, selection)
+  const weight = Math.max(100, Math.min(900, Number(settings.fontWeight) || 400))
+  const lineHeight = Math.max(1, Math.min(2.6, Number(settings.lineHeight) || 1.55))
+  const spacing = Math.max(-2, Math.min(6, Number(settings.letterSpacing) || 0))
   return EditorView.theme(
     {
       '&': {
-        color: foreground,
-        backgroundColor: background,
+        color: textColor,
+        backgroundColor: surface,
         fontSize: `${settings.fontSize}px`,
         height: '100%',
         fontFamily: settings.fontFamily,
+        fontWeight: String(weight),
+        fontStyle: settings.fontStyle === 'italic' ? 'italic' : 'normal',
+        fontVariantLigatures: settings.fontLigatures ? 'common-ligatures contextual' : 'none',
+        letterSpacing: `${spacing}px`,
         '--cm-tab-size': String(settings.tabSize ?? 4),
       },
       '.cm-scroller': {
         fontFamily: settings.fontFamily,
-        lineHeight: '1.55',
+        fontWeight: String(weight),
+        fontStyle: settings.fontStyle === 'italic' ? 'italic' : 'normal',
+        fontVariantLigatures: settings.fontLigatures ? 'common-ligatures contextual' : 'none',
+        lineHeight: String(lineHeight),
         overflow: 'auto',
       },
       '.cm-content': { padding: '8px 0 40vh' },
       '.cm-gutters': {
-        backgroundColor: gutterBackground,
+        backgroundColor: surface,
         color: gutterForeground,
         border: 'none',
         minWidth: '44px',
@@ -115,9 +141,9 @@ function buildTheme(settings: {
         color: activeGutterForeground,
       },
       '.cm-lineNumbers .cm-gutterElement': { color: lineNumber },
-      '.cm-cursor, .cm-dropCursor': { borderLeftColor: caret },
+      '.cm-cursor, .cm-dropCursor': { borderLeftColor: caretColor },
       '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-        backgroundColor: selection,
+        backgroundColor: selectionColor,
       },
       '.cm-selectionMatch': { backgroundColor: searchMatch },
       '.cm-searchMatch': { backgroundColor: searchMatch },

@@ -5,6 +5,7 @@
 //! dependency and build folders are skipped, hidden files are ignored and
 //! files above 4 MB are not searched.
 
+use std::collections::VecDeque;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -13,7 +14,7 @@ use rayon::prelude::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::fs::{decode_text, encode_text};
+use crate::fs::{decode_text, encode_text, write_atomic};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -139,9 +140,13 @@ fn matches_glob(name: &str, glob: &str) -> bool {
 
 fn collect_files(folder: &str, glob: &str, limit: usize) -> Vec<PathBuf> {
     let mut out = Vec::new();
-    let mut queue = vec![PathBuf::from(folder)];
-    while !queue.is_empty() && out.len() < limit {
-        let current = queue.remove(0);
+    // A VecDeque keeps the scan linear. `Vec::remove(0)` shifted the entire
+    // queue for every directory in a large workspace.
+    let mut queue = VecDeque::from([PathBuf::from(folder)]);
+    while let Some(current) = queue.pop_front() {
+        if out.len() >= limit {
+            break;
+        }
         let Ok(entries) = fs::read_dir(&current) else {
             continue;
         };
@@ -315,16 +320,40 @@ pub fn replace_in_files(request: &SearchRequest) -> ReplaceResult {
     let mut changed = 0usize;
     let mut replaced = 0usize;
     for path in files {
+        let Ok(metadata) = fs::metadata(&path) else {
+            continue;
+        };
+        // Only rewrite a file that the scan actually read in full. A file that
+        // grew past the read limit, or is being written while we read it, is
+        // skipped instead of being replaced with a partial copy.
+        if metadata.len() > MAX_FILE_BYTES {
+            continue;
+        }
         let Ok(bytes) = fs::read(&path) else {
             continue;
         };
+        if bytes.len() as u64 != metadata.len() {
+            continue;
+        }
         let (text, encoding, binary) = decode_text(&bytes);
         if binary || !matcher.is_match(&text) {
             continue;
         }
+        // The decoded text must round-trip to exactly the bytes on disk. Files
+        // with invalid byte sequences or a BOM are skipped rather than saved
+        // lossily by the replace command.
+        let probe_encoding = if bytes.starts_with(&[0xef, 0xbb, 0xbf]) {
+            "utf8-bom"
+        } else {
+            encoding.as_str()
+        };
+        if encode_text(&text, probe_encoding) != bytes {
+            continue;
+        }
         let count = matcher.find_iter(&text).count();
         let next = matcher.replace_all(&text, replacement).into_owned();
-        if fs::write(&path, encode_text(&next, &encoding)).is_ok() {
+        // Atomic write: a crash can never leave a half-written file behind.
+        if write_atomic(&path.to_string_lossy(), &encode_text(&next, probe_encoding)).is_ok() {
             changed += 1;
             replaced += count;
         }

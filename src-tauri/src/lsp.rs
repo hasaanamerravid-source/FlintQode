@@ -616,7 +616,7 @@ impl LanguageServer {
             .map(|value| value.to_string_lossy().to_string());
         json!({
             "processId": std::process::id(),
-            "clientInfo": { "name": "OpenNotes", "version": env!("CARGO_PKG_VERSION") },
+            "clientInfo": { "name": "FlintQode", "version": env!("CARGO_PKG_VERSION") },
             "locale": "en",
             "rootPath": root,
             "rootUri": root_uri,

@@ -1,5 +1,5 @@
 /**
- * Generates build/icon.png (512x512) and build/icon.ico — the OpenNotes app icon.
+ * Generates build/icon.png (512x512) and build/icon.ico — the FlintQode app icon.
  * Pure Node: hand-rolled PNG encoder and shape rasteriser, no dependencies.
  *
  *   node scripts/make-icon.mjs

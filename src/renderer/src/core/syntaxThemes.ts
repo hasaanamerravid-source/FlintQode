@@ -482,7 +482,7 @@ const midnightPalette: TokenPalette = {
 export const SYNTAX_THEMES: SyntaxThemeDef[] = [
   {
     id: 'darcula',
-    label: 'OpenNotes Dark',
+    label: 'FlintQode Dark',
     dark: true,
     style: buildStyle(darculaPalette),
     editor: {
@@ -505,7 +505,7 @@ export const SYNTAX_THEMES: SyntaxThemeDef[] = [
   },
   {
     id: 'intellij-light',
-    label: 'OpenNotes Light',
+    label: 'FlintQode Light',
     dark: false,
     style: buildStyle(intellijLightPalette),
     editor: {

@@ -348,7 +348,7 @@ export function MainMenu({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <style href="opennotes-main-menu" precedence="opennotes-main-menu">
+      <style href="flintqode-main-menu" precedence="flintqode-main-menu">
         {MENU_CSS}
       </style>
       <div

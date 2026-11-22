@@ -1,4 +1,4 @@
-import type { OpenNotesApi } from '@shared/api'
+import type { FlintQodeApi } from '@shared/api'
 
 declare module '*.css' {
   const content: string
@@ -7,7 +7,7 @@ declare module '*.css' {
 
 declare global {
   interface Window {
-    api: OpenNotesApi
+    api: FlintQodeApi
   }
 }
 

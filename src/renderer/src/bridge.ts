@@ -13,7 +13,10 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { open as openNativeDialog, save as saveNativeDialog } from '@tauri-apps/plugin-dialog'
-import { readText as readNativeClipboard, writeText as writeNativeClipboard } from '@tauri-apps/plugin-clipboard-manager'
+import {
+  readText as readNativeClipboard,
+  writeText as writeNativeClipboard,
+} from '@tauri-apps/plugin-clipboard-manager'
 import type {
   AppInfo,
   DialogResult,
@@ -29,7 +32,7 @@ import type {
 import type {
   LspDiagnosticsEvent,
   LspStatusEvent,
-  OpenNotesApi,
+  FlintQodeApi,
   ReplaceResult,
   RunEvent,
   SearchRequest,
@@ -58,9 +61,9 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
  * Browser fallback for the settings (so `vite` can still show the UI)
  * ------------------------------------------------------------------ */
 
-const LOCAL_SETTINGS = 'opennotes.browser.settings'
-const LOCAL_SESSION = 'opennotes.browser.session'
-const LOCAL_RECENT = 'opennotes.browser.recent'
+const LOCAL_SETTINGS = 'flintqode.browser.settings'
+const LOCAL_SESSION = 'flintqode.browser.session'
+const LOCAL_RECENT = 'flintqode.browser.recent'
 
 function readLocal<T>(key: string, fallback: T): T {
   try {
@@ -98,7 +101,7 @@ function subscribe<T>(name: string, cb: (payload: T) => void): () => void {
       else unlisten = stop
     })
     .catch((error: unknown) => {
-      console.warn(`[opennotes] cannot listen to ${name}`, error)
+      console.warn(`[flintqode] cannot listen to ${name}`, error)
     })
   return () => {
     disposed = true
@@ -127,7 +130,7 @@ function currentWindow(): ReturnType<typeof getCurrentWindow> | null {
   if (!isTauri()) return null
   const win = getCurrentWindow()
   if (!win) {
-    console.warn('[opennotes] Tauri window handle unavailable')
+    console.warn('[flintqode] Tauri window handle unavailable')
   }
   return win
 }
@@ -136,11 +139,15 @@ function currentWindow(): ReturnType<typeof getCurrentWindow> | null {
  * Dialogs
  * ------------------------------------------------------------------ */
 
-function dialogFilters(opts: { filters?: { name: string; extensions: string[] }[] }): { name: string; extensions: string[] }[] {
+function dialogFilters(opts: {
+  filters?: { name: string; extensions: string[] }[]
+}): { name: string; extensions: string[] }[] {
   return (opts.filters ?? [])
     .map((filter) => ({
       name: filter.name,
-      extensions: filter.extensions.filter((extension) => extension !== '*').map((extension) => extension.replace(/^\./, '')),
+      extensions: filter.extensions
+        .filter((extension) => extension !== '*')
+        .map((extension) => extension.replace(/^\./, '')),
     }))
     .filter((filter) => filter.extensions.length > 0)
 }
@@ -174,12 +181,14 @@ async function saveDialog(opts: SaveDialogOptions): Promise<DialogResult> {
  * ------------------------------------------------------------------ */
 
 /** Build the object that is installed as `window.api`. */
-export function createApi(): OpenNotesApi {
+export function createApi(): FlintQodeApi {
   return {
     info: (): Promise<AppInfo> => {
       if (!isTauri()) {
         return Promise.resolve({
-          version: '1.0.0',
+          version: '1.3.0',
+          build: 'dev',
+          commit: 'browser',
           tauri: 'browser preview',
           webview: navigator.userAgent,
           runtime: 'browser',
@@ -242,7 +251,9 @@ export function createApi(): OpenNotesApi {
 
     session: {
       load: () =>
-        isTauri() ? call<SessionState | null>('session_load') : Promise.resolve(readLocal<SessionState | null>(LOCAL_SESSION, null)),
+        isTauri()
+          ? call<SessionState | null>('session_load')
+          : Promise.resolve(readLocal<SessionState | null>(LOCAL_SESSION, null)),
       save: async (state: SessionState) => {
         if (isTauri()) await call<void>('session_save', { state })
         else writeLocal(LOCAL_SESSION, state)
@@ -323,16 +334,17 @@ export function createApi(): OpenNotesApi {
       didOpen: (params) => call<boolean>('lsp_did_open', { params }),
       didChange: (params) => call<boolean>('lsp_did_change', { params }),
       didClose: (params) => call<boolean>('lsp_did_close', { params }),
-      request: <T,>(params: { language: string; method: string; params?: unknown }) =>
+      request: <T>(params: { language: string; method: string; params?: unknown }) =>
         call<T | null>('lsp_request', { params }),
       stop: (language?: string | null) => call<boolean>('lsp_stop', { language: language ?? null }),
       configure: (config) => call<boolean>('lsp_configure', { config }),
-      onDiagnostics: (cb: (event: LspDiagnosticsEvent) => void) => subscribe<LspDiagnosticsEvent>('lsp:diagnostics', cb),
+      onDiagnostics: (cb: (event: LspDiagnosticsEvent) => void) =>
+        subscribe<LspDiagnosticsEvent>('lsp:diagnostics', cb),
       onStatus: (cb: (event: LspStatusEvent) => void) => subscribe<LspStatusEvent>('lsp:status', cb),
     },
 
     reportError: (message: string) => {
-      console.error('[opennotes]', message)
+      console.error('[flintqode]', message)
       if (isTauri()) void call<void>('report_error', { message }).catch(() => undefined)
     },
 
@@ -340,13 +352,15 @@ export function createApi(): OpenNotesApi {
       newWindow: () => call<boolean>('win_new_window'),
       setMenuBar: async () => true,
       minimize: () => {
-        void call<void>('win_minimize').catch((error) => console.warn('[opennotes] minimize failed', error))
+        void call<void>('win_minimize').catch((error) => console.warn('[flintqode] minimize failed', error))
       },
       toggleMaximize: () => {
-        void call<void>('win_toggle_maximize').catch((error) => console.warn('[opennotes] toggleMaximize failed', error))
+        void call<void>('win_toggle_maximize').catch((error) =>
+          console.warn('[flintqode] toggleMaximize failed', error),
+        )
       },
       close: () => {
-        void call<void>('win_close').catch((error) => console.warn('[opennotes] close failed', error))
+        void call<void>('win_close').catch((error) => console.warn('[flintqode] close failed', error))
       },
       isMaximized: async () => {
         try {
@@ -365,7 +379,7 @@ export function createApi(): OpenNotesApi {
       },
       setTitle: (title: string) => {
         const win = currentWindow()
-        if (win) void win.setTitle(title).catch((error) => console.warn('[opennotes] setTitle failed', error))
+        if (win) void win.setTitle(title).catch((error) => console.warn('[flintqode] setTitle failed', error))
       },
       setTheme: (color: string) => {
         // The webview paints the whole window, including the frame, so there
@@ -375,6 +389,7 @@ export function createApi(): OpenNotesApi {
       onMaximizeChange: (cb: (maximized: boolean) => void) => {
         let disposed = false
         let last: boolean | null = null
+        let stop: (() => void) | undefined
         const report = (): void => {
           void call<boolean>('win_is_maximized')
             .then((maximized) => {
@@ -387,10 +402,23 @@ export function createApi(): OpenNotesApi {
             .catch(() => undefined)
         }
         report()
-        const timer = window.setInterval(report, 500)
+        // Maximizing or restoring a native window is a resize. Listening to it
+        // removes the half-second lag of the old polling loop and keeps the
+        // window idle when nothing changes.
+        const win = currentWindow()
+        if (win) {
+          void win
+            .onResized(report)
+            .then((unlisten) => {
+              if (disposed) unlisten()
+              else stop = unlisten
+            })
+            .catch((error: unknown) => console.warn('[flintqode] resize listener failed', error))
+        }
         return () => {
           disposed = true
-          window.clearInterval(timer)
+          stop?.()
+          stop = undefined
         }
       },
     },
@@ -401,7 +429,7 @@ export function createApi(): OpenNotesApi {
     onMenuAccelerators: (cb: (commands: string[]) => void) => subscribe<string[]>('menu:accelerators', cb),
 
     onOpenFiles: (cb: (paths: string[]) => void) => {
-      const stop = subscribe<string[]>('opennotes:open-files', cb)
+      const stop = subscribe<string[]>('flintqode:open-files', cb)
       if (isTauri()) {
         // Files that were passed on the command line before the window was
         // ready are picked up once (the command clears the queue).
@@ -441,5 +469,5 @@ export function createApi(): OpenNotesApi {
 /** Install the bridge as `window.api` (the renderer expects that name). */
 export function installApi(): void {
   if (typeof window === 'undefined') return
-  ;(window as Window & { api: OpenNotesApi }).api = createApi()
+  ;(window as Window & { api: FlintQodeApi }).api = createApi()
 }

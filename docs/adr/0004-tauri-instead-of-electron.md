@@ -4,7 +4,7 @@
 
 ## Context
 
-The first OpenNotes releases were an Electron application: a Node.js main process, a preload
+The first FlintQode releases were an Electron application: a Node.js main process, a preload
 script that exposed `window.api` through `contextBridge`, and a React + CodeMirror renderer.
 That worked, but it shipped a whole Chromium and Node.js runtime with every copy of the editor.
 The application folder was several hundred megabytes, the idle memory use was counted in
@@ -17,7 +17,7 @@ own is not what the product is.
 
 ## Decision
 
-OpenNotes 2 uses **Tauri 2**:
+FlintQode 2 uses **Tauri 2**:
 
 * the native layer is Rust (`src-tauri/src/*.rs`);
 * the interface stays React + CodeMirror and is built by Vite;

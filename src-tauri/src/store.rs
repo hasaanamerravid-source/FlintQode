@@ -18,6 +18,10 @@ use crate::process::home_dir;
 #[serde(rename_all = "camelCase")]
 pub struct AppInfo {
     pub version: String,
+    /// Monotonic build number (the commit count at build time).
+    pub build: String,
+    /// Short commit hash the build was made from.
+    pub commit: String,
     pub tauri: String,
     pub webview: String,
     pub runtime: String,
@@ -43,7 +47,47 @@ pub fn app_data(app: &AppHandle) -> Result<PathBuf, String> {
         .app_data_dir()
         .map_err(|error| error.to_string())?;
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+    // The application was renamed. Migrate the settings, session and recent
+    // files of the old data folder once, so existing users do not lose their
+    // profile on the first start under the new name.
+    migrate_legacy_data(&directory);
     Ok(directory)
+}
+
+fn migrate_legacy_data(directory: &Path) {
+    // Only migrate when the new folder is still empty: a file that already
+    // exists must win over the old copy.
+    if directory.join("settings.json").exists()
+        || directory.join("session.json").exists()
+        || directory.join("recent.json").exists()
+    {
+        return;
+    }
+    let Some(parent) = directory.parent() else {
+        return;
+    };
+    let legacy = parent.join("dev.opennotes.app");
+    if !legacy.is_dir() || legacy == directory {
+        return;
+    }
+    let _ = copy_tree(&legacy, directory);
+}
+
+fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
+    if !to.exists() {
+        fs::create_dir_all(to)?;
+    }
+    for entry in fs::read_dir(from)? {
+        let entry = entry?;
+        let target = to.join(entry.file_name());
+        let file_type = entry.file_type()?;
+        if file_type.is_dir() {
+            copy_tree(&entry.path(), &target)?;
+        } else if !target.exists() {
+            fs::copy(entry.path(), &target)?;
+        }
+    }
+    Ok(())
 }
 
 fn store_path(app: &AppHandle, name: &str) -> Result<PathBuf, String> {
@@ -60,9 +104,35 @@ fn write_value(path: &Path, value: &Value) -> Result<(), String> {
         fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
     let text = serde_json::to_string_pretty(value).map_err(|error| error.to_string())?;
-    let temporary = path.with_extension("tmp");
-    fs::write(&temporary, text).map_err(|error| error.to_string())?;
-    fs::rename(&temporary, path).map_err(|error| error.to_string())
+    // Write a sibling file and rename it over the target: a crash can never
+    // leave a half-written settings or session file behind.
+    let name = path
+        .file_name()
+        .map(|value| value.to_string_lossy().to_string())
+        .unwrap_or_else(|| "store.json".to_string());
+    let temporary = path.with_file_name(format!(".{name}.tmp"));
+    {
+        use std::io::Write;
+        let mut file = fs::File::create(&temporary).map_err(|error| error.to_string())?;
+        file.write_all(text.as_bytes())
+            .map_err(|error| error.to_string())?;
+        // Flush to the disk before the rename, so the rename cannot expose an
+        // empty file after a power cut.
+        file.sync_all().map_err(|error| error.to_string())?;
+    }
+    match fs::rename(&temporary, path) {
+        Ok(()) => Ok(()),
+        Err(first) => {
+            // Some Windows and network filesystems refuse to replace an
+            // existing file. Removing the old copy and retrying keeps the
+            // "save" button working there.
+            let _ = fs::remove_file(path);
+            fs::rename(&temporary, path).map_err(|second| {
+                let _ = fs::remove_file(&temporary);
+                format!("{first}; {second}")
+            })
+        }
+    }
 }
 
 #[tauri::command]
@@ -79,6 +149,8 @@ pub fn app_info(app: AppHandle) -> Result<AppInfo, String> {
 
     Ok(AppInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
+        build: env!("FLINTQODE_BUILD").to_string(),
+        commit: env!("FLINTQODE_COMMIT").to_string(),
         tauri: tauri::VERSION.to_string(),
         webview: webview.to_string(),
         runtime: "Rust".to_string(),
@@ -214,7 +286,7 @@ pub fn report_error(app: AppHandle, message: String) {
     let _ = fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open(log_directory.join("opennotes.log"))
+        .open(log_directory.join("flintqode.log"))
         .and_then(|mut file| {
             use std::io::Write;
             writeln!(file, "[{stamp}] {message}")

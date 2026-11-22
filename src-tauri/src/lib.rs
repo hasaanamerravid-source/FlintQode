@@ -1,4 +1,4 @@
-//! OpenNotes - the native shell.
+//! FlintQode - the native shell.
 //!
 //! The React application talks to this process through the commands below.
 //! Every command is registered here, the state of the services (watchers,
@@ -65,7 +65,7 @@ fn win_new_window(app: tauri::AppHandle) -> Result<bool, String> {
     let index = WINDOW_COUNTER.fetch_add(1, Ordering::SeqCst) + 1;
     let label = format!("main-{index}");
     let window = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App("index.html".into()))
-        .title("OpenNotes")
+        .title("FlintQode")
         .inner_size(1240.0, 820.0)
         .min_inner_size(720.0, 480.0)
         .decorations(false)
@@ -164,7 +164,7 @@ pub fn run() {
 
     let app = builder
         .build(tauri::generate_context!())
-        .expect("error while building the OpenNotes window");
+        .expect("error while building the FlintQode window");
 
     app.run(|app_handle, event| {
         if let tauri::RunEvent::Exit = event {

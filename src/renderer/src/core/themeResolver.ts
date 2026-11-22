@@ -78,7 +78,7 @@ export function buildPackStyle(tokens: PackTokens): HighlightStyle {
  * Display names for the colour themes.
  *
  * Several palettes originate from other projects. The credit stays in the
- * `basedOn` field, but the name the user sees is our own - OpenNotes is not a
+ * `basedOn` field, but the name the user sees is our own - FlintQode is not a
  * product of any of them.
  */
 export const THEME_DISPLAY_NAMES: Record<string, string> = {
@@ -93,8 +93,8 @@ export const THEME_DISPLAY_NAMES: Record<string, string> = {
   'one-dark': 'Carbon Dark',
   nord: 'Frost',
   sublime: 'Vellum',
-  darcula: 'OpenNotes Dark',
-  'intellij-light': 'OpenNotes Light',
+  darcula: 'FlintQode Dark',
+  'intellij-light': 'FlintQode Light',
 }
 
 /** The name shown in the settings for a theme id. */

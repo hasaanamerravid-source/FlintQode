@@ -3,16 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Downloads — OpenNotes v1.2.0</title>
-  <meta name="description" content="Download OpenNotes installers for Linux (.deb, .AppImage, .rpm) and Windows (.exe, .msi). Built with Tauri 2, React and CodeMirror 6." />
+  <title>Downloads — FlintQode v1.3.0</title>
+  <meta name="description" content="Download FlintQode installers for Linux (.deb, .AppImage, .rpm), Windows (.exe, .msi) and macOS (.dmg). Built with Tauri 2, React and CodeMirror 6." />
+  <link rel="canonical" href="https://hasaanamerravid-source.github.io/FlintQode/downloads.html" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css" />
-  <link rel="icon" href="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" />
+  <link rel="icon" type="image/png" href="assets/img/favicon.png" />
 </head>
 <body>
   <a href="#main" class="skip-link">Skip to content</a>
+  <noscript>
+    <div style="padding:0.7rem 1rem;background:var(--surface-2);color:var(--ink-soft);text-align:center;font-size:0.85rem;">
+      JavaScript is off. Every installer below is linked directly; the file names are from the v1.3.0 release.
+    </div>
+  </noscript>
 
   <header class="site-header">
     <div class="header-inner">
@@ -31,8 +37,8 @@
     <div class="section-inner">
       <div class="section-head">
         <span class="kicker">Download</span>
-        <h2>OpenNotes 1.2.0</h2>
-        <p>Choose your installer. All builds are produced by GitHub Actions and attached to the release.</p>
+        <h2>FlintQode 1.3.0</h2>
+        <p>Choose your installer. Every build is produced by GitHub Actions and attached to the release. <span class="version-badge"><span data-release-build>build 20</span></span></p>
       </div>
 
       <div class="download-grid">
@@ -40,63 +46,69 @@
           <span class="download-chip">Linux</span>
           <h3>.deb</h3>
           <span class="download-size">~3 MiB · Debian / Ubuntu</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.2.0/OpenNotes_1.2.0_amd64.deb" class="btn btn-primary btn-block" target="_blank" rel="noopener">Download .deb</a>
+          <a href="https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.3.0/FlintQode_1.3.0_amd64.deb" data-asset="\.deb$" class="btn btn-primary btn-block" target="_blank" rel="noopener">Download .deb</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Linux</span>
           <h3>.AppImage</h3>
           <span class="download-size">~78 MiB · Any distro</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.2.0/OpenNotes_1.2.0_amd64.AppImage" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download AppImage</a>
+          <a href="https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.3.0/FlintQode_1.3.0_amd64.AppImage" data-asset="\.AppImage$" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download AppImage</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Linux</span>
           <h3>.rpm</h3>
           <span class="download-size">~3 MiB · Fedora / openSUSE</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.2.0/OpenNotes-1.2.0-1.x86_64.rpm" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download .rpm</a>
+          <a href="https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.3.0/FlintQode-1.3.0-1.x86_64.rpm" data-asset="\.rpm$" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download .rpm</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Windows</span>
           <h3>.exe</h3>
           <span class="download-size">~2 MiB · NSIS installer</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.2.0/OpenNotes_1.2.0_x64-setup.exe" class="btn btn-primary btn-block" target="_blank" rel="noopener">Download .exe</a>
+          <a href="https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.3.0/FlintQode_1.3.0_x64-setup.exe" data-asset="-setup\.exe$" class="btn btn-primary btn-block" target="_blank" rel="noopener">Download .exe</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Windows</span>
           <h3>.msi</h3>
           <span class="download-size">~3 MiB · Windows Installer</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/releases/download/v1.2.0/OpenNotes_1.2.0_x64_en-US.msi" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download .msi</a>
+          <a href="https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.3.0/FlintQode_1.3.0_x64_en-US.msi" data-asset="\.msi$" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download .msi</a>
+        </div>
+        <div class="download-card">
+          <span class="download-chip">macOS</span>
+          <h3>.dmg</h3>
+          <span class="download-size">Apple silicon · disk image</span>
+          <a href="https://github.com/hasaanamerravid-source/FlintQode/releases/latest" data-asset="\.dmg$" class="btn btn-primary btn-block" target="_blank" rel="noopener">Download .dmg</a>
         </div>
         <div class="download-card">
           <span class="download-chip">Source</span>
           <h3>Source code</h3>
           <span class="download-size">Git repository</span>
-          <a href="https://github.com/hasaanamerravid-source/OpenNotesCode/archive/refs/tags/v1.2.0.zip" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download ZIP</a>
+          <a href="https://github.com/hasaanamerravid-source/FlintQode/archive/refs/tags/v1.3.0.zip" class="btn btn-ghost btn-block" target="_blank" rel="noopener">Download ZIP</a>
         </div>
       </div>
 
       <div class="section-head" style="margin-top:var(--space-6);">
         <span class="kicker">Install</span>
         <h2>Get it running</h2>
-        <p>One command on most Linux distributions, a script on anything else, or a plain installer on Windows.</p>
+        <p>One command on most Linux distributions, a plain installer on Windows, or a disk image on macOS.</p>
       </div>
       <div class="feature-grid">
         <div class="feature-card">
           <span class="feature-icon">🐧</span>
           <h3>Debian / Ubuntu</h3>
           <p>Install the .deb with APT and let it pull the runtime dependencies.</p>
-          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">sudo apt install ./OpenNotes_1.2.0_amd64.deb</code>
+          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">sudo apt install ./FlintQode_1.3.0_amd64.deb</code>
         </div>
         <div class="feature-card">
           <span class="feature-icon">🎛️</span>
           <h3>Fedora / openSUSE</h3>
           <p>Install the RPM through the native package manager.</p>
-          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">sudo dnf install ./OpenNotes-1.2.0-1.x86_64.rpm</code>
+          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">sudo dnf install ./FlintQode-1.3.0-1.x86_64.rpm</code>
         </div>
         <div class="feature-card">
           <span class="feature-icon">🧩</span>
           <h3>Any Linux · AppImage</h3>
           <p>Download the AppImage, mark it executable and run it.</p>
-          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">chmod +x OpenNotes_1.2.0_amd64.AppImage &amp;&amp; ./OpenNotes_1.2.0_amd64.AppImage</code>
+          <code style="display:block; margin-top:var(--space-2); font-family:var(--font-mono); font-size:0.85rem; background:var(--surface-2); color:var(--ink); padding:0.5rem 0.75rem; border-radius:6px; overflow-x:auto;">chmod +x FlintQode_1.3.0_amd64.AppImage &amp;&amp; ./FlintQode_1.3.0_amd64.AppImage</code>
         </div>
         <div class="feature-card">
           <span class="feature-icon">🪟</span>
@@ -104,12 +116,18 @@
           <p>Run the NSIS <code style="font-family:var(--font-mono);">.exe</code> installer or the <code style="font-family:var(--font-mono);">.msi</code>.</p>
           <p style="margin-top:var(--space-2); font-size:0.85rem; color:var(--muted);">Both installers are self-contained and install to the usual Program Files location.</p>
         </div>
+        <div class="feature-card">
+          <span class="feature-icon">🍎</span>
+          <h3>macOS</h3>
+          <p>Open the <code style="font-family:var(--font-mono);">.dmg</code> and drag FlintQode into the Applications folder.</p>
+          <p style="margin-top:var(--space-2); font-size:0.85rem; color:var(--muted);">The build is unsigned; the first launch may need the usual Open Anyway step in System Settings.</p>
+        </div>
       </div>
 
       <div class="section-head" style="margin-top:var(--space-6);">
         <span class="kicker">Build from source</span>
         <h2>Requirements</h2>
-        <p>What you need to compile OpenNotes yourself.</p>
+        <p>What you need to compile FlintQode yourself.</p>
       </div>
       <ul style="color:var(--ink-soft); font-size:0.95rem; line-height:1.8; margin-left:1.4rem; max-width:70ch;">
         <li><strong>Node.js</strong> 20 or newer</li>
@@ -130,7 +148,7 @@
         <a href="downloads.html">Downloads</a>
         <a href="versions.html">Versions</a>
         <a href="faqs.html">FAQs</a>
-        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/hasaanamerravid-source/FlintQode" target="_blank" rel="noopener">GitHub</a>
       </div>
       <p class="footer-note">MIT Licensed · Built with Tauri 2, React and CodeMirror 6.</p>
     </div>

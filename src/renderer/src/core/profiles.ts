@@ -24,7 +24,7 @@ export const PROFILES: ProfileInfo[] = [
   {
     id: 'all',
     label: 'Everything',
-    description: 'All panels and commands at once — the full OpenNotes feature set.',
+    description: 'All panels and commands at once — the full FlintQode feature set.',
     badge: 'Full',
   },
 ]

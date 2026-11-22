@@ -47,7 +47,11 @@ interface AppState {
   charMapOpen: boolean
   welcomeOpen: boolean
   /** An external change (the file changed on disk) waiting for the user. */
-  externalChange: { path: string; name: string; content: string } | null
+  externalChange: { path: string; name: string; content: string; encoding: string; eol: Eol } | null
+  /** A tab whose unsaved changes are waiting for Save / Discard / Cancel. */
+  pendingClose: { id: string; name: string } | null
+  /** True while Close All is walking the tabs, one confirmation at a time. */
+  pendingCloseAll: boolean
   statusBarVisible: boolean
   distractionFree: boolean
   splitView: boolean
@@ -59,8 +63,9 @@ interface AppState {
   newTab: (opts?: Partial<Tab>) => string
   openPath: (path: string) => Promise<void>
   openPaths: (paths: string[]) => Promise<void>
-  closeTab: (id: string) => Promise<void>
+  closeTab: (id: string, force?: boolean) => Promise<void>
   closeAll: () => Promise<void>
+  resolvePendingClose: (action: 'save' | 'discard' | 'cancel') => Promise<void>
   setActiveTab: (id: string) => void
   updateTab: (id: string, patch: Partial<Tab>) => void
   setTabDirty: (id: string, dirty: boolean) => void
@@ -77,8 +82,10 @@ interface AppState {
   setPaletteMode: (mode: 'commands' | 'files') => void
   setCompareData: (data: { left: string; right: string; leftName: string; rightName: string } | null) => void
   setDialog: (which: 'settings' | 'about' | 'compare' | 'charMap' | 'welcome', open: boolean) => void
-  setExternalChange: (change: { path: string; name: string; content: string } | null) => void
-  resolveExternalChange: (action: 'keep' | 'reload' | 'compare') => void
+  setExternalChange: (
+    change: { path: string; name: string; content: string; encoding: string; eol: Eol } | null,
+  ) => void
+  resolveExternalChange: (action: 'keep' | 'reload' | 'compare') => Promise<void>
   setDistractionFree: (on: boolean) => void
   setSplitView: (on: boolean) => void
   setZoom: (z: number) => void
@@ -135,6 +142,8 @@ async function reloadIfChanged(path: string): Promise<void> {
         path: tab.path ?? path,
         name: tab.name,
         content: payload.content,
+        encoding: payload.encoding,
+        eol: payload.eol,
       })
       return
     }
@@ -146,6 +155,7 @@ async function reloadIfChanged(path: string): Promise<void> {
 }
 
 let toastSeq = 0
+let lastSettingsError = ''
 
 function baseTab(path: string | null, name: string): Tab {
   return {
@@ -399,6 +409,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   charMapOpen: false,
   welcomeOpen: false,
   externalChange: null,
+  pendingClose: null,
+  pendingCloseAll: false,
   statusBarVisible: true,
   distractionFree: false,
   splitView: false,
@@ -406,7 +418,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   zoom: 1,
 
   init: async () => {
-    const stored = await window.api.settings.load()
+    let stored: Partial<Settings> | null = null
+    try {
+      stored = await window.api.settings.load()
+    } catch (err) {
+      // A broken settings file must not stop the application from starting.
+      console.warn('[settings] could not be loaded', err)
+    }
     // Deep merge: an older settings file must not leave gaps that would break
     // the interface.
     const settings: Settings = {
@@ -417,7 +435,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...((stored?.appearance ?? {}) as Record<string, unknown>),
       } as typeof DEFAULT_SETTINGS.appearance,
     }
-    // The note taking profiles were retired: OpenNotes is a code workspace.
+    // The note taking profiles were retired: FlintQode is a code workspace.
     settings.profile = 'coding'
 
     // Drop every recent entry that points at a missing file: a deleted recent
@@ -517,17 +535,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     for (const p of paths) await get().openPath(p)
   },
 
-  closeTab: async (id) => {
+  closeTab: async (id, force = false) => {
     const tab = get().tabs.find((t) => t.id === id)
     if (!tab) return
-    if (tab.dirty) {
-      const choice = window.confirm(
-        tr('dialog.confirm.unsaved.message', { name: tab.name }) + '\n\n' + tr('dialog.confirm.unsaved.hint'),
-      )
-      if (choice) {
-        const ok = await get().saveTab(id)
-        if (!ok) return
-      }
+    if (tab.dirty && !force) {
+      // Ask with a real three-button dialog. `window.confirm` could only offer
+      // save-or-discard, so cancelling a close always lost the document.
+      set({ pendingClose: { id, name: tab.name } })
+      return
     }
     if (tab.path) {
       unwatchFile(tab.path)
@@ -540,8 +555,35 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
 
+  resolvePendingClose: async (action) => {
+    const pending = get().pendingClose
+    const closeAll = get().pendingCloseAll
+    if (!pending || action === 'cancel') {
+      set({ pendingClose: null, pendingCloseAll: false })
+      return
+    }
+    set({ pendingClose: null })
+    if (action === 'save') {
+      const ok = await get().saveTab(pending.id)
+      // A cancelled or failed save keeps the tab (and the document) open.
+      if (!ok) {
+        set({ pendingCloseAll: false })
+        return
+      }
+    }
+    await get().closeTab(pending.id, true)
+    if (closeAll) await get().closeAll()
+  },
+
   closeAll: async () => {
-    for (const t of [...get().tabs]) await get().closeTab(t.id)
+    // Iterate over a fresh list and stop as soon as a tab survived: that means
+    // the user cancelled, and closing the remaining tabs would ignore it.
+    set({ pendingCloseAll: true })
+    for (const id of get().tabs.map((t) => t.id)) {
+      await get().closeTab(id)
+      if (get().tabs.some((t) => t.id === id)) return
+    }
+    set({ pendingCloseAll: false })
   },
 
   setActiveTab: (id) => set({ activeTabId: id }),
@@ -601,9 +643,15 @@ export const useAppStore = create<AppState>((set, get) => ({
           .join('\n')
       }
       await window.api.fs.writeFile(target, content, fresh.encoding, fresh.eol)
+      // A new file (or Save As) may have a different extension: adopt the
+      // language of the new name so syntax highlighting and "Run file" work
+      // immediately instead of treating the file as plain text.
+      const language = fresh.path && !saveAs ? fresh.language : modeForPath(target).language
       get().updateTab(id, {
         path: target,
         name: target.split(/[\\/]/).pop() ?? target,
+        language,
+        mode: modeForPath(target).mode,
         dirty: false,
       })
       get().toast(tr('toast.saved', { name: target.split(/[\\/]/).pop() ?? target }), 'success')
@@ -619,15 +667,29 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   saveAll: async () => {
-    for (const tab of get().tabs) {
-      if (tab.dirty) await get().saveTab(tab.id)
+    // Read the list fresh on every iteration: saving one tab updates the
+    // store (dirty flag, path after Save As), so a stale snapshot would miss
+    // or double-save the remaining files.
+    for (const id of get().tabs.map((tab) => tab.id)) {
+      const tab = get().tabs.find((entry) => entry.id === id)
+      if (tab?.dirty) await get().saveTab(id)
     }
   },
 
   setSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
 
   saveSettings: async () => {
-    await window.api.settings.save(get().settings)
+    try {
+      await window.api.settings.save(get().settings)
+      lastSettingsError = ''
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      // A failing disk must not produce a toast on every keystroke.
+      if (message !== lastSettingsError) {
+        lastSettingsError = message
+        get().toast(tr('toast.settingsFailed', { error: message }), 'error')
+      }
+    }
   },
 
   setSidePanel: (panel) => set({ sidePanel: panel, sidebarVisible: true }),
@@ -638,7 +700,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPaletteMode: (mode) => set({ paletteMode: mode, paletteOpen: true }),
   setCompareData: (data) => set({ compareData: data }),
   setExternalChange: (change) => set({ externalChange: change }),
-  resolveExternalChange: (action) => {
+  resolveExternalChange: async (action) => {
     const change = get().externalChange
     set({ externalChange: null })
     if (!change) return
@@ -646,23 +708,37 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (action === 'keep') return
     const state = get()
     const tab = state.tabs.find((t) => t.path?.toLowerCase() === change.path.toLowerCase())
+    if (!tab) return
+    // Re-read at the moment the user confirms. The snapshot shown by the
+    // dialog was taken when the watcher fired and may be minutes old.
+    let content = change.content
+    let encoding = change.encoding
+    let eol = change.eol
+    try {
+      const payload = await window.api.fs.readFile(change.path)
+      content = payload.content
+      encoding = payload.encoding
+      eol = payload.eol
+    } catch (err) {
+      state.toast(tr('toast.couldNotOpen', { name: change.name, error: String(err) }), 'error')
+      return
+    }
     if (action === 'reload') {
-      if (tab) {
-        state.updateTab(tab.id, { content: change.content, dirty: false })
-        state.toast(tr('toast.fileReloaded', { name: tab.name }))
-      }
+      state.updateTab(tab.id, { content, encoding, eol, dirty: false })
+      state.toast(tr('toast.fileReloaded', { name: tab.name }))
       return
     }
     // Open the comparison of the in-editor version against the disk version.
-    if (tab) {
-      state.setCompareData({
-        left: tab.content,
-        right: change.content,
-        leftName: tab.name,
-        rightName: change.name,
-      })
-      state.setDialog('compare', true)
-    }
+    // Both sides are normalised so a difference in line endings alone never
+    // looks like an edit.
+    const normalise = (text: string): string => text.replace(/\r\n?/g, '\n')
+    state.setCompareData({
+      left: normalise(tab.content),
+      right: normalise(content),
+      leftName: tab.name,
+      rightName: change.name,
+    })
+    state.setDialog('compare', true)
   },
   setDialog: (which, open) => {
     if (which === 'settings') set({ settingsOpen: open })

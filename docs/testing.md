@@ -1,6 +1,6 @@
 # Testing
 
-OpenNotes keeps its test surface small and honest: the pure logic is covered by unit tests, the
+FlintQode keeps its test surface small and honest: the pure logic is covered by unit tests, the
 build is checked by TypeScript and Vite, and the native layer is checked with Cargo. There is no
 scripted UI harness any more — the previous Electron harnesses depended on the Electron runtime
 and on environment variables that the Tauri shell does not have.

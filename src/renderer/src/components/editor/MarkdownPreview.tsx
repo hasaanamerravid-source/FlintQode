@@ -38,7 +38,9 @@ export function renderMarkdown(source: string): string {
   try {
     return DOMPurify.sanitize(html)
   } catch {
-    return html
+    // Never fall back to unsanitised HTML: if the sanitiser fails, showing
+    // nothing is the safe result.
+    return ''
   }
 }
 

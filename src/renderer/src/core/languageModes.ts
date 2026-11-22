@@ -1,5 +1,5 @@
 /**
- * Language highlighting registry for OpenNotes.
+ * Language highlighting registry for FlintQode.
  *
  * Every language is resolved lazily: the first call for an id builds the
  * CodeMirror extension and caches it, so opening a single file never builds

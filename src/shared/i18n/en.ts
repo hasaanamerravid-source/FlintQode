@@ -1,7 +1,7 @@
 /**
  * The English message catalogue — the source of truth of the translation.
  *
- * Every user visible string of OpenNotes lives here. The other locales in
+ * Every user visible string of FlintQode lives here. The other locales in
  * `./locales` only hold the keys they have translated; a key that is missing
  * falls back to the English text, so a half finished translation never breaks
  * the application.
@@ -18,10 +18,10 @@
 
 export const en = {
   /* ------------------------------- the app ------------------------------- */
-  'app.name': 'OpenNotes',
+  'app.name': 'FlintQode',
   'app.tagline': 'An all-in-one text editor for the desktop',
   'app.description':
-    'OpenNotes brings a plain text editor, a code editor, a markdown preview and a terminal into one window.',
+    'FlintQode brings a plain text editor, a code editor, a markdown preview and a terminal into one window.',
 
   /* ------------------------------ common words ---------------------------- */
   'common.ok': 'OK',
@@ -171,7 +171,7 @@ export const en = {
   'cmd.terminal.clear': 'Clear the terminal',
   'cmd.terminal.restart': 'Restart the shell',
   'cmd.tools.run': 'Run current file',
-  'cmd.help.about': 'About OpenNotes',
+  'cmd.help.about': 'About FlintQode',
   'cmd.help.welcome': 'Welcome & keyboard shortcuts',
 
   /* ------------------------------ the status bar -------------------------- */
@@ -309,6 +309,7 @@ export const en = {
   'settings.title': 'Settings',
   'settings.tab.general': 'General',
   'settings.tab.appearance': 'Appearance',
+  'settings.tab.typography': 'Text & fonts',
   'settings.tab.editor': 'Editor',
   'settings.tab.shortcuts': 'Shortcuts',
   'settings.tab.toolchain': 'Toolchain',
@@ -321,7 +322,7 @@ export const en = {
   'settings.translationStatus': 'Translation status',
   'settings.translationProgress': '{{percent}}% translated ({{done}} of {{total}} strings)',
   'settings.workspace': 'Workspace',
-  'settings.workspaceHint': 'OpenNotes is a code editor — the panels follow the project view',
+  'settings.workspaceHint': 'FlintQode is a code editor — the panels follow the project view',
   'settings.workspaceCoding': 'Code editor workspace',
   'settings.theme': 'Theme',
   'settings.themeLight': 'Light',
@@ -332,7 +333,42 @@ export const en = {
   'settings.profileCoding': 'Coding',
   'settings.profileAll': 'Everything',
   'settings.fontFamily': 'Font',
+  'settings.fontFamilyHint': 'Any font installed on this system. Add fallbacks with commas.',
   'settings.fontSize': 'Font size',
+  'settings.fontSizeHint': 'Editor text size in pixels.',
+  'settings.fontWeight': 'Font weight',
+  'settings.fontWeightHint': 'Light, normal or bold text.',
+  'settings.fontWeightLight': 'Light (300)',
+  'settings.fontWeightNormal': 'Normal (400)',
+  'settings.fontWeightMedium': 'Medium (500)',
+  'settings.fontWeightSemibold': 'Semibold (600)',
+  'settings.fontWeightBold': 'Bold (700)',
+  'settings.fontStyle': 'Font style',
+  'settings.fontStyleHint': 'Normal or italic editor text.',
+  'settings.fontStyleNormal': 'Normal',
+  'settings.fontStyleItalic': 'Italic',
+  'settings.lineHeight': 'Line height',
+  'settings.lineHeightHint': 'Space between lines of text.',
+  'settings.letterSpacing': 'Letter spacing',
+  'settings.letterSpacingHint': 'Extra space between characters.',
+  'settings.fontLigatures': 'Font ligatures',
+  'settings.fontLigaturesHint': 'Join character pairs such as -> and != when the font supports it.',
+  'settings.typographyTitle': 'Editor typography',
+  'settings.typographyHintShort': 'Live preview',
+  'settings.typographyHintLong':
+    'Every change is applied to all open editors immediately and saved automatically. Choose a font that is installed on this system; the fallbacks after the comma are used when it is missing.',
+  'settings.typographyPreview': 'Preview',
+  'settings.typographyPreviewHint': 'Uses the current editor settings',
+  'settings.textColours': 'Text colours',
+  'settings.textColoursHint':
+    'Override the colours of the text, surface, caret and selection. Leave a colour on "Auto" to use the syntax theme.',
+  'settings.editorTextColour': 'Text colour',
+  'settings.editorBackgroundColour': 'Editor background',
+  'settings.editorCaretColour': 'Caret colour',
+  'settings.editorSelectionColour': 'Selection colour',
+  'settings.colourAuto': 'Auto',
+  'settings.colourAutoHint': 'Auto follows the selected syntax theme.',
+  'settings.resetColours': 'Reset all colours',
   'settings.tabSize': 'Tab size',
   'settings.insertSpaces': 'Insert spaces instead of tabs',
   'settings.lineWrapping': 'Wrap long lines',
@@ -388,7 +424,7 @@ export const en = {
   'settings.keybindingImport': 'Import shortcuts',
   'settings.keybindingImportHint': 'Paste the list of {"key": "ctrl+s", "command": "…"} objects.',
   'settings.keybindingReset': 'Reset the shortcut',
-  'settings.toolchainHint': 'Every project can bring its own interpreters. They are set in .opennotes.json.',
+  'settings.toolchainHint': 'Every project can bring its own interpreters. They are set in .flintqode.json.',
   'settings.lspServers': 'Language servers',
   'settings.lspServersHint': 'The command and the arguments of every language server.',
   'settings.lspCommand': 'Command',
@@ -401,7 +437,7 @@ export const en = {
   'settings.toolchainRust': 'Rust',
   'settings.pluginInstall': 'Install a plugin',
   'settings.resetAll': 'Reset all settings',
-  'settings.resetAllHint': 'Every setting goes back to the value it had when OpenNotes was installed.',
+  'settings.resetAllHint': 'Every setting goes back to the value it had when FlintQode was installed.',
   'settings.themeHint': 'Dark, light or follow the system',
   'settings.editorBackgroundHint': 'Paint the code area with the colours of the app or with those of the theme',
   'settings.themeCount': '{{count}} themes',
@@ -422,20 +458,20 @@ export const en = {
   'settings.toolchainTitle': 'Toolchain',
   'settings.toolchainPaths': 'SDK and interpreter paths',
   'settings.toolchainHintLong':
-    'These paths are used when you run a file and when a language server is started. They can be overridden per project in a plain .opennotes.json file in the project folder.',
+    'These paths are used when you run a file and when a language server is started. They can be overridden per project in a plain .flintqode.json file in the project folder.',
   'settings.selectFolder': 'Select the {{name}} folder',
   'settings.lspServersHintLong':
     'The command that starts the language server of a language. Leave it empty to use the built-in default (gopls, rust-analyzer, clangd, …).',
   'settings.defaultValue': 'default',
   'settings.projectFolder': 'Project folder',
-  'settings.projectFolderHint': 'The folder that holds .opennotes.json',
+  'settings.projectFolderHint': 'The folder that holds .flintqode.json',
   'settings.projectFolderPlaceholder': 'the folder of the open file',
   'settings.selectProjectFolder': 'Select the project folder',
   'settings.configurationFile': 'Configuration file',
   'settings.configurationFileHint': 'Plain JSON, checked into the project',
   'settings.noProjectFolder': 'no project folder yet',
-  'settings.createProjectConfig': 'Create or update .opennotes.json',
-  'settings.projectConfigWritten': 'Wrote .opennotes.json',
+  'settings.createProjectConfig': 'Create or update .flintqode.json',
+  'settings.projectConfigWritten': 'Wrote .flintqode.json',
   'settings.mainMenu': 'Main menu',
   'settings.mainMenuHint': 'Top-left menu, the native menu bar, or both',
   'settings.menuHamburger': 'Top-left menu',
@@ -444,10 +480,10 @@ export const en = {
   'settings.defaultLanguage': 'Default language for new files',
   'settings.defaultLanguageHint': 'New files use the language that is detected from their extension.',
   'settings.keybindingsHintLong':
-    'The shortcuts live in a plain text file, so they can be changed by hand and put into a project. A project can change them in its own .opennotes.json.',
+    'The shortcuts live in a plain text file, so they can be changed by hand and put into a project. A project can change them in its own .flintqode.json.',
   'settings.keybindingImportTitle': 'Import the shortcuts of another editor',
   'settings.keybindingImportHint2': 'Paste the keybindings of the editor with the blue logo',
-  'settings.keybindingImportFailed': 'No shortcut of that list is known to OpenNotes.',
+  'settings.keybindingImportFailed': 'No shortcut of that list is known to FlintQode.',
   'settings.keybindingImported': '{{count}} shortcuts imported',
   'settings.keybindingsChangeHint': 'Change a shortcut and it is written to the file at once',
   'settings.shortcutSave': 'Save / Save as',
@@ -456,7 +492,7 @@ export const en = {
   'settings.shortcutBookmarks': 'Next / previous bookmark',
 
   /* -------------------------------- dialogs ------------------------------- */
-  'dialog.about.title': 'About OpenNotes',
+  'dialog.about.title': 'About FlintQode',
   'dialog.about.version': 'Version {{version}}',
   'dialog.about.license': 'Released under the MIT licence.',
   'dialog.about.noTelemetry': 'No account, no telemetry, no update check — the data never leaves your machine.',
@@ -467,7 +503,7 @@ export const en = {
   'dialog.about.inspiredBy': 'Inspired by',
   'dialog.about.languages': 'The languages of the interface',
   'dialog.about.languagesHint': 'The interface is translated by the community. A missing text falls back to English.',
-  'dialog.welcome.title': 'Welcome to OpenNotes',
+  'dialog.welcome.title': 'Welcome to FlintQode',
   'dialog.welcome.subtitle': 'A text editor, a code editor and a markdown preview in one window.',
   'dialog.welcome.shortcuts': 'The most important shortcuts',
   'dialog.welcome.getStarted': 'Get started',
@@ -491,11 +527,13 @@ export const en = {
   'dialog.prompt.text.title': 'Text',
   'dialog.confirm.unsaved.title': 'Unsaved changes',
   'dialog.confirm.unsaved.message': '“{{name}}” has unsaved changes.',
-  'dialog.confirm.unsaved.hint': 'Click OK to save, Cancel to discard, or leave the window open to decide later.',
+  'dialog.confirm.unsaved.discard': 'Discard changes',
+  'dialog.confirm.unsaved.hint':
+    'Save keeps your changes, discard closes without saving, and cancel keeps the file open.',
   'dialog.confirm.deleteFile.title': 'Delete the file?',
   'dialog.confirm.deleteFile.message': '“{{name}}” will be moved to the recycle bin.',
   'dialog.externalChange.title': 'File changed on disk',
-  'dialog.externalChange.message': '“{{name}}” was changed outside OpenNotes while you had unsaved changes.',
+  'dialog.externalChange.message': '“{{name}}” was changed outside FlintQode while you had unsaved changes.',
   'dialog.externalChange.keep': 'Keep my changes',
   'dialog.externalChange.reload': 'Reload from disk',
   'dialog.externalChange.compare': 'Compare',
@@ -503,6 +541,7 @@ export const en = {
   /* ------------------------------ notifications --------------------------- */
   'toast.saved': 'Saved {{name}}',
   'toast.saveFailed': 'Saving failed: {{error}}',
+  'toast.settingsFailed': 'Settings could not be saved: {{error}}',
   'toast.copied': 'Copied to the clipboard',
   'toast.deleted': 'Deleted {{name}}',
   'toast.fileReloaded': '{{name}} was reloaded from disk',
@@ -573,7 +612,7 @@ export const en = {
 
   /* -------------------------------- welcome ------------------------------- */
   'welcome.heading': 'Everything you write, in one window',
-  'welcome.subheading': 'OpenNotes is a text editor and a code editor. Nothing leaves your machine.',
+  'welcome.subheading': 'FlintQode is a text editor and a code editor. Nothing leaves your machine.',
   'welcome.feature1.title': 'One window, one editor',
   'welcome.feature1.body': 'Plain text and Markdown live side by side with the code editor.',
   'welcome.feature2.title': 'Knows your project',

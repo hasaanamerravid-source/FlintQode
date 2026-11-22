@@ -30,7 +30,26 @@ import {
 } from '../core/i18n'
 import { Modal } from './Modal'
 
-type Section = 'appearance' | 'icons' | 'toolchain' | 'workspace' | 'editor' | 'files' | 'shortcuts'
+type Section = 'appearance' | 'typography' | 'icons' | 'toolchain' | 'workspace' | 'editor' | 'files' | 'shortcuts'
+
+/** Monospace fonts that are commonly installed, offered as suggestions. */
+const FONT_CHOICES = [
+  'Cascadia Code',
+  'Cascadia Mono',
+  'JetBrains Mono',
+  'Fira Code',
+  'Source Code Pro',
+  'IBM Plex Mono',
+  'Victor Mono',
+  'Hack',
+  'Inconsolata',
+  'Menlo',
+  'Consolas',
+  'DejaVu Sans Mono',
+  'Liberation Mono',
+  'Ubuntu Mono',
+  'monospace',
+]
 
 /** The interpreters / SDKs the user can point at. */
 const TOOLCHAIN_LANGUAGES: { id: string; label: string; hint: string; placeholder: string; exe?: string }[] = [
@@ -134,7 +153,7 @@ const SHORTCUTS: [MessageKey, string][] = [
   ['cmd.edit.toggleBookmark', 'Ctrl+F2'],
   ['settings.shortcutBookmarks', 'F2 / Shift+F2'],
   ['cmd.edit.selectAllOccurrences', 'Ctrl+Shift+L'],
-  ['cmd.edit.insertDateTime', 'F5'],
+  ['cmd.edit.insertDateTime', 'Ctrl+Alt+D'],
   ['cmd.view.fullscreen', 'F11'],
 ]
 
@@ -171,6 +190,17 @@ export function SettingsDialog(): JSX.Element | null {
     void readKeybindings().then(setBindings)
   }, [section])
 
+  // Settings are written shortly after any change, so a crash or a window
+  // close can never lose an edit. The dialog used to write only on close,
+  // which is exactly why typography changes appeared not to persist.
+  useEffect(() => {
+    if (!open) return
+    const timer = window.setTimeout(() => {
+      void saveSettings()
+    }, 350)
+    return () => window.clearTimeout(timer)
+  }, [settings, open, saveSettings])
+
   if (!open) return null
 
   const close = (): void => {
@@ -196,6 +226,7 @@ export function SettingsDialog(): JSX.Element | null {
           {(
             [
               ['appearance', 'settings.tab.appearance'],
+              ['typography', 'settings.tab.typography'],
               ['icons', 'settings.tab.icons'],
               ['toolchain', 'settings.tab.toolchain'],
               ['workspace', 'settings.tab.general'],
@@ -230,22 +261,6 @@ export function SettingsDialog(): JSX.Element | null {
               <option value="light">{t('settings.themeLight')}</option>
               <option value="system">{t('settings.themeSystem')}</option>
             </select>
-          </Row>
-          <Row label={t('settings.fontFamily')}>
-            <input
-              type="text"
-              value={settings.fontFamily}
-              onChange={(e) => setSettings({ fontFamily: e.target.value })}
-            />
-          </Row>
-          <Row label={t('settings.fontSize')}>
-            <input
-              type="number"
-              min={8}
-              max={40}
-              value={settings.fontSize}
-              onChange={(e) => setSettings({ fontSize: Number(e.target.value) })}
-            />
           </Row>
           <Row label={t('settings.editorBackground')} hint={t('settings.editorBackgroundHint')}>
             <select
@@ -436,7 +451,7 @@ export function SettingsDialog(): JSX.Element | null {
             <div className="appearance-preview">
               <div className="preview-top">
                 <span className="preview-dot" />
-                <span style={{ fontSize: 11, color: '#fff' }}>OpenNotes</span>
+                <span style={{ fontSize: 11, color: '#fff' }}>FlintQode</span>
               </div>
               <div className="preview-body">
                 <div className="preview-panel" />
@@ -444,6 +459,193 @@ export function SettingsDialog(): JSX.Element | null {
               </div>
             </div>
           </div>
+        </>
+      )}
+
+      {section === 'typography' && (
+        <>
+          <div className="panel-header">
+            <span>{t('settings.typographyTitle')}</span>
+            <span>{t('settings.typographyHintShort')}</span>
+          </div>
+          <div className="hint" style={{ marginTop: 0, marginBottom: 10 }}>
+            {t('settings.typographyHintLong')}
+          </div>
+          <Row label={t('settings.fontFamily')} hint={t('settings.fontFamilyHint')}>
+            <input
+              type="text"
+              list="flintqode-font-choices"
+              value={settings.fontFamily}
+              placeholder='"Cascadia Code", ui-monospace, monospace'
+              style={{ minWidth: 300 }}
+              onChange={(e) => setSettings({ fontFamily: e.target.value })}
+            />
+            <datalist id="flintqode-font-choices">
+              {FONT_CHOICES.map((font) => (
+                <option key={font} value={font} />
+              ))}
+            </datalist>
+          </Row>
+          <Row label={t('settings.fontSize')} hint={t('settings.fontSizeHint')}>
+            <input
+              type="range"
+              min={8}
+              max={32}
+              step={1}
+              value={settings.fontSize}
+              onChange={(e) => setSettings({ fontSize: Number(e.target.value) })}
+              style={{ minWidth: 200 }}
+            />
+            <input
+              type="number"
+              min={8}
+              max={40}
+              value={settings.fontSize}
+              onChange={(e) => setSettings({ fontSize: Number(e.target.value) })}
+              style={{ width: 68 }}
+            />
+            <span className="hint">px</span>
+          </Row>
+          <Row label={t('settings.fontWeight')} hint={t('settings.fontWeightHint')}>
+            <select value={settings.fontWeight} onChange={(e) => setSettings({ fontWeight: Number(e.target.value) })}>
+              <option value={300}>{t('settings.fontWeightLight')}</option>
+              <option value={400}>{t('settings.fontWeightNormal')}</option>
+              <option value={500}>{t('settings.fontWeightMedium')}</option>
+              <option value={600}>{t('settings.fontWeightSemibold')}</option>
+              <option value={700}>{t('settings.fontWeightBold')}</option>
+            </select>
+          </Row>
+          <Row label={t('settings.fontStyle')} hint={t('settings.fontStyleHint')}>
+            <select
+              value={settings.fontStyle}
+              onChange={(e) => setSettings({ fontStyle: e.target.value as 'normal' | 'italic' })}
+            >
+              <option value="normal">{t('settings.fontStyleNormal')}</option>
+              <option value="italic">{t('settings.fontStyleItalic')}</option>
+            </select>
+          </Row>
+          <Row label={t('settings.lineHeight')} hint={t('settings.lineHeightHint')}>
+            <input
+              type="range"
+              min={1}
+              max={2.4}
+              step={0.05}
+              value={settings.lineHeight}
+              onChange={(e) => setSettings({ lineHeight: Number(e.target.value) })}
+              style={{ minWidth: 200 }}
+            />
+            <span style={{ width: 44, textAlign: 'right' }}>{settings.lineHeight.toFixed(2)}</span>
+          </Row>
+          <Row label={t('settings.letterSpacing')} hint={t('settings.letterSpacingHint')}>
+            <input
+              type="range"
+              min={-1}
+              max={4}
+              step={0.1}
+              value={settings.letterSpacing}
+              onChange={(e) => setSettings({ letterSpacing: Number(e.target.value) })}
+              style={{ minWidth: 200 }}
+            />
+            <span style={{ width: 44, textAlign: 'right' }}>{settings.letterSpacing.toFixed(1)} px</span>
+          </Row>
+          <Row label={t('settings.fontLigatures')} hint={t('settings.fontLigaturesHint')}>
+            <input
+              type="checkbox"
+              checked={settings.fontLigatures}
+              onChange={(e) => setSettings({ fontLigatures: e.target.checked })}
+            />
+          </Row>
+
+          <div className="panel-header" style={{ marginTop: 18 }}>
+            <span>{t('settings.textColours')}</span>
+            <button
+              className="icon-btn"
+              onClick={() =>
+                setSettings({
+                  editorForeground: '',
+                  editorBackgroundColor: '',
+                  editorCaretColor: '',
+                  editorSelectionColor: '',
+                })
+              }
+            >
+              {t('settings.resetColours')}
+            </button>
+          </div>
+          <div className="hint" style={{ marginTop: 0, marginBottom: 10 }}>
+            {t('settings.textColoursHint')}
+          </div>
+          <Row label={t('settings.editorTextColour')} hint={t('settings.colourAutoHint')}>
+            <input
+              type="color"
+              value={settings.editorForeground || '#e6e9ef'}
+              onChange={(e) => setSettings({ editorForeground: e.target.value })}
+            />
+            <button className="icon-btn" onClick={() => setSettings({ editorForeground: '' })}>
+              {t('settings.colourAuto')}
+            </button>
+          </Row>
+          <Row label={t('settings.editorBackgroundColour')} hint={t('settings.colourAutoHint')}>
+            <input
+              type="color"
+              value={settings.editorBackgroundColor || '#ffffff'}
+              onChange={(e) => setSettings({ editorBackgroundColor: e.target.value })}
+            />
+            <button className="icon-btn" onClick={() => setSettings({ editorBackgroundColor: '' })}>
+              {t('settings.colourAuto')}
+            </button>
+          </Row>
+          <Row label={t('settings.editorCaretColour')} hint={t('settings.colourAutoHint')}>
+            <input
+              type="color"
+              value={settings.editorCaretColor || '#2563eb'}
+              onChange={(e) => setSettings({ editorCaretColor: e.target.value })}
+            />
+            <button className="icon-btn" onClick={() => setSettings({ editorCaretColor: '' })}>
+              {t('settings.colourAuto')}
+            </button>
+          </Row>
+          <Row label={t('settings.editorSelectionColour')} hint={t('settings.colourAutoHint')}>
+            <input
+              type="color"
+              value={settings.editorSelectionColor || '#2563eb'}
+              onChange={(e) => setSettings({ editorSelectionColor: e.target.value })}
+            />
+            <button className="icon-btn" onClick={() => setSettings({ editorSelectionColor: '' })}>
+              {t('settings.colourAuto')}
+            </button>
+          </Row>
+
+          <div className="panel-header" style={{ marginTop: 18 }}>
+            <span>{t('settings.typographyPreview')}</span>
+            <span>{t('settings.typographyPreviewHint')}</span>
+          </div>
+          <pre
+            className="typography-preview"
+            style={{
+              fontFamily: settings.fontFamily,
+              fontSize: `${settings.fontSize}px`,
+              fontWeight: settings.fontWeight,
+              fontStyle: settings.fontStyle,
+              lineHeight: settings.lineHeight,
+              letterSpacing: `${settings.letterSpacing}px`,
+              fontVariantLigatures: settings.fontLigatures ? 'common-ligatures contextual' : 'none',
+              color: settings.editorForeground || undefined,
+              background: settings.editorBackgroundColor || undefined,
+            }}
+          >
+            <span className="tok-keyword">function</span> <span className="tok-function">greet</span>(
+            <span className="tok-type">User</span> <span className="tok-property">name</span>) {'{'}
+            {'\n'} {'  '}
+            <span className="tok-comment">// 0123456789 — careful with l/i/1 and O/0</span>
+            {'\n'} {'  '}
+            <span className="tok-keyword">return</span>{' '}
+            <span className="tok-string">
+              `Hello ${'{'}name{'}'}`
+            </span>
+            {'\n'}
+            {'}'}
+          </pre>
         </>
       )}
 

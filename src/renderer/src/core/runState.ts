@@ -191,13 +191,19 @@ export const useRunStore = create<RunState>((set) => ({
       return
     }
     try {
-      void Promise.resolve(bridge.start(filePath, language, currentToolchain())).catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error)
-        set((s) => ({
-          running: false,
-          lines: appendSystem(s.lines, `Could not start the process: ${message}`),
-        }))
-      })
+      void Promise.resolve(bridge.start(filePath, language, currentToolchain()))
+        .then((started) => {
+          if (started === false) {
+            set((s) => (s.running ? { ...s, running: false } : s))
+          }
+        })
+        .catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error)
+          set((s) => ({
+            running: false,
+            lines: appendSystem(s.lines, `Could not start the process: ${message}`),
+          }))
+        })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       set((s) => ({
@@ -259,6 +265,37 @@ export function runState(): RunSnapshot {
 /** Start a run for a file (used by the command layer). */
 export function startRun(filePath: string, language: string): void {
   useRunStore.getState().start(filePath, language)
+}
+
+/**
+ * Save the active editor if needed and run it.
+ *
+ * Running the stale file on disk is the classic "run does nothing" bug: the
+ * user edits a file, presses Run and sees the output of the previous version.
+ * Like VS Code, we save first and only start when the save succeeded.
+ */
+export async function runActiveFile(): Promise<boolean> {
+  const state = useAppStore.getState()
+  const id = state.activeTabId
+  if (!id) {
+    state.toast('There is no file to run.', 'error')
+    return false
+  }
+  const tab = state.tabs.find((entry) => entry.id === id)
+  if (!tab) return false
+  if (!tab.path || tab.dirty) {
+    const saved = await state.saveTab(id)
+    if (!saved) return false
+  }
+  const fresh = useAppStore.getState().tabs.find((entry) => entry.id === id)
+  if (!fresh?.path) {
+    state.toast('Save the file before running it', 'error')
+    return false
+  }
+  useAppStore.getState().setBottomTab('run')
+  useAppStore.getState().setBottomPanelVisible(true)
+  startRun(fresh.path, fresh.language)
+  return true
 }
 
 /** Stop the running process (used by the command layer). */

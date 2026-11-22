@@ -5,6 +5,37 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-11-22
+
+### Added
+- Full editor typography and colour customisation: font family, size, weight, style, line height, letter spacing, ligatures and text, background, caret and selection colours. The changes are live and saved automatically.
+- A real three-button Save / Discard / Cancel dialog for unsaved tabs.
+- Crash-safe atomic writes for every file, including project-wide replace.
+- A visible build number (the commit count) and commit hash in the About dialog and website.
+- macOS installer in the CI matrix and on the download page.
+- MIT licence throughout the project and website.
+
+### Changed
+- The project is now FlintQode (previously OpenNotes). Existing settings, sessions, macros and `.opennotes.json` project files are migrated automatically.
+- Running a file now saves the buffer first, adopts the language of the saved name and reports backend errors in the Run panel.
+- `F5` runs the current file; Insert Date/Time moved to `Ctrl+Alt+D`; `Shift+F5` stops the run.
+- Settings are loaded defensively and saved with a single debounced write.
+- Window maximize and restore now follow the native resize event instead of a 500 ms poll.
+- The Rust watcher emits the path the renderer subscribed with, so external changes are detected reliably.
+
+### Fixed
+- `fs_read_file` returns an error instead of a silent empty payload.
+- `fs_write_file` and `fs_write_text_file` use atomic temp-file-then-rename writes.
+- `fs_rename` and `fs_copy_file` canonicalize their paths.
+- Windows paths with spaces are quoted in `shell_open_terminal`.
+- `shell_run` reports spawn failures.
+- Project search uses `VecDeque` and guards against data loss when replacing.
+- Markdown preview never falls back to unsanitised HTML.
+- `window.open` uses `noopener,noreferrer`.
+- Plugin activation logs at debug level.
+- TypeScript pinned to 5.9 so unit tests run on a clean install.
+- The 1.75 MB JavaScript bundle is split into domain chunks.
+
 ## [1.2.0] - 2026-11-21
 
 ### Added
@@ -146,7 +177,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The colour of the window follows the theme again; the call to the removed
   native overlay is gone.
 - The launcher starts the packaged application (the process is called
-  *OpenNotes* in the task manager) and opens no console window.
+  *FlintQode* in the task manager) and opens no console window.
 
 ## [1.0.0] - 2026-10-19
 

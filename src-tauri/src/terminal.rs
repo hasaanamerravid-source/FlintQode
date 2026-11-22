@@ -224,7 +224,7 @@ pub async fn terminal_start(
     };
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
-    let marker = format!("__OPENNOTES_DONE_{}_{}__", std::process::id(), token);
+    let marker = format!("__FLINTQODE_DONE_{}_{}__", std::process::id(), token);
 
     let result = TerminalStartResult {
         ok: true,

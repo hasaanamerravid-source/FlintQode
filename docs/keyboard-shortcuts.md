@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-This is the reference of the keyboard shortcuts of OpenNotes. Every entry is taken from the code;
+This is the reference of the keyboard shortcuts of FlintQode. Every entry is taken from the code;
 the table names the command id, which is the stable name used by the command palette, the
 keybindings file and the in-app menu.
 
@@ -12,7 +12,7 @@ A shortcut can be written down in three places. They are read in this order:
 | --- | --- | --- |
 | The built-in one | `src/renderer/src/core/builtinCommands.ts`, the `shortcut` property of a command | A string such as `Ctrl+Shift+S` |
 | The file of the user | `keybindings.json` in the application-data folder (`keybindingsPath()` in `src/renderer/src/core/keybindings.ts`) | A flat map of a command id to a key combination |
-| The file of the project | `.opennotes.json` in the project folder, under `keybindings` | The same flat map |
+| The file of the project | `.flintqode.json` in the project folder, under `keybindings` | The same flat map |
 
 The project file wins over the file of the user: `readKeybindings()` merges the two with
 `{ ...global, ...project }`. The built-in `shortcut` is only the **default binding**; the user and

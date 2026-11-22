@@ -9,7 +9,7 @@ export interface AppLogoProps {
 }
 
 /**
- * The OpenNotes mark: three round strokes that form a soft "N".
+ * The FlintQode mark: three round strokes that form a soft "N".
  * Drawn with strokes (not polygons) so it stays smooth at every size.
  */
 export function AppLogo({ size = 18, className, monochrome = false }: AppLogoProps): JSX.Element {

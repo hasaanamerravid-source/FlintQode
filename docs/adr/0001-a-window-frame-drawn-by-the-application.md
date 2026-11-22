@@ -4,7 +4,7 @@
 
 ## Context
 
-OpenNotes puts the file tabs in the title bar and lets the user drag the window by the empty space of that bar, the way a browser or a native code editor does. The tab strip, the toolbar icons and the window buttons therefore share one horizontal band, and the band has to reach the top edge of the window on every platform.
+FlintQode puts the file tabs in the title bar and lets the user drag the window by the empty space of that bar, the way a browser or a native code editor does. The tab strip, the toolbar icons and the window buttons therefore share one horizontal band, and the band has to reach the top edge of the window on every platform.
 
 The operating system draws its own title bar by default: a caption with the icon, the title and the minimise/maximise/close buttons. On Windows that caption has a fixed height, and the buttons are placed by the system. Two consequences follow:
 

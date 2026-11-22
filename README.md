@@ -1,9 +1,9 @@
-# OpenNotes
+# FlintQode
 
-A fast, native desktop editor for code, Markdown and plain text. OpenNotes is built
+A fast, native desktop editor for code, Markdown and plain text. FlintQode is built
 with **Tauri 2**, a small **Rust** backend and a **React + CodeMirror 6** interface.
 
-| Inspiration | What OpenNotes brings |
+| Inspiration | What FlintQode brings |
 | --- | --- |
 | **Windows Notepad** | Instant start, no clutter, word wrap, zoom, status bar, go-to-line, encodings, session restore |
 | **Notepad++** | Tabs, syntax highlighting for 100+ languages, code folding, minimap, Markdown preview, find & replace with regex, bookmarks, line tools, sort/trim/join transforms, character map, compare documents |
@@ -173,11 +173,11 @@ The native app stores its data in the platform application-data folder:
 
 | Platform | Folder |
 | --- | --- |
-| Windows | `%APPDATA%\dev.opennotes.app` |
-| macOS | `~/Library/Application Support/dev.opennotes.app` |
-| Linux | `~/.local/share/dev.opennotes.app` |
+| Windows | `%APPDATA%\dev.flintqode.app` |
+| macOS | `~/Library/Application Support/dev.flintqode.app` |
+| Linux | `~/.local/share/dev.flintqode.app` |
 
-`settings.json`, `session.json`, `recent.json`, `plugins/` and `logs/opennotes.log`
+`settings.json`, `session.json`, `recent.json`, `plugins/` and `logs/flintqode.log`
 live there. The formats are the same JSON documents the earlier builds used, so
 an existing profile keeps working.
 

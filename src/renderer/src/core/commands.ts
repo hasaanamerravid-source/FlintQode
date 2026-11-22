@@ -109,5 +109,5 @@ export async function runCommand(id: string, payload?: unknown): Promise<void> {
     await baseCmd.run(rest.join(':') || payload)
     return
   }
-  console.warn('[opennotes] unknown command:', id)
+  console.warn('[flintqode] unknown command:', id)
 }

@@ -396,7 +396,7 @@ export const builtinCommands: Command[] = [
     id: 'edit.insertDateTime',
     title: 'Insert date/time',
     category: 'Edit',
-    shortcut: 'F5',
+    shortcut: 'Ctrl+Alt+D',
     run: () => {
       const now = new Date()
       const stamp = now.toLocaleString()
@@ -886,8 +886,10 @@ export const builtinCommands: Command[] = [
     id: 'tools.stopRun',
     title: 'Stop the running process',
     category: 'Tools',
+    shortcut: 'Shift+F5',
     run: () => {
-      void window.api.run?.stop?.()
+      // Use the run store so the panel leaves the "running" state as well.
+      void import('./runState').then(({ stopRun }) => stopRun())
     },
   },
   {
@@ -946,24 +948,18 @@ export const builtinCommands: Command[] = [
     id: 'tools.run',
     title: 'Run current file',
     category: 'Tools',
+    shortcut: 'F5',
     run: async () => {
-      const state = store()
-      const tab = state.tabs.find((t) => t.id === state.activeTabId)
-      if (!tab?.path) {
-        state.toast('Save the file before running it', 'error')
-        return
-      }
-      const { useRunStore } = await import('./runState')
-      useRunStore.getState().start(tab.path, tab.language)
-      state.setBottomTab('run')
-      state.setBottomPanelVisible(true)
+      // Saves a dirty or untitled buffer first, then starts the interpreter.
+      const { runActiveFile } = await import('./runState')
+      await runActiveFile()
     },
   },
 
   /* ------------------------------- Help ------------------------------ */
   {
     id: 'help.about',
-    title: 'About OpenNotes',
+    title: 'About FlintQode',
     category: 'Help',
     run: () => {
       store().setDialog('about', true)

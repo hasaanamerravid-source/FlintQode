@@ -16,7 +16,7 @@
  * VS Code, Nerd Font) - see `iconThemes.ts` for the per-theme credits.
  */
 
-/** The file kinds OpenNotes knows about. */
+/** The file kinds FlintQode knows about. */
 export type IconKind =
   | 'folder'
   | 'folder-open'

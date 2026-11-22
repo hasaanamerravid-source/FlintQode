@@ -1,5 +1,5 @@
 /**
- * UI sound themes for OpenNotes.
+ * UI sound themes for FlintQode.
  *
  * Every theme is described declaratively: a `SynthSpec` says which oscillator
  * to run, how long it should ring and how it should decay. The synthesiser at

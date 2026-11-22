@@ -3,16 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FAQs — OpenNotes</title>
-  <meta name="description" content="Frequently asked questions about OpenNotes." />
+  <title>FAQs — FlintQode</title>
+  <meta name="description" content="Frequently asked questions about FlintQode." />
+  <link rel="canonical" href="https://hasaanamerravid-source.github.io/FlintQode/faqs.html" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css" />
-  <link rel="icon" href="https://github.com/hasaanamerravid-source/OpenNotesCode/raw/main/src-tauri/icons/icon.png" />
+  <link rel="icon" type="image/png" href="assets/img/favicon.png" />
+  <noscript><style>.faq-answer { display: block !important; }</style></noscript>
 </head>
 <body>
   <a href="#main" class="skip-link">Skip to content</a>
+  <noscript>
+    <div style="padding:0.7rem 1rem;background:var(--surface-2);color:var(--ink-soft);text-align:center;font-size:0.85rem;">
+      JavaScript is off. Every answer is shown below, and the site follows your system colour theme.
+    </div>
+  </noscript>
 
   <header class="site-header">
     <div class="header-inner">
@@ -32,17 +39,17 @@
       <div class="section-head">
         <span class="kicker">Help</span>
         <h2>Frequently asked questions</h2>
-        <p>Common questions about installing, using and building OpenNotes.</p>
+        <p>Common questions about installing, using and building FlintQode.</p>
       </div>
 
       <div class="faq-list">
         <div class="faq-item">
           <div class="faq-question">
-            <span>What is OpenNotes?</span>
+            <span>What is FlintQode?</span>
             <span style="font-size:1.2rem;">▾</span>
           </div>
           <div class="faq-answer">
-            OpenNotes is a lightweight, native desktop editor for code, Markdown and plain text. It is built with Tauri 2 (a small Rust backend plus your system's webview) and a React + CodeMirror 6 interface. It avoids the Electron bloat of shipping a whole Chromium runtime.
+            FlintQode is a lightweight, native desktop editor for code, Markdown and plain text. It is built with Tauri 2 (a small Rust backend plus your system's webview) and a React + CodeMirror 6 interface. It avoids the Electron bloat of shipping a whole Chromium runtime.
           </div>
         </div>
         <div class="faq-item">
@@ -60,7 +67,7 @@
             <span style="font-size:1.2rem;">▾</span>
           </div>
           <div class="faq-answer">
-            Correct. The first OpenNotes releases were Electron, but OpenNotes 2 replaced Electron with Tauri 2. The renderer stays React + CodeMirror 6, while the native layer is Rust. There is no Node.js runtime in the webview.
+            Correct. The first FlintQode releases were Electron, but FlintQode 2 replaced Electron with Tauri 2. The renderer stays React + CodeMirror 6, while the native layer is Rust. There is no Node.js runtime in the webview.
           </div>
         </div>
         <div class="faq-item">
@@ -87,7 +94,7 @@
             <span style="font-size:1.2rem;">▾</span>
           </div>
           <div class="faq-answer">
-            Yes. OpenNotes hosts LSP servers (clangd, pyright, tsserver, gopls, rust-analyzer and more) natively in the Rust backend and shows diagnostics, go-to-definition and find-references in the editor.
+            Yes. FlintQode hosts LSP servers (clangd, pyright, tsserver, gopls, rust-analyzer and more) natively in the Rust backend and shows diagnostics, go-to-definition and find-references in the editor.
           </div>
         </div>
         <div class="faq-item">
@@ -105,7 +112,7 @@
             <span style="font-size:1.2rem;">▾</span>
           </div>
           <div class="faq-answer">
-            In the platform application-data folder: <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">%APPDATA%\dev.opennotes.app</code> on Windows, <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">~/Library/Application Support/dev.opennotes.app</code> on macOS, and <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">~/.local/share/dev.opennotes.app</code> on Linux.
+            In the platform application-data folder: <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">%APPDATA%\dev.flintqode.app</code> on Windows, <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">~/Library/Application Support/dev.flintqode.app</code> on macOS, and <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">~/.local/share/dev.flintqode.app</code> on Linux.
           </div>
         </div>
       </div>
@@ -120,7 +127,7 @@
         <a href="downloads.html">Downloads</a>
         <a href="versions.html">Versions</a>
         <a href="faqs.html">FAQs</a>
-        <a href="https://github.com/hasaanamerravid-source/OpenNotesCode" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/hasaanamerravid-source/FlintQode" target="_blank" rel="noopener">GitHub</a>
       </div>
       <p class="footer-note">MIT Licensed · Built with Tauri 2, React and CodeMirror 6.</p>
     </div>

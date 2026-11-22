@@ -221,7 +221,7 @@ export const MENU_SECTIONS: MenuSection[] = [
     label: 'Help',
     items: [
       { id: 'help.welcome', label: 'Welcome & Keyboard Shortcuts' },
-      { id: 'help.about', label: 'About OpenNotes' },
+      { id: 'help.about', label: 'About FlintQode' },
     ],
   },
 ]

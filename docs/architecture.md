@@ -1,6 +1,6 @@
-# OpenNotes architecture
+# FlintQode architecture
 
-OpenNotes is a native desktop text editor built with **Tauri 2**, **Rust**, **React** and
+FlintQode is a native desktop text editor built with **Tauri 2**, **Rust**, **React** and
 **CodeMirror 6**. It edits plain text, source code and Markdown notes in one window, and it
 talks to language servers, a shell and the file system through a narrow, typed bridge. This
 document describes how the pieces are arranged, what owns what, and which invariants the code
@@ -47,7 +47,7 @@ process through `window.api`.
 The main window is declared in `src-tauri/tauri.conf.json`: it is undecorated (the title bar is
 drawn by the app), 1240 × 820 by default and resizable. `src-tauri/src/lib.rs` reads files that
 were passed on the command line into an `OpenFiles` queue; the renderer picks them up with
-`open_files_pending` and the `opennotes:open-files` event. The *new window* command builds a
+`open_files_pending` and the `flintqode:open-files` event. The *new window* command builds a
 second window with the same options.
 
 There is no Node.js in the webview: no `require`, no `fs` and no `child_process`. The capability
@@ -78,7 +78,7 @@ marked with `data-tauri-drag-region` in `TitleBar.tsx`; the window controls call
 `getCurrentWindow()`.
 
 Renderer failures are caught by the React error boundary and reported through
-`api.reportError`, which appends to `logs/opennotes.log` in the application-data folder.
+`api.reportError`, which appends to `logs/flintqode.log` in the application-data folder.
 
 ## The command system
 
@@ -310,7 +310,7 @@ definition in another file opens that file and jumps into it. The references are
 problems in the bottom panel, where clicking one jumps to the place.
 
 **The configuration.** The command of every server can be replaced in the settings (`lspServers`)
-and in the project file (`.opennotes.json`, key `lsp`). `resolveServers` in
+and in the project file (`.flintqode.json`, key `lsp`). `resolveServers` in
 `core/projectConfig.ts` merges the two, the project file wins, and `useLspConfiguration` sends the
 result to the native side with `lsp_configure`. A server whose command or arguments changed is
 stopped and started again with the new command.
@@ -365,7 +365,7 @@ consequences, and they are visible in the code:
 
 The shell is chosen by the platform: PowerShell (`-NoLogo -NoProfile -NonInteractive -Command -`)
 on Windows, `cmd.exe` as the fallback, `bash` (or `/bin/sh`) elsewhere. The command is followed
-by a marker (`__OPENNOTES_DONE_<pid>_<n>__`) that the shell prints when it is done; the marker
+by a marker (`__FLINTQODE_DONE_<pid>_<n>__`) that the shell prints when it is done; the marker
 line is removed from the output and an empty stdout line tells the renderer that the shell is
 ready again. The panel keeps the last 2000 lines and the last 100 commands of the history.
 

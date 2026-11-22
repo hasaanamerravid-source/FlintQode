@@ -2,7 +2,7 @@
  * A very small macro recorder.
  *
  * A macro is a named list of events (`insert`, `delete` or `command`) that can be
- * replayed later. Macros are persisted in `localStorage` under `opennotes.macros`.
+ * replayed later. Macros are persisted in `localStorage` under `flintqode.macros`.
  */
 
 /** A single recorded action. */
@@ -19,7 +19,7 @@ export interface Macro {
 }
 
 /** localStorage key the macros are stored under. */
-export const MACRO_STORAGE_KEY = 'opennotes.macros'
+export const MACRO_STORAGE_KEY = 'flintqode.macros'
 
 /** Delay between two replayed events, in milliseconds. */
 const PLAYBACK_DELAY = 20
@@ -88,7 +88,7 @@ export function playMacro(events: MacroEvent[], exec: (event: MacroEvent) => voi
     try {
       exec(event)
     } catch (err) {
-      console.error('[opennotes] macro playback failed:', err)
+      console.error('[flintqode] macro playback failed:', err)
     }
     if (index < events.length) {
       setTimeout(tick, PLAYBACK_DELAY)
@@ -120,7 +120,7 @@ export function saveMacros(macros: Macro[]): void {
     const clean = (macros ?? []).filter(isMacro)
     localStorage.setItem(MACRO_STORAGE_KEY, JSON.stringify(clean))
   } catch (err) {
-    console.error('[opennotes] could not save macros:', err)
+    console.error('[flintqode] could not save macros:', err)
   }
 }
 
@@ -133,7 +133,7 @@ export function loadMacros(): Macro[] {
     if (!Array.isArray(parsed)) return []
     return parsed.filter(isMacro)
   } catch (err) {
-    console.error('[opennotes] could not load macros:', err)
+    console.error('[flintqode] could not load macros:', err)
     return []
   }
 }

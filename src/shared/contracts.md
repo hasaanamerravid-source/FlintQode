@@ -1,4 +1,4 @@
-# OpenNotes — internal contracts
+# FlintQode — internal contracts
 
 Everything in this document is binding for parallel workstreams. If you need to change an
 interface, update the file that owns it and keep the change backwards compatible.
@@ -28,7 +28,7 @@ All calls are promise based except the event subscriptions and the fire-and-forg
 window commands.
 
 ```ts
-interface OpenNotesApi {
+interface FlintQodeApi {
   info(): Promise<AppInfo>
 
   fs: {

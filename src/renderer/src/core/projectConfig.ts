@@ -15,7 +15,11 @@ export interface ProjectConfig {
   keybindings?: Record<string, string>
 }
 
-export const PROJECT_CONFIG_NAME = '.opennotes.json'
+export const PROJECT_CONFIG_NAME = '.flintqode.json'
+
+/** The configuration file name used before the rename. Still read for
+ *  backwards compatibility, but new files are written under the new name. */
+export const LEGACY_PROJECT_CONFIG_NAME = '.opennotes.json'
 
 /** The folder of a file (the path without the file name). */
 export function folderOfPath(filePath: string): string | null {
@@ -43,14 +47,19 @@ export function projectFolder(): string | null {
 
 /** Read the project configuration of a folder (null when there is none). */
 export async function readProjectConfig(folder: string): Promise<ProjectConfig | null> {
-  try {
-    const path = joinPath(folder, PROJECT_CONFIG_NAME)
-    if (!(await window.api.fs.exists(path))) return null
-    const text = await window.api.fs.readTextFile(path)
-    return JSON.parse(text) as ProjectConfig
-  } catch {
-    return null
+  // The new name is preferred; the old one is kept for projects that have
+  // not been migrated yet.
+  for (const name of [PROJECT_CONFIG_NAME, LEGACY_PROJECT_CONFIG_NAME]) {
+    try {
+      const path = joinPath(folder, name)
+      if (!(await window.api.fs.exists(path))) continue
+      const text = await window.api.fs.readTextFile(path)
+      return JSON.parse(text) as ProjectConfig
+    } catch {
+      /* try the next candidate */
+    }
   }
+  return null
 }
 
 /** Write the project configuration of a folder. */

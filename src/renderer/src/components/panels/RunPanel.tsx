@@ -5,7 +5,6 @@
 import { useEffect, useRef } from 'react'
 import type { JSX } from 'react'
 import { useRunStore } from '@/core/runState'
-import { useAppStore } from '@/store/app'
 import { useT } from '../../core/i18n'
 
 export interface RunPanelProps {
@@ -26,10 +25,8 @@ export function RunPanel({ onRun, onStop }: RunPanelProps): JSX.Element {
   const filePath = useRunStore((s) => s.filePath)
   const lines = useRunStore((s) => s.lines)
   const exitCode = useRunStore((s) => s.exitCode)
-  const start = useRunStore((s) => s.start)
   const stop = useRunStore((s) => s.stop)
   const clear = useRunStore((s) => s.clear)
-  const activeTab = useAppStore((s) => s.tabs.find((t) => t.id === s.activeTabId))
   const logRef = useRef<HTMLDivElement | null>(null)
   const t = useT()
 
@@ -44,11 +41,8 @@ export function RunPanel({ onRun, onStop }: RunPanelProps): JSX.Element {
       onRun()
       return
     }
-    if (!activeTab?.path) {
-      useAppStore.getState().toast(t('panel.runSaveFirst'), 'error')
-      return
-    }
-    start(activeTab.path, activeTab.language)
+    // Save first (a prompt appears for an untitled buffer), then start.
+    void import('@/core/runState').then(({ runActiveFile }) => runActiveFile())
   }
 
   const handleStop = (): void => {

@@ -1,5 +1,5 @@
 /**
- * Icon theme pack for OpenNotes.
+ * Icon theme pack for FlintQode.
  *
  * Every theme recolours the shared shape library in `iconShapes.ts` and may
  * override a few shapes of its own. The looks are inspired by well known

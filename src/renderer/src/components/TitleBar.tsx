@@ -70,7 +70,7 @@ export function TitleBar(): JSX.Element {
           <Icon name="menu" size={16} />
         </button>
       )}
-      <span className="titlebar-logo" title="OpenNotes" data-tauri-drag-region>
+      <span className="titlebar-logo" title="FlintQode" data-tauri-drag-region>
         <AppLogo size={17} />
       </span>
 

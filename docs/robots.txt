@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hasaanamerravid-source.github.io/FlintQode/sitemap.xml

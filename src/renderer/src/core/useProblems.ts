@@ -102,7 +102,7 @@ function useLspProblems(path: string): Problem[] {
  *
  * The folder of the project is the one from the settings; when it is empty
  * the folder of the open file is used, so that a project with a
- * `.opennotes.json` works without any configuration.
+ * `.flintqode.json` works without any configuration.
  */
 export function useLspConfiguration(): void {
   const configured = useAppStore((s) => s.settings.projectFolder)

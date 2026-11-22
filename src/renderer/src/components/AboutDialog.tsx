@@ -31,14 +31,23 @@ export function AboutDialog(): JSX.Element | null {
 
   return (
     <Modal title={t('dialog.about.title')} onClose={close}>
-      <h2 style={{ marginTop: 0 }}>OpenNotes</h2>
+      <h2 style={{ marginTop: 0 }}>FlintQode</h2>
       <p className="hint">{t('app.description')}</p>
 
       <table className="kbd-table">
         <tbody>
           <tr>
             <td>{t('common.version')}</td>
-            <td>{info?.version ?? '…'}</td>
+            <td>
+              {info?.version ?? '…'}
+              {info?.build ? ` · build ${info.build}` : ''}
+            </td>
+          </tr>
+          <tr>
+            <td>Commit</td>
+            <td>
+              <code>{info?.commit ?? '…'}</code>
+            </td>
           </tr>
           <tr>
             <td>Tauri</td>

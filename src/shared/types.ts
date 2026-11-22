@@ -1,5 +1,5 @@
 /**
- * Shared type contracts for OpenNotes.
+ * Shared type contracts for FlintQode.
  * Used by main process, preload bridge and renderer.
  */
 
@@ -150,7 +150,7 @@ export interface Settings {
   toolchain: Record<string, string>
   /** Language server commands, keyed by language. */
   lspServers: Record<string, { command: string; args?: string[] }>
-  /** The folder that holds the project configuration (`.opennotes.json`). */
+  /** The folder that holds the project configuration (`.flintqode.json`). */
   projectFolder: string | null
   /** Sound theme id. */
   soundTheme: string
@@ -170,6 +170,24 @@ export interface Settings {
   appearance: Appearance
   fontFamily: string
   fontSize: number
+  /** Editor font weight (300–700). */
+  fontWeight: number
+  /** Editor font style. */
+  fontStyle: 'normal' | 'italic'
+  /** Editor line height multiplier (1.0–2.4). */
+  lineHeight: number
+  /** Extra letter spacing in pixels (-1–4). */
+  letterSpacing: number
+  /** Enable programming ligatures (if the font provides them). */
+  fontLigatures: boolean
+  /** Custom editor text colour (empty = syntax theme colour). */
+  editorForeground: string
+  /** Custom editor background colour (empty = app/theme colour). */
+  editorBackgroundColor: string
+  /** Custom caret colour (empty = syntax theme colour). */
+  editorCaretColor: string
+  /** Custom selection colour (empty = syntax theme colour). */
+  editorSelectionColor: string
   tabSize: number
   insertSpaces: boolean
   lineWrapping: boolean
@@ -210,6 +228,10 @@ export interface Command {
 /** Information about the running environment. */
 export interface AppInfo {
   version: string
+  /** Monotonic build number (the commit count at build time). */
+  build: string
+  /** Short commit hash the build was made from. */
+  commit: string
   /** Version of the native shell. */
   tauri: string
   /** Name of the webview engine (WebView2, WebKitGTK, WKWebView). */

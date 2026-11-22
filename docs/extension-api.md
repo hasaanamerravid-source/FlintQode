@@ -1,6 +1,6 @@
 # The plugin API
 
-OpenNotes can be extended with plugins. A plugin is a plain JavaScript file
+FlintQode can be extended with plugins. A plugin is a plain JavaScript file
 that adds commands to the application. Its code runs inside the renderer
 process, next to the user interface.
 
@@ -244,7 +244,7 @@ export interface PluginContext {
 | `ctx.commands.register(command)` | `(command: Command) => void` | Registers a command. A later registration with the same id replaces the earlier one. |
 | `ctx.commands.unregister(id)` | `(id: string) => void` | Removes a command from the registry. |
 | `ctx.commands.list()` | `() => Command[]` | All registered commands, the built-in ones included. |
-| `ctx.commands.run(id, payload?)` | `(id, payload?) => Promise<void>` | Runs a command by id. An unknown id is logged with `console.warn('[opennotes] unknown command:', id)`. |
+| `ctx.commands.run(id, payload?)` | `(id, payload?) => Promise<void>` | Runs a command by id. An unknown id is logged with `console.warn('[flintqode] unknown command:', id)`. |
 | `ctx.editor(tabId)` | `(id: string \| null \| undefined) => EditorHandle \| undefined` | The live editor handle of a tab. |
 | `ctx.toast(message, kind?)` | `(message: string, kind?: 'info' \| 'error' \| 'success') => void` | Shows a message in the corner of the window — see [the note below](#ctxtoast). |
 
@@ -318,16 +318,16 @@ in `CodeEditor.tsx` and `RichTextEditor.tsx`). To find the tab that is in the
 focus, read the state of the renderer:
 
 ```js
-const tabId = window.opennotes.store.getState().activeTabId
+const tabId = window.flintqode.store.getState().activeTabId
 const handle = ctx.editor(tabId)
 if (!handle) return
 ```
 
-`window.opennotes` is the scripting surface of the renderer, defined in
+`window.flintqode` is the scripting surface of the renderer, defined in
 `src/renderer/src/main.tsx`:
 
 ```ts
-;(window as unknown as { opennotes: unknown }).opennotes = {
+;(window as unknown as { flintqode: unknown }).flintqode = {
   store: useAppStore,
   run: runCommand,
   setState: (patch: Record<string, unknown>) => useAppStore.setState(patch as never),
@@ -341,9 +341,9 @@ if (!handle) return
 }
 ```
 
-A plugin runs in the renderer and can therefore use it: `window.opennotes.store`
-is the Zustand store of the application, `window.opennotes.run` runs a command,
-`window.opennotes.editor` is the handle of the active tab.
+A plugin runs in the renderer and can therefore use it: `window.flintqode.store`
+is the Zustand store of the application, `window.flintqode.run` runs a command,
+`window.flintqode.editor` is the handle of the active tab.
 
 #### The editor handle
 
@@ -393,19 +393,19 @@ toasts of the application disappear after a few seconds.
 >
 > ```ts
 > toast: (message, kind) => {
->   window.dispatchEvent(new CustomEvent('opennotes:toast', { detail: { message, kind } }))
+>   window.dispatchEvent(new CustomEvent('flintqode:toast', { detail: { message, kind } }))
 > },
 > ```
 >
-> No component in the application subscribes to `opennotes:toast` — the only
+> No component in the application subscribes to `flintqode:toast` — the only
 > occurrence of that name in `src/` is the dispatch itself — so nothing is
 > shown at the moment.
 >
 > The working way to show a toast today is the store, which the plugin can
-> reach through `window.opennotes`:
+> reach through `window.flintqode`:
 >
 > ```js
-> window.opennotes.store.getState().toast('The document was saved.', 'success')
+> window.flintqode.store.getState().toast('The document was saved.', 'success')
 > ```
 >
 > The signature is `toast(message: string, kind?: 'info' | 'error' | 'success')`
@@ -438,7 +438,7 @@ way from the renderer into the native process. The groups:
 | `api.onCommand(cb)` | Subscribes to the commands that the native menu sends. |
 | `api.onOpenFiles(cb)` | Files that were opened from the outside (a second instance of the application, for example). |
 | `api.pathForFile(file)` | The real path of a file that was dropped on the window. |
-| `api.test` | Only present when the application was started with `OPENNOTES_TEST_CLICK=1`. A test helper, not part of the plugin API. |
+| `api.test` | Only present when the application was started with `FLINTQODE_TEST_CLICK=1`. A test helper, not part of the plugin API. |
 
 Every call goes through a guard that swallows the "Object has been destroyed"
 error of a window that is closing.
@@ -481,7 +481,7 @@ Save it as `plugin.js` in `<user data>/plugins/word-counter/`:
 
 ```js
 /**
- * OpenNotes plugin: word counter.
+ * FlintQode plugin: word counter.
  *
  * Installation:
  *   1. create the folder <user data>/plugins/word-counter/
@@ -499,13 +499,13 @@ let ctx = null
 
 /** Show a message in the corner of the window. */
 function toast(message, kind) {
-  window.opennotes.store.getState().toast(message, kind)
+  window.flintqode.store.getState().toast(message, kind)
 }
 
 /** The editor of the tab that is in the focus, or undefined. */
 function activeEditor() {
   if (!ctx) return undefined
-  const tabId = window.opennotes.store.getState().activeTabId
+  const tabId = window.flintqode.store.getState().activeTabId
   return ctx.editor(tabId)
 }
 
@@ -616,7 +616,7 @@ Points to note:
 * `module.exports = { ... }` — not `export default`.
 * `ctx` is captured in `activate` because the commands of the `commands` list
   need it as well.
-* `window.opennotes.store.getState().activeTabId` finds the tab that is in
+* `window.flintqode.store.getState().activeTabId` finds the tab that is in
   the focus; `ctx.editor(tabId)` returns its editor handle.
 * `editor.stats()` returns `{ lines, cols, selection, words, chars,
   selectedChars }`.
@@ -682,6 +682,6 @@ Install a plugin only when you trust its source.
 | The plugin does not appear in the panel | There is no `plugin.js` in the folder, or the folder is not in the `plugins` folder of the user-data folder. |
 | The panel shows an error message | The file could not be evaluated — a syntax error is the usual reason. `export default` is a syntax error here, `module.exports = { ... }` is not. |
 | The plugin is enabled but the commands are missing | The commands are in `activate` and the plugin was never activated, or `activate` threw before the registration. |
-| `ctx.toast(...)` shows nothing | See [the note above](#ctxtoast). Use `window.opennotes.store.getState().toast(...)` instead. |
+| `ctx.toast(...)` shows nothing | See [the note above](#ctxtoast). Use `window.flintqode.store.getState().toast(...)` instead. |
 | The shortcut in the palette does nothing | The `shortcut` of a command is a label. A shortcut only works when it is in the in-app menu or in `keybindings.json` — see [Keyboard shortcuts](keyboard-shortcuts.md). |
 | The plugin lost its settings | The settings were written into `settings.json` of the application instead of into the folder of the plugin — that file is overwritten by the application. |

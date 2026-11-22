@@ -1,6 +1,6 @@
-# OpenNotes documentation
+# FlintQode documentation
 
-The technical documentation of OpenNotes. Every statement in these files is backed by the
+The technical documentation of FlintQode. Every statement in these files is backed by the
 source; the file is named where it matters.
 
 | File | What it answers |

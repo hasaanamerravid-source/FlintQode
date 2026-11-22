@@ -133,7 +133,7 @@ export function EditorPane(): JSX.Element {
     const clean = target.replace(/^#.*$/, '')
     if (!clean) return
     if (/^[a-z]+:\/\//i.test(clean)) {
-      window.open(clean)
+      window.open(clean, '_blank', 'noopener,noreferrer')
       return
     }
     const dir = tab.path ? tab.path.replace(/[\\/][^\\/]*$/, '') : (useAppStore.getState().workspaceRoot ?? '')

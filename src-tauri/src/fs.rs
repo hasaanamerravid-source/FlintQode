@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::UNIX_EPOCH;
@@ -236,46 +236,93 @@ fn to_entry(path: &Path, metadata: &fs::Metadata) -> DirEntry {
     }
 }
 
-fn empty_payload(path: &str) -> FilePayload {
-    FilePayload {
-        path: path.to_string(),
-        content: String::new(),
-        encoding: "utf8".to_string(),
-        eol: "\n".to_string(),
-        binary: false,
-        kind: "text".to_string(),
-        size: 0,
-        truncated: false,
+/// Resolve an existing path (no-op when the file does not exist yet).
+fn canonical_existing(path: &str) -> String {
+    std::fs::canonicalize(path)
+        .map(|value| value.to_string_lossy().to_string())
+        .unwrap_or_else(|_| path.to_string())
+}
+
+/// Resolve the parent folder of a path that may not exist yet, so that
+/// different spellings of the same folder compare equal on Windows and macOS.
+fn canonical_target(path: &str) -> String {
+    let target = Path::new(path);
+    if let Some(parent) = target.parent() {
+        if let Ok(parent) = std::fs::canonicalize(parent) {
+            if let Some(name) = target.file_name() {
+                return parent.join(name).to_string_lossy().to_string();
+            }
+        }
+    }
+    path.to_string()
+}
+
+/// Write a file through a sibling temporary file and a rename.
+///
+/// `fs::write` truncates the target before writing, so a crash in the middle
+/// leaves an empty file. The rename is atomic on every supported platform (and
+/// falls back to remove-and-rename on the Windows filesystems that refuse to
+/// replace an existing file).
+pub fn write_atomic(path: &str, bytes: &[u8]) -> Result<(), String> {
+    let target = Path::new(path);
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    let name = target
+        .file_name()
+        .map(|value| value.to_string_lossy().to_string())
+        .unwrap_or_else(|| "file".to_string());
+    let temporary = target.with_file_name(format!(".{name}.flintqode-{}.tmp", std::process::id()));
+    {
+        let mut file = File::create(&temporary).map_err(|error| error.to_string())?;
+        file.write_all(bytes).map_err(|error| error.to_string())?;
+        file.sync_all().map_err(|error| error.to_string())?;
+    }
+    // Keep the permissions of the file that is replaced (a rename would
+    // otherwise reset them to the default of the temporary file).
+    if let Ok(metadata) = fs::metadata(target) {
+        let _ = fs::set_permissions(&temporary, metadata.permissions());
+    }
+    match fs::rename(&temporary, target) {
+        Ok(()) => Ok(()),
+        Err(first) => {
+            let _ = fs::remove_file(target);
+            fs::rename(&temporary, target).map_err(|second| {
+                let _ = fs::remove_file(&temporary);
+                format!("{first}; {second}")
+            })
+        }
     }
 }
 
 #[tauri::command]
-pub fn fs_read_file(path: String) -> FilePayload {
+pub fn fs_read_file(path: String) -> Result<FilePayload, String> {
     // Canonicalize so that the same file opened with different casing always
     // resolves to the same path everywhere in the renderer.
-    let path = std::fs::canonicalize(&path)
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or(path);
+    let path = canonical_existing(&path);
     let mut buffer = Vec::new();
     let mut size = 0u64;
     let mut limit = 0u64;
-    if let Ok(mut file) = File::open(&path) {
-        if let Ok(metadata) = file.metadata() {
-            size = metadata.len();
-            limit = size.min(MAX_EDIT_BYTES);
-            buffer.reserve(limit as usize);
-        }
-        if limit > 0 {
-            let _ = file.take(limit).read_to_end(&mut buffer);
-        }
-    } else {
-        return empty_payload(&path);
+    // A missing or unreadable file is an error, not an empty document. The
+    // renderer shows the message in a toast instead of opening a fake empty
+    // tab that the user could overwrite.
+    let mut file = File::open(&path)
+        .map_err(|error| format!("Could not open {}: {error}", path))?;
+    if let Ok(metadata) = file.metadata() {
+        size = metadata.len();
+        limit = size.min(MAX_EDIT_BYTES);
+        buffer.reserve(limit as usize);
+    }
+    if limit > 0 {
+        file.take(limit)
+            .read_to_end(&mut buffer)
+            .map_err(|error| format!("Could not read {}: {error}", path))?;
     }
 
     let (encoding, skip) = detect_bom(&buffer);
     let utf16 = encoding == "utf16-le" || encoding == "utf16-be";
     if !utf16 && is_probably_binary(&buffer) {
-        return FilePayload {
+        return Ok(FilePayload {
             path,
             content: String::new(),
             encoding: "binary".to_string(),
@@ -284,12 +331,12 @@ pub fn fs_read_file(path: String) -> FilePayload {
             kind: "binary".to_string(),
             size,
             truncated: false,
-        };
+        });
     }
 
     let decoded = decode_with(&buffer[skip..], encoding);
     let kind = detect_kind(&path, &decoded);
-    FilePayload {
+    Ok(FilePayload {
         path,
         content: normalize_eol(&decoded),
         encoding: encoding.to_string(),
@@ -298,7 +345,7 @@ pub fn fs_read_file(path: String) -> FilePayload {
         kind,
         size,
         truncated: size > MAX_EDIT_BYTES,
-    }
+    })
 }
 
 #[tauri::command]
@@ -308,15 +355,12 @@ pub fn fs_write_file(
     encoding: String,
     eol: String,
 ) -> Result<(), String> {
-    let path = std::fs::canonicalize(&path)
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or(path);
+    // The file may not exist yet: canonicalize the parent folder instead, so
+    // mixed separators and casing still resolve to one consistent path.
+    let path = canonical_target(&path);
     let payload = apply_eol(&normalize_eol(&content), &eol);
     let bytes = encode_text(&payload, &encoding);
-    if let Some(parent) = Path::new(&path).parent() {
-        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-    }
-    fs::write(&path, bytes).map_err(|error| error.to_string())
+    write_atomic(&path, &bytes)
 }
 
 #[tauri::command]
@@ -403,11 +447,16 @@ pub fn fs_remove(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn fs_rename(from: String, to: String) -> Result<(), String> {
+    // Canonical paths keep watcher keys and the renderer's tab paths in sync.
+    let from = canonical_existing(&from);
+    let to = canonical_target(&to);
     fs::rename(&from, &to).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 pub fn fs_copy_file(from: String, to: String) -> Result<(), String> {
+    let from = canonical_existing(&from);
+    let to = canonical_target(&to);
     fs::copy(&from, &to)
         .map(|_| ())
         .map_err(|error| error.to_string())
@@ -445,17 +494,16 @@ pub fn fs_read_text_file(path: String) -> Result<String, String> {
 
 #[tauri::command]
 pub fn fs_write_text_file(path: String, text: String) -> Result<(), String> {
-    if let Some(parent) = Path::new(&path).parent() {
-        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-    }
-    fs::write(&path, text).map_err(|error| error.to_string())
+    write_atomic(&canonical_target(&path), text.as_bytes())
 }
 
 #[tauri::command]
 pub fn fs_watch(app: AppHandle, state: State<'_, Watchers>, path: String) -> Result<(), String> {
-    let path = std::fs::canonicalize(&path)
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or(path);
+    // The renderer subscribes with the exact string it passed in, while the
+    // watcher is registered on the canonical path. Emit both spellings so the
+    // event is found on case-insensitive and symlinked file systems.
+    let requested = path.clone();
+    let path = canonical_existing(&path);
     let watched = path.clone();
     let handle = app.clone();
     let mut watcher =
@@ -465,10 +513,13 @@ pub fn fs_watch(app: AppHandle, state: State<'_, Watchers>, path: String) -> Res
                     event.kind,
                     EventKind::Modify(_) | EventKind::Create(_) | EventKind::Remove(_)
                 ) {
-                    let _ = handle.emit("fs:changed", watched.clone());
+                    let _ = handle.emit("fs:changed", requested.clone());
+                    if watched != requested {
+                        let _ = handle.emit("fs:changed", watched.clone());
+                    }
                 }
             }
-            Err(error) => eprintln!("[opennotes] watcher: {error}"),
+            Err(error) => eprintln!("[flintqode] watcher: {error}"),
         })
         .map_err(|error| error.to_string())?;
 
@@ -487,9 +538,7 @@ pub fn fs_watch(app: AppHandle, state: State<'_, Watchers>, path: String) -> Res
 
 #[tauri::command]
 pub fn fs_unwatch(state: State<'_, Watchers>, path: String) -> Result<(), String> {
-    let path = std::fs::canonicalize(&path)
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or(path);
+    let path = canonical_existing(&path);
     if let Ok(mut watchers) = state.0.lock() {
         if let Some(mut watcher) = watchers.remove(&path) {
             let _ = watcher.unwatch(Path::new(&path));

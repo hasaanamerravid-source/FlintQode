@@ -44,7 +44,7 @@ export function CommandPalette({ open, mode, onClose }: PaletteProps): JSX.Eleme
 
   /** Load every file of the current project folder once, so the quick
    * switcher can jump to any file, not just the recent ones.
-   * This is what makes OpenNotes usable as a code editor: Ctrl+Shift+O finds
+   * This is what makes FlintQode usable as a code editor: Ctrl+Shift+O finds
    * every file in the folder. */
   useEffect(() => {
     if (mode !== 'files') return

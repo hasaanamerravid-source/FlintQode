@@ -4,11 +4,11 @@
 
 ## Context
 
-OpenNotes shows the problems of a file, jumps to the definition of a symbol and lists its references. That information comes from real language servers (`gopls`, `clangd`, `typescript-language-server`, `rust-analyzer`, …) that speak the Language Server Protocol over stdin and stdout.
+FlintQode shows the problems of a file, jumps to the definition of a symbol and lists its references. That information comes from real language servers (`gopls`, `clangd`, `typescript-language-server`, `rust-analyzer`, …) that speak the Language Server Protocol over stdin and stdout.
 
 The obvious way to implement a client is `vscode-languageserver-node`, the package that powers the language support of Visual Studio Code. It offers the framing, the JSON-RPC transport, the document synchronisation, the capability negotiation and the type definitions of the protocol.
 
-The problem is that `vscode-languageserver-node` is written for an extension host. It expects to run inside Visual Studio Code, where the extension host owns the documents, the workspace folders, the configuration and the lifecycle of the server. It brings its own document store and its own connection manager, and it is driven by the host through a `ConnectionProvider` and by the workspace through the `workspace` and `languages` namespaces of the extension API. OpenNotes has none of that: the documents live in the renderer, the workspace is a single folder, and the application is not Visual Studio Code.
+The problem is that `vscode-languageserver-node` is written for an extension host. It expects to run inside Visual Studio Code, where the extension host owns the documents, the workspace folders, the configuration and the lifecycle of the server. It brings its own document store and its own connection manager, and it is driven by the host through a `ConnectionProvider` and by the workspace through the `workspace` and `languages` namespaces of the extension API. FlintQode has none of that: the documents live in the renderer, the workspace is a single folder, and the application is not Visual Studio Code.
 
 What the application actually needs from the protocol is narrow:
 

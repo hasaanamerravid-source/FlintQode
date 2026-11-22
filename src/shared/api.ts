@@ -115,7 +115,7 @@ export interface TestApi {
  * `window.api` — every call is promise based except the subscriptions and
  * the fire-and-forget window commands.
  */
-export interface OpenNotesApi {
+export interface FlintQodeApi {
   info(): Promise<AppInfo>
 
   fs: {

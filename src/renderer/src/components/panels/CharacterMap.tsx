@@ -179,7 +179,7 @@ export function CharacterMap({ onInsert, onClose }: CharacterMapProps): JSX.Elem
       if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
       copyTimerRef.current = setTimeout(() => setCopied(null), 900)
     } catch (err) {
-      console.error('[opennotes] could not copy the character:', err)
+      console.error('[flintqode] could not copy the character:', err)
     }
   }, [])
 

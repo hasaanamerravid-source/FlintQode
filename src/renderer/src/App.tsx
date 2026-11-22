@@ -71,6 +71,8 @@ export default function App(): JSX.Element {
   const setDialog = useAppStore((s) => s.setDialog)
   const externalChange = useAppStore((s) => s.externalChange)
   const resolveExternalChange = useAppStore((s) => s.resolveExternalChange)
+  const pendingClose = useAppStore((s) => s.pendingClose)
+  const resolvePendingClose = useAppStore((s) => s.resolvePendingClose)
   const setActiveTab = useAppStore((s) => s.setActiveTab)
   const toast = useAppStore((s) => s.toast)
   const [dragging, setDragging] = useState(false)
@@ -129,8 +131,8 @@ export default function App(): JSX.Element {
       if (!detail?.message) return
       toast(detail.message, detail.kind ?? 'info')
     }
-    window.addEventListener('opennotes:toast', onToast)
-    return () => window.removeEventListener('opennotes:toast', onToast)
+    window.addEventListener('flintqode:toast', onToast)
+    return () => window.removeEventListener('flintqode:toast', onToast)
   }, [toast])
 
   /* ------------------------------ theme ----------------------------- */
@@ -183,8 +185,8 @@ export default function App(): JSX.Element {
   /* --------------------------- window title ------------------------- */
   useEffect(() => {
     const tab = tabs.find((t) => t.id === activeTabId)
-    const name = tab ? `${tab.dirty ? '● ' : ''}${tab.name}` : 'OpenNotes'
-    window.api.win.setTitle(`${name} — OpenNotes`)
+    const name = tab ? `${tab.dirty ? '● ' : ''}${tab.name}` : 'FlintQode'
+    window.api.win.setTitle(`${name} — FlintQode`)
   }, [tabs, activeTabId])
 
   /* ------------------------ native menu commands -------------------- */
@@ -314,6 +316,9 @@ export default function App(): JSX.Element {
   useEffect(() => {
     const persist = (): void => {
       void useAppStore.getState().persistSession()
+      // Settings are normally auto-saved by the dialog, but a change made by a
+      // command or a plugin may land here directly.
+      void useAppStore.getState().saveSettings()
     }
     const timer = window.setInterval(persist, 15000)
     window.addEventListener('beforeunload', persist)
@@ -409,11 +414,7 @@ export default function App(): JSX.Element {
               <LazyTerminalPanel cwd={projectFolder() ?? undefined} />
             ) : (
               <LazyRunPanel
-                onRun={() => {
-                  const state = useAppStore.getState()
-                  const tab = state.tabs.find((t) => t.id === state.activeTabId)
-                  if (tab?.path) void runCommand('tools.run')
-                }}
+                onRun={() => void runCommand('tools.run')}
                 onStop={() => void runCommand('tools.stopRun')}
               />
             )}
@@ -448,6 +449,30 @@ export default function App(): JSX.Element {
           }
         >
           <p className="hint">{t('dialog.externalChange.message', { name: externalChange.name })}</p>
+        </Modal>
+      )}
+
+      {pendingClose && (
+        <Modal
+          title={t('dialog.confirm.unsaved.title')}
+          size="small"
+          onClose={() => void resolvePendingClose('cancel')}
+          footer={
+            <>
+              <button className="btn btn-ghost" onClick={() => void resolvePendingClose('cancel')}>
+                {t('common.cancel')}
+              </button>
+              <button className="btn btn-ghost" onClick={() => void resolvePendingClose('discard')}>
+                {t('dialog.confirm.unsaved.discard')}
+              </button>
+              <button className="btn btn-primary" onClick={() => void resolvePendingClose('save')}>
+                {t('common.save')}
+              </button>
+            </>
+          }
+        >
+          <p>{t('dialog.confirm.unsaved.message', { name: pendingClose.name })}</p>
+          <p className="hint">{t('dialog.confirm.unsaved.hint')}</p>
         </Modal>
       )}
 

@@ -19,7 +19,7 @@ const container = document.getElementById('root')
 if (!container) throw new Error('Root container missing')
 
 // A small scripting surface: handy for power users and for automated checks.
-;(window as unknown as { opennotes: unknown }).opennotes = {
+;(window as unknown as { flintqode: unknown }).flintqode = {
   store: useAppStore,
   run: runCommand,
   setState: (patch: Record<string, unknown>) => useAppStore.setState(patch as never),
@@ -31,6 +31,9 @@ if (!container) throw new Error('Root container missing')
     return getEditor(useAppStore.getState().activeTabId)
   },
 }
+// Keep the old name working so existing plugins and scripts do not break after
+// the rename.
+;(window as unknown as { opennotes: unknown }).opennotes = (window as unknown as { flintqode: unknown }).flintqode
 
 createRoot(container).render(
   <React.StrictMode>

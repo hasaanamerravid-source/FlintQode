@@ -193,7 +193,7 @@ fn temp_binary(source: &Path) -> PathBuf {
         .map(|value| value.as_nanos())
         .unwrap_or(0);
     let extension = if cfg!(windows) { ".exe" } else { "" };
-    std::env::temp_dir().join(format!("opennotes-{base}-{stamp}{extension}"))
+    std::env::temp_dir().join(format!("flintqode-{base}-{stamp}{extension}"))
 }
 
 fn has_main_method(path: &str) -> bool {

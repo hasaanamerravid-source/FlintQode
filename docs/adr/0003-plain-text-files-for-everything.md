@@ -22,7 +22,7 @@ Everything is a JSON text file on disk. Nothing is stored in a database, in a bi
 | --- | --- | --- |
 | The settings | `<userData>/settings.json` | `src/main/ipc/settings.ts` (`settings:load`, `settings:save`) |
 | The keybindings | `<userData>/keybindings.json` | `src/renderer/src/core/keybindings.ts` (`writeKeybindings`) |
-| The project configuration | `<folder>/.opennotes.json` | `src/renderer/src/core/projectConfig.ts` (`writeProjectConfig`) |
+| The project configuration | `<folder>/.flintqode.json` | `src/renderer/src/core/projectConfig.ts` (`writeProjectConfig`) |
 
 The keybindings are a flat map from a command id to a shortcut:
 
@@ -49,7 +49,7 @@ The two keybinding sources are merged, and the project file wins: `readKeybindin
 
 ## Consequences
 
-* The files are readable, editable and diffable. A user can change a shortcut without the application being started, and a reviewer can see what a pull request changed in `.opennotes.json`.
+* The files are readable, editable and diffable. A user can change a shortcut without the application being started, and a reviewer can see what a pull request changed in `.flintqode.json`.
 * The project configuration can be checked into the repository, so every member of a team uses the same JDK and the same language server.
 * Nothing has to be migrated. A file from an older version is read as it is: the settings are deep-merged with `DEFAULT_SETTINGS` at start-up (`init` in `src/renderer/src/store/app.ts`), and every value that is read has a fallback (`applyAppearance` merges with `DEFAULT_APPEARANCE`, the encodings fall back to UTF-8, the line ending to CRLF). An unknown or missing key never breaks the start-up.
 * A damaged file is ignored rather than fatal. `settings:load`, `session:load` and `readKeybindings` all catch the parse error and return an empty result, and `init` carries on with the defaults.
