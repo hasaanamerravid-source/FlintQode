@@ -116,7 +116,7 @@ pub fn git_status(window: WebviewWindow, path: String) -> Result<GitStatus, Stri
                 continue;
             }
             let mut iter = trimmed.split_whitespace();
-            let (add, del) = match (iter.next(), iter.next(), iter.next()) {
+            let (add, del, path) = match (iter.next(), iter.next(), iter.next()) {
                 (Some(a), Some(d), Some(path)) => (a, d, path),
                 _ => continue,
             };
@@ -130,7 +130,7 @@ pub fn git_status(window: WebviewWindow, path: String) -> Result<GitStatus, Stri
     let repo_root = root;
     let _ = window;
     Ok(GitStatus {
-        repo_root,
+        repoRoot: repo_root,
         status: if status.branch.is_empty() {
             None
         } else {

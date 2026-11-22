@@ -212,8 +212,9 @@ async fn spawn_session(
         emit(&app_clone, "exit", &session_id_clone, None, None);
     });
 
+    let id = session_id.clone();
     let result = TerminalStartResult {
-        id: session_id,
+        id,
         ok: true,
         cwd: session.cwd.clone(),
         shell: session.shell.clone(),
