@@ -110,17 +110,13 @@ img { max-width: 100%; display: block; }
   position: sticky;
   top: 0;
   z-index: 50;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface) 88%, transparent), color-mix(in srgb, var(--surface-2) 72%, transparent));
-  -webkit-backdrop-filter: blur(18px) saturate(170%);
-  backdrop-filter: blur(18px) saturate(170%);
-  box-shadow: 0 8px 30px -22px rgba(15, 23, 42, 0.45);
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.66);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
   transition: background 0.3s ease, border-color 0.3s ease;
 }
-[data-theme='dark'] .site-header {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 70%, transparent), color-mix(in srgb, var(--surface-2) 55%, transparent));
-}
+[data-theme='dark'] .site-header { background: rgba(11, 13, 20, 0.6); }
 
 .header-inner {
   max-width: var(--max-width);
@@ -139,18 +135,19 @@ img { max-width: 100%; display: block; }
 
 .nav-brand {
   font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1.1rem;
+  font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--ink);
   padding-right: var(--space-3);
+  border-right: 1px solid var(--border);
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
 }
 .nav-logo {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 6px;
   box-shadow: 0 2px 8px -2px rgba(37, 99, 235, 0.4);
   transition: transform 0.3s ease;
@@ -163,19 +160,18 @@ img { max-width: 100%; display: block; }
   align-items: center;
   gap: var(--space-2);
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 500;
 }
 .nav-links a {
   color: var(--ink-soft);
-  padding: 0.55rem 0.6rem;
+  padding: 0.55rem 0;
   border-bottom: 2px solid transparent;
-  transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
 .nav-links a:hover,
 .nav-links a.active {
   color: var(--primary);
   border-bottom-color: var(--primary);
-  transform: translateY(-1px);
 }
 .theme-btn {
   background: var(--surface-3);
@@ -186,9 +182,9 @@ img { max-width: 100%; display: block; }
   padding: 0.55rem;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
-.theme-btn:hover { background: var(--surface); transform: rotate(12deg); }
+.theme-btn:hover { background: var(--surface); }
 
 /* ---------- Sections ---------- */
 .section { padding: var(--space-8) var(--space-3); }
