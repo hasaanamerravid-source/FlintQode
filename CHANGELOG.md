@@ -36,6 +36,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript pinned to 5.9 so unit tests run on a clean install.
 - The 1.75 MB JavaScript bundle is split into domain chunks.
 
+## [1.3.0] - 2026-11-22
+
+### Added
+- Git integration: status bar branch, diff gutter markers, blame, commit, stage, rename branch.
+- Multi-root workspace: open extra folders as workspace roots.
+- LSP: signature help, hover docs, rename symbol, code actions, workspace symbols.
+- Export active file to standalone HTML.
+- Terminal tabs (multiple PTY sessions per tab, close, rename).
+- Rust PTY-backed terminal (real interactive programs, resize support).
+- Overwrite mode and scroll-past-end toggles, column selection mode.
+- Line transpose, UUID/timestamp generation, ROT13 and case conversion, etc.
+- User-installable themes (dashboard) — editor colour palette.
+
 ## [1.2.0] - 2026-11-21
 
 ### Added
