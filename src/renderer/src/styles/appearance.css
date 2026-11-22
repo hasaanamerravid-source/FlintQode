@@ -1880,3 +1880,19 @@ body {
 [data-direction='rtl'] .cm-content {
   direction: rtl;
 }
+
+/* Git diff markers in the gutter. */
+.cm-git-added {
+  background: rgba(34, 197, 94, 0.22) !important;
+  border-left: 2px solid #22c55e !important;
+}
+[data-theme='dark'] .cm-git-added {
+  background: rgba(34, 197, 94, 0.35) !important;
+}
+.cm-git-removed {
+  background: rgba(239, 68, 68, 0.22) !important;
+  border-left: 2px solid #ef4444 !important;
+}
+[data-theme='dark'] .cm-git-removed {
+  background: rgba(239, 68, 68, 0.35) !important;
+}

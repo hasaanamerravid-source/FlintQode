@@ -56,6 +56,7 @@ export const DEFAULT_SETTINGS: Settings = {
   recentFiles: [],
   plugins: [],
   direction: 'ltr',
+  gitGutter: true,
 }
 
 export const ENCODING_LABELS: Record<string, string> = {

@@ -84,6 +84,97 @@ function applyTransform(fn: (text: string) => string): void {
 
 const closedTabs: { path: string | null; name: string; content: string; language: string }[] = []
 
+/** The active file's path, or null. */
+function activeFilePath(): string | null {
+  return activeTab()?.path ?? null
+}
+
+/** Show the git status of the current file (branch + changed files). */
+async function showGitStatus(): Promise<void> {
+  const state = store()
+  const path = activeFilePath()
+  if (!path) {
+    state.toast('There is no git repository for the current file', 'error')
+    return
+  }
+  try {
+    const result = await window.api.git.status(path)
+    if (!result.status) {
+      state.toast('Not a git repository (or git is not installed)', 'error')
+      return
+    }
+    state.setBottomTab('problems')
+    state.setBottomPanelVisible(true)
+    const lines: string[] = [`Branch: ${result.status.branch || '(detached)'}`]
+    lines.push(`Changed files: ${result.status.files.length}`)
+    for (const file of result.status.files.slice(0, 50)) {
+      const arrow = ` +${file.additions} -${file.deletions}`
+      lines.push(`${file.status} ${file.path}${arrow}`)
+    }
+    state.toast(lines.join('\n'), 'info')
+  } catch (error) {
+    state.toast(`Could not run git: ${String(error)}`, 'error')
+  }
+}
+
+/** Show the git diff of the current file in the problems panel. */
+async function showGitDiff(): Promise<void> {
+  const state = store()
+  const path = activeFilePath()
+  if (!path) {
+    state.toast('There is no git repository for the current file', 'error')
+    return
+  }
+  try {
+    const diff = await window.api.git.diff(path)
+    if (!diff || !diff.trim()) {
+      state.toast('No changes relative to git', 'info')
+      return
+    }
+    state.toast(diff, 'info')
+  } catch (error) {
+    state.toast(`Could not run git: ${String(error)}`, 'error')
+  }
+}
+
+/** Stage the current file with `git add`. */
+async function stageGitFile(): Promise<void> {
+  const state = store()
+  const path = activeFilePath()
+  if (!path) {
+    state.toast('There is no git repository for the current file', 'error')
+    return
+  }
+  try {
+    await window.api.git.stage(path)
+    state.toast('File staged')
+  } catch (error) {
+    state.toast(`Could not stage: ${String(error)}`, 'error')
+  }
+}
+
+/** Commit changes with a message (VS Code style). */
+async function commitGitChanges(): Promise<void> {
+  const state = store()
+  const path = activeFilePath()
+  if (!path) {
+    state.toast('There is no git repository for the current file', 'error')
+    return
+  }
+  const message = await useUiStore.getState().ask({
+    title: 'Commit changes',
+    message: 'Commit message',
+    defaultValue: 'Save changes',
+  })
+  if (!message) return
+  try {
+    await window.api.git.commit(path, message)
+    state.toast(`Committed: ${message}`)
+  } catch (error) {
+    state.toast(`Commit failed: ${String(error)}`, 'error')
+  }
+}
+
 /** Export the active file as a standalone HTML document. */
 async function exportActiveAsHtml(): Promise<void> {
   const state = store()
@@ -805,6 +896,39 @@ export const builtinCommands: Command[] = [
       store().setSettings({ direction: next })
       store().toast(next === 'rtl' ? 'Right-to-left mode on' : 'Left-to-right mode on', 'info')
     },
+  },
+  {
+    id: 'view.toggleGitGutter',
+    title: 'Toggle git diff markers in the gutter',
+    category: 'View',
+    run: () => {
+      store().setSettings({ gitGutter: !store().settings.gitGutter })
+      store().toast(store().settings.gitGutter ? 'Git gutter on' : 'Git gutter off', 'info')
+    },
+  },
+  {
+    id: 'tools.gitShowStatus',
+    title: 'Show git status of the current file',
+    category: 'Tools',
+    run: () => void showGitStatus(),
+  },
+  {
+    id: 'tools.gitShowDiff',
+    title: 'Show git diff of the current file',
+    category: 'Tools',
+    run: () => void showGitDiff(),
+  },
+  {
+    id: 'tools.gitStage',
+    title: 'Stage the current file',
+    category: 'Tools',
+    run: () => void stageGitFile(),
+  },
+  {
+    id: 'tools.gitCommit',
+    title: 'Commit changes (with message)',
+    category: 'Tools',
+    run: () => void commitGitChanges(),
   },
   {
     id: 'view.toggleWordWrap',

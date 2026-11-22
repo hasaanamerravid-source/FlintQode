@@ -235,6 +235,24 @@ export function createApi(): FlintQodeApi {
       },
     },
 
+    git: {
+      status: (path: string) =>
+        call<{
+          repoRoot: string
+          status: {
+            branch: string
+            dirty: boolean
+            files: { path: string; status: string; additions: number; deletions: number }[]
+          } | null
+        }>('git_status', { path }),
+      diff: (path: string) => call<string>('git_diff', { path }),
+      log: (path: string, limit?: number) => call<string[]>('git_log', { path, limit: limit ?? 30 }),
+      blame: (path: string) => call<string[]>('git_blame', { path }),
+      commit: (cwd: string, message: string) => call<string>('git_commit', { cwd, message }),
+      stage: (cwd: string) => call<string>('git_stage', { cwd }),
+      renameBranch: (cwd: string, name: string) => call<string>('git_branch_rename', { cwd, name }),
+    },
+
     recent: {
       list: () => (isTauri() ? call<string[]>('recent_list') : Promise.resolve(readLocal<string[]>(LOCAL_RECENT, []))),
       add: (path: string) => {

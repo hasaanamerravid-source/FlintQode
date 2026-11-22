@@ -125,7 +125,24 @@ export function StatusBar(): JSX.Element {
   const setBottomTab = useAppStore((s) => s.setBottomTab)
   const problems = useProblems()
   const tab = tabs.find((t) => t.id === activeTabId)
+  const gitBranch = useStatusStore((s) => s.gitBranch)
+  const gitDirty = useStatusStore((s) => s.gitDirty)
   const t = useT()
+
+  // Show the current branch of the repo the active file lives in.
+  useEffect(() => {
+    const path = tab?.path
+    if (!path) return
+    void window.api.git
+      ?.status(path)
+      .then((result) => {
+        useStatusStore.getState().set({
+          gitBranch: result.status?.branch ?? '',
+          gitDirty: result.status?.dirty ?? false,
+        })
+      })
+      .catch(() => undefined)
+  }, [tab?.path])
 
   const encodings = Object.entries(ENCODING_LABELS).map(([value, label]) => ({
     label,
@@ -162,6 +179,16 @@ export function StatusBar(): JSX.Element {
         {t('status.linesCount', { count: status.totalLines })} · {t('status.wordsCount', { count: status.words })} ·{' '}
         {t('status.charsCount', { count: status.totalChars })}
       </span>
+      {gitBranch && (
+        <span
+          className="stat"
+          title={t('status.gitBranch', { branch: gitBranch })}
+          onClick={() => void window.api.git?.log(tab?.path ?? '', 10).catch(() => undefined)}
+        >
+          ⏪ {gitBranch}
+          {gitDirty ? ' ●' : ''}
+        </span>
+      )}
       <span className="spacer" />
       {(errors > 0 || warnings > 0) && (
         <button

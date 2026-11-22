@@ -926,6 +926,13 @@ export function SettingsDialog(): JSX.Element | null {
               <option value="rtl">RTL (Right-to-left)</option>
             </select>
           </Row>
+          <Row label={t('settings.gitGutter')} hint={t('settings.gitGutterHint')}>
+            <input
+              type="checkbox"
+              checked={settings.gitGutter}
+              onChange={(e) => setSettings({ gitGutter: e.target.checked })}
+            />
+          </Row>
           <Row label={t('settings.overwriteMode')}>
             <input
               type="checkbox"

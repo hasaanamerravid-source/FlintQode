@@ -5,6 +5,7 @@
 //! terminal, runner and language servers) lives next to it.
 
 mod fs;
+mod git;
 mod lsp;
 mod process;
 mod run;
@@ -117,6 +118,13 @@ pub fn run() {
             fs::fs_list_recursive,
             fs::fs_stat,
             fs::fs_exists,
+            git::git_status,
+            git::git_diff,
+            git::git_log,
+            git::git_blame,
+            git::git_commit,
+            git::git_stage,
+            git::git_branch_rename,
             fs::fs_make_dir,
             fs::fs_remove,
             fs::fs_rename,

@@ -16,6 +16,10 @@ export interface StatusState {
   zoom: number
   /** True while the window is maximised. */
   maximized: boolean
+  /** Current git branch of the active file's repo (empty when not a git repo). */
+  gitBranch: string
+  /** True when the repo has uncommitted changes. */
+  gitDirty: boolean
   set: (patch: Partial<StatusState>) => void
   reset: () => void
 }
@@ -35,6 +39,8 @@ const initial = {
   dirty: false,
   zoom: 100,
   maximized: false,
+  gitBranch: '',
+  gitDirty: false,
 }
 
 export const useStatusStore = create<StatusState>((set) => ({

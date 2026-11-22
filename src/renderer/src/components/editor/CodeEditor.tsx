@@ -49,6 +49,7 @@ import { registerView, joinGroup, peersOf } from '../../core/views'
 import { highlightAllExtension } from '../../core/highlightAll'
 import { bookmarkExtension } from '../../core/bookmarks'
 import { indentGuidesExtension } from '../../core/indentGuides'
+import { gitGutterExtension } from '../../core/gitGutter'
 
 export interface CodeEditorProps {
   tab: Tab
@@ -286,6 +287,7 @@ const themeCompartment = new Compartment()
 const editCompartment = new Compartment()
 const gutterCompartment = new Compartment()
 const guideCompartment = new Compartment()
+const gitGutterCompartment = new Compartment()
 const invisiblesCompartment = new Compartment()
 const behaviourCompartment = new Compartment()
 const overwriteCompartment = new Compartment()
@@ -398,6 +400,13 @@ export function CodeEditor({ tab, onReady, onContentChange, onViewReady, syncGro
         bookmarkExtension(),
         guideCompartment.of(
           indentGuidesExtension({ tabSize: settingsNow.tabSize, enabled: settingsNow.showIndentGuides }),
+        ),
+        gitGutterCompartment.of(
+          tab.path && !tab.largeFile
+            ? gitGutterExtension(
+                () => (window.api?.git?.diff?.(tab.path ?? '') as Promise<string> | undefined) ?? Promise.resolve(''),
+              )
+            : [],
         ),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {

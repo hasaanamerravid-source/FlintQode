@@ -218,6 +218,8 @@ export interface Settings {
   plugins: string[]
   /** Right-to-left text direction for the editor and panels. */
   direction: 'ltr' | 'rtl'
+  /** Show git diff markers in the editor gutter (when in a git repo). */
+  gitGutter: boolean
 }
 
 /** Command executed from the palette, menu or keyboard map. */

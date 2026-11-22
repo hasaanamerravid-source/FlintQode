@@ -40,6 +40,27 @@ export interface TerminalLine {
   text: string
 }
 
+/** One file with changes, as reported by `git.status`. */
+export interface GitStatusFile {
+  path: string
+  status: string
+  additions: number
+  deletions: number
+}
+
+/** Git status of the repo containing `path`. */
+export interface GitRepoStatus {
+  branch: string
+  dirty: boolean
+  files: GitStatusFile[]
+}
+
+/** The answer of `git.status`. */
+export interface GitStatus {
+  repoRoot: string
+  status: GitRepoStatus | null
+}
+
 /** The answer of `terminal.start` / `terminal.new`. */
 export interface TerminalStartResult {
   id: string
@@ -213,6 +234,16 @@ export interface FlintQodeApi {
     active(): Promise<string>
     resize(sessionId: string, cols: number, rows: number): Promise<boolean>
     onOutput(cb: (event: TerminalEvent) => void): () => void
+  }
+
+  git: {
+    status(path: string): Promise<GitStatus>
+    diff(path: string): Promise<string>
+    log(path: string, limit?: number): Promise<string[]>
+    blame(path: string): Promise<string[]>
+    commit(cwd: string, message: string): Promise<string>
+    stage(cwd: string): Promise<string>
+    renameBranch(cwd: string, name: string): Promise<string>
   }
 
   lsp: {
