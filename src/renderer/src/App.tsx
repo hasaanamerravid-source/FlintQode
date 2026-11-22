@@ -151,7 +151,7 @@ export default function App(): JSX.Element {
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     media.addEventListener('change', apply)
     return () => media.removeEventListener('change', apply)
-  }, [settings.theme])
+  }, [settings.theme, settings.direction])
 
   /* ----------------------------- language --------------------------- */
   // The document knows which language it is in, so that the screen reader and
