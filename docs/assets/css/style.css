@@ -69,29 +69,8 @@ body {
   -webkit-font-smoothing: antialiased;
   margin: 0;
   transition: background 0.3s ease, color 0.3s ease;
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(37, 99, 235, 0.18), transparent 60%),
-    radial-gradient(900px 500px at 95% 0%, rgba(124, 58, 237, 0.16), transparent 60%),
-    radial-gradient(800px 500px at 50% 110%, rgba(14, 165, 233, 0.14), transparent 60%),
-    var(--surface-2);
-  background-attachment: fixed;
+  background: var(--surface-2);
   min-height: 100vh;
-}
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(600px 400px at 20% 30%, rgba(37, 99, 235, 0.10), transparent 70%),
-    radial-gradient(600px 400px at 80% 70%, rgba(124, 58, 237, 0.10), transparent 70%);
-  animation: bg-drift 18s ease-in-out infinite alternate;
-  filter: blur(40px);
-}
-@keyframes bg-drift {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to { transform: translate3d(-40px, 30px, 0) scale(1.08); }
 }
 .site-header, .section, footer { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) {
@@ -248,18 +227,6 @@ img { max-width: 100%; display: block; }
     linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
   position: relative;
   overflow: hidden;
-}
-.hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(37, 99, 235, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(37, 99, 235, 0.05) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
-  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
-  pointer-events: none;
 }
 .hero-inner {
   max-width: var(--max-width);
@@ -479,7 +446,7 @@ h1, h2, h3, .cta h2 { font-family: var(--font-display); }
 .hero-text p.lead,
 .hero-actions,
 .hero-shot {
-  animation: fade-up 0.7s ease both;
+  animation: fade-up 0.35s ease both;
 }
 .hero-text .eyebrow { animation-delay: 0.05s; }
 .hero-text h1 { animation-delay: 0.12s; }
@@ -495,7 +462,7 @@ h1, h2, h3, .cta h2 { font-family: var(--font-display); }
 .feature-card,
 .download-card,
 .gallery-item {
-  animation: fade-up 0.6s ease both;
+  animation: fade-up 0.35s ease both;
 }
 .feature-card:nth-child(1) { animation-delay: 0.05s; }
 .feature-card:nth-child(2) { animation-delay: 0.1s; }
@@ -524,14 +491,6 @@ h1, h2, h3, .cta h2 { font-family: var(--font-display); }
 }
 
 /* Cross-document view transitions for snappy tab/page changes. */
-@view-transition {
-  navigation: auto;
-}
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 0.32s;
-  animation-timing-function: cubic-bezier(.2,.8,.2,1);
-}
 
 /* ---------- Stack grid ---------- */
 .stack-grid {
@@ -557,23 +516,6 @@ h1, h2, h3, .cta h2 { font-family: var(--font-display); }
 .stack-card h3 { font-size: 1rem; font-weight: 700; margin: var(--space-2) 0 0.25rem; }
 .stack-card p { color: var(--ink-soft); font-size: 0.85rem; }
 
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background-image:
-    radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.08) 0, transparent 35%),
-    radial-gradient(circle at 80% 60%, rgba(124, 58, 237, 0.08) 0, transparent 40%),
-    repeating-linear-gradient(45deg, rgba(37,99,235,0.03) 0 2px, transparent 2px 18px);
-  animation: bg-pan 28s linear infinite;
-  filter: blur(0.5px);
-}
-@keyframes bg-pan {
-  from { background-position: 0 0, 0 0, 0 0; }
-  to { background-position: 120px 80px, -100px 60px, 200px 0; }
-}
 @media (prefers-reduced-motion: reduce) {
   body::after { animation: none; }
 }
