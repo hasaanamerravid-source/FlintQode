@@ -170,7 +170,12 @@ pub fn git_blame(path: String) -> Result<Vec<String>, String> {
     // Extract the summary line of each blame chunk for the status bar preview.
     let mut out: Vec<String> = Vec::new();
     for line in blame.lines() {
-        if line.starts_with('author ') || line.starts_with('author-mail') || line.starts_with('author-time') || line.starts_with('author-tz') || line.starts_with('summary ') {
+        if line.starts_with("author ")
+            || line.starts_with("author-mail")
+            || line.starts_with("author-time")
+            || line.starts_with("author-tz")
+            || line.starts_with("summary ")
+        {
             out.push(line.trim().to_string());
         }
     }
