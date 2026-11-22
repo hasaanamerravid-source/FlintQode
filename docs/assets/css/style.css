@@ -73,6 +73,8 @@ body {
     radial-gradient(900px 420px at 10% -5%, rgba(37, 99, 235, 0.14), transparent 62%),
     radial-gradient(700px 380px at 92% 0%, rgba(124, 58, 237, 0.12), transparent 62%),
     var(--surface-2);
+  background-size: 140% 140%;
+  animation: bg-shift 22s ease-in-out infinite alternate;
   min-height: 100vh;
 }
 .site-header, .section, footer { position: relative; z-index: 1; }
@@ -532,4 +534,12 @@ h1, h2, h3, .cta h2 { font-family: var(--font-display); }
 
 @media (prefers-reduced-motion: reduce) {
   body::after { animation: none; }
+}
+
+@keyframes bg-shift {
+  from { background-position: 0% 0%, 100% 0%, 0 0; }
+  to { background-position: 10% 15%, 85% 10%, 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body { animation: none; }
 }
