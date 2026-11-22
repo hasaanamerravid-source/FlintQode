@@ -1297,7 +1297,7 @@ pub async fn lsp_did_change(
 
 #[tauri::command]
 pub async fn lsp_did_close(
-    app: AppHandle,
+    _app: AppHandle,
     state: State<'_, LspState>,
     params: DidCloseParams,
 ) -> Result<bool, String> {
