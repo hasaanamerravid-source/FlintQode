@@ -1896,3 +1896,33 @@ body {
 [data-theme='dark'] .cm-git-removed {
   background: rgba(239, 68, 68, 0.35) !important;
 }
+
+/* Multi-root workspace root chips in the file tree. */
+.file-tree-root {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.file-tree-root:hover {
+  color: var(--fg);
+  background: var(--surface-3);
+  border-color: var(--primary);
+}

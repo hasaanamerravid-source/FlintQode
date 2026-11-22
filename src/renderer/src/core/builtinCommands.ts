@@ -898,6 +898,30 @@ export const builtinCommands: Command[] = [
     },
   },
   {
+    id: 'file.openFolder',
+    title: 'Open folder as workspace',
+    category: 'File',
+    run: async () => {
+      const result = await window.api.fs.openDialog({ title: 'Open a folder as the workspace', directory: true })
+      const folder = result.filePaths[0]
+      if (folder) {
+        const roots = useAppStore.getState().workspaceRoots.filter((r) => r !== folder)
+        useAppStore.getState().setWorkspaceRoots([...roots, folder])
+        useAppStore.getState().toast(`Opened ${folder.split(/[\\/]/).pop()} as a workspace`, 'success')
+      }
+    },
+  },
+  {
+    id: 'file.closeFolder',
+    title: 'Close workspace folder',
+    category: 'File',
+    run: () => {
+      const roots = useAppStore.getState().workspaceRoots
+      const root = useAppStore.getState().workspaceRoot
+      if (roots.length > 1 && root) useAppStore.getState().setWorkspaceRoots(roots.filter((r) => r !== root))
+    },
+  },
+  {
     id: 'view.toggleGitGutter',
     title: 'Toggle git diff markers in the gutter',
     category: 'View',

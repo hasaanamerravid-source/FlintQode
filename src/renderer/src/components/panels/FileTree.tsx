@@ -196,14 +196,47 @@ export function FileTree(): JSX.Element {
   const openPath = useAppStore((s) => s.openPath)
   const setWorkspaceRoot = useAppStore((s) => s.setWorkspaceRoot)
   const workspaceRoot = useAppStore((s) => s.workspaceRoot)
+  const workspaceRoots = useAppStore((s) => s.workspaceRoots)
+  const setWorkspaceRoots = useAppStore((s) => s.setWorkspaceRoots)
   const toast = useAppStore((s) => s.toast)
   const [filter, setFilter] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState<Set<string>>(new Set())
   const [rootEntries, setRootEntries] = useState<DirEntry[]>([])
+  const [extraRoots, setExtraRoots] = useState<string[]>([])
   const t = useT()
 
   const root = workspaceRoot
+  // When the user opens extra folders in the same window, show them as
+  // switches at the top of the file tree (multi-root workspace).
+  useEffect(() => {
+    if (!root) return
+    setExtraRoots(workspaceRoots.filter((entry) => entry !== root))
+    return () => setExtraRoots([])
+  }, [workspaceRoots, root])
+
+  const chooseRoot = async (): Promise<void> => {
+    const result = await window.api.fs.openDialog({
+      title: t('panel.filesOpenFolderTitle'),
+      directory: true,
+    })
+    const folder = result.filePaths[0]
+    if (folder) {
+      setWorkspaceRoot(folder)
+      toast(t('panel.filesWorkspace', { name: folder.split(/[\\/]/).pop() ?? '' }), 'success')
+    }
+  }
+
+  const addExtraRoot = async (): Promise<void> => {
+    const result = await window.api.fs.openDialog({ title: t('panel.filesOpenFolderTitle'), directory: true })
+    const folder = result.filePaths[0]
+    if (folder) setWorkspaceRoots([...workspaceRoots, folder])
+  }
+
+  const switchRoot = (entry: string): void => {
+    // Opening an extra root as the primary root keeps the multi-root list.
+    setWorkspaceRoots([...workspaceRoots.filter((item) => item !== entry), entry])
+  }
 
   useEffect(() => {
     if (!root) {
@@ -223,18 +256,6 @@ export function FileTree(): JSX.Element {
       else next.add(path)
       return next
     })
-  }
-
-  const chooseRoot = async (): Promise<void> => {
-    const result = await window.api.fs.openDialog({
-      title: t('panel.filesOpenFolderTitle'),
-      directory: true,
-    })
-    const folder = result.filePaths[0]
-    if (folder) {
-      setWorkspaceRoot(folder)
-      toast(t('panel.filesWorkspace', { name: folder.split(/[\\/]/).pop() ?? '' }), 'success')
-    }
   }
 
   const visible = useMemo(
@@ -267,6 +288,9 @@ export function FileTree(): JSX.Element {
           <button className="icon-btn" title={t('panel.filesChangeFolder')} onClick={() => void chooseRoot()}>
             ⤓
           </button>
+          <button className="icon-btn" title={t('panel.filesAddFolder')} onClick={() => void addExtraRoot()}>
+            +
+          </button>
           <button
             className="icon-btn"
             title={t('panel.filesRefresh')}
@@ -278,6 +302,24 @@ export function FileTree(): JSX.Element {
           </button>
         </span>
       </div>
+      {extraRoots.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '0 4px 4px' }}>
+          {extraRoots.map((entry) => (
+            <button
+              key={entry}
+              className="file-tree-root"
+              title={entry}
+              onClick={() => switchRoot(entry)}
+              onContextMenu={(event) => {
+                event.preventDefault()
+                void setWorkspaceRoots(workspaceRoots.filter((item) => item !== entry))
+              }}
+            >
+              {entry.split(/[\\/]/).pop() ?? entry}
+            </button>
+          ))}
+        </div>
+      )}
       <input
         type="text"
         placeholder={t('panel.filesFilter')}

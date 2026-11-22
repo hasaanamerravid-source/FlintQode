@@ -92,6 +92,9 @@ interface AppState {
   toast: (message: string, kind?: Toast['kind']) => void
   dismissToast: (id: number) => void
   setWorkspaceRoot: (root: string | null) => void
+  /** Multi-root workspace: all open folder roots (the last is the primary). */
+  workspaceRoots: string[]
+  setWorkspaceRoots: (roots: string[]) => void
   persistSession: () => Promise<void>
   saveCrashTrail: () => Promise<void>
   loadCrashTrail: () => Promise<void>
@@ -407,6 +410,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeTabId: null,
   settings: { ...DEFAULT_SETTINGS },
   workspaceRoot: null,
+  workspaceRoots: [],
   sidebarVisible: true,
   sidePanel: 'files',
   bottomTab: 'problems',
@@ -775,7 +779,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
-  setWorkspaceRoot: (root) => set({ workspaceRoot: root }),
+  setWorkspaceRoot: (root) =>
+    set((s) => {
+      if (!root) return { workspaceRoot: null, workspaceRoots: [] }
+      const roots = s.workspaceRoots.filter((r) => r !== root)
+      return { workspaceRoot: root, workspaceRoots: [...roots, root] }
+    }),
+  setWorkspaceRoots: (roots) => set({ workspaceRoot: roots[roots.length - 1] ?? null, workspaceRoots: roots }),
 
   persistSession: async () => {
     const { tabs, activeTabId, settings } = get()
