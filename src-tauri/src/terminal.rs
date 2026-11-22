@@ -1,17 +1,12 @@
-//! Integrated shell.
-//!
-//! The shell is piped, not a pty. That keeps the implementation small and
-//! portable: the panel draws its own prompt, ANSI colours are stripped and
-//! full-screen programs are not supported. Commands are followed by a marker
-//! line, which is how the renderer learns that the shell is ready again.
+//! Integrated terminal (PTY).
 
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
+use std::sync::atomic::{AtomicU64, Ordering};
 
+use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, ChildStdin, Command};
 use tokio::sync::Mutex;
 
 use crate::process::{find_executable, home_dir};
@@ -19,33 +14,16 @@ use crate::process::{find_executable, home_dir};
 #[derive(Default)]
 pub struct TerminalState {
     pub inner: Mutex<Option<TerminalSession>>,
-    pub token: std::sync::atomic::AtomicU64,
+    pub token: AtomicU64,
 }
 
 struct TerminalSession {
-    child: Child,
-    stdin: ChildStdin,
-    kind: ShellKind,
-    eol: &'static str,
+    master: Box<dyn MasterPty + Send>,
+    writer: Box<dyn Write + Send>,
+    child: Box<dyn Child + Send>,
     marker: String,
     cwd: String,
     shell: String,
-}
-
-#[derive(Clone, Copy)]
-enum ShellKind {
-    PowerShell,
-    Cmd,
-    Bash,
-}
-
-impl ShellKind {
-    fn marker_command(self, token: &str) -> String {
-        match self {
-            ShellKind::PowerShell => format!("Write-Output \"{token}\""),
-            _ => format!("echo {token}"),
-        }
-    }
 }
 
 #[derive(Serialize)]
@@ -69,11 +47,11 @@ struct TerminalEvent {
     code: Option<i32>,
 }
 
+#[derive(Clone)]
 struct ShellSpec {
     cmd: String,
     args: Vec<String>,
-    kind: ShellKind,
-    eol: &'static str,
+    kind_name: String,
 }
 
 fn pick_shell() -> ShellSpec {
@@ -85,20 +63,15 @@ fn pick_shell() -> ShellSpec {
                 args: vec![
                     "-NoLogo".to_string(),
                     "-NoProfile".to_string(),
-                    "-NonInteractive".to_string(),
-                    "-Command".to_string(),
-                    "-".to_string(),
                 ],
-                kind: ShellKind::PowerShell,
-                eol: "\n",
+                kind_name: "powershell".to_string(),
             };
         }
-        return ShellSpec {
+        ShellSpec {
             cmd: "cmd.exe".to_string(),
-            args: vec!["/Q".to_string(), "/K".to_string()],
-            kind: ShellKind::Cmd,
-            eol: "\r\n",
-        };
+            args: vec!["/Q".to_string()],
+            kind_name: "cmd".to_string(),
+        }
     }
 
     #[cfg(not(windows))]
@@ -114,63 +87,20 @@ fn pick_shell() -> ShellSpec {
             } else {
                 Vec::new()
             },
-            kind: ShellKind::Bash,
-            eol: "\n",
+            kind_name: "bash".to_string(),
         }
     }
 }
 
-fn clean_text(text: &str) -> String {
-    // Remove OSC sequences, CSI sequences and the remaining escape bytes.
-    let mut out = String::with_capacity(text.len());
-    let mut chars = text.chars().peekable();
-    while let Some(character) = chars.next() {
-        match character {
-            '\u{1b}' => match chars.next() {
-                Some(']') => {
-                    while let Some(next) = chars.next() {
-                        if next == '\u{7}' {
-                            break;
-                        }
-                        if next == '\u{1b}' && chars.peek() == Some(&'\\') {
-                            chars.next();
-                            break;
-                        }
-                    }
-                }
-                Some('[') => {
-                    for next in chars.by_ref() {
-                        if ('@'..='~').contains(&next) {
-                            break;
-                        }
-                    }
-                }
-                Some(_) => {}
-                None => break,
-            },
-            '\r' => {}
-            '\u{0}'..='\u{8}' | '\u{b}' | '\u{c}' | '\u{e}'..='\u{1f}' | '\u{7f}' => {}
-            other => out.push(other),
-        }
-    }
-    out
-}
-
-async fn kill_session(session: &mut TerminalSession) {
-    // Stop the shell process group, escalating from SIGTERM to SIGKILL while
-    // the child is confirmed to still be running.
-    #[cfg(unix)]
-    {
-        crate::process::stop_process_tree(&mut session.child, libc::SIGKILL).await;
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = session.child.start_kill();
-    }
-}
-
-fn emit(app: &AppHandle, event: TerminalEvent) {
-    let _ = app.emit("terminal:output", event);
+fn emit(app: &AppHandle, kind: &str, text: Option<String>, code: Option<i32>) {
+    let _ = app.emit(
+        "terminal:output",
+        TerminalEvent {
+            kind: kind.to_string(),
+            text,
+            code,
+        },
+    );
 }
 
 #[tauri::command]
@@ -179,183 +109,134 @@ pub async fn terminal_start(
     state: State<'_, TerminalState>,
     cwd: Option<String>,
 ) -> Result<TerminalStartResult, String> {
-    let folder = cwd
-        .map(PathBuf::from)
-        .filter(|path| path.is_dir())
-        .unwrap_or_else(home_dir);
-    let spec = pick_shell();
-    let token = state
-        .token
-        .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
-        + 1;
-
     {
         let mut guard = state.inner.lock().await;
-        if let Some(mut previous) = guard.take() {
-            kill_session(&mut previous).await;
+        if let Some(mut old) = guard.take() {
+            let _ = old.child.kill();
         }
     }
 
-    let mut command = Command::new(&spec.cmd);
-    command
-        .args(&spec.args)
-        .current_dir(&folder)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true);
-    #[cfg(unix)]
-    command.process_group(0);
-
-    let mut child = match command.spawn() {
-        Ok(child) => child,
-        Err(error) => {
-            return Ok(TerminalStartResult {
-                ok: false,
-                cwd: folder.to_string_lossy().to_string(),
-                shell: spec.kind.kind_name(),
-                error: Some(error.to_string()),
-            });
-        }
-    };
-
-    let Some(stdin) = child.stdin.take() else {
-        return Err("The shell has no input stream.".to_string());
-    };
-    let stdout = child.stdout.take();
-    let stderr = child.stderr.take();
+    let directory = working_directory(cwd);
+    let spec = pick_shell();
+    let shell_name = spec.cmd.clone();
+    let token = state.token.fetch_add(1, Ordering::SeqCst) + 1;
     let marker = format!("__FLINTQODE_DONE_{}_{}__", std::process::id(), token);
+
+    let pty_system = native_pty_system();
+    let pair = pty_system
+        .openpty(PtySize {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .map_err(|error| error.to_string())?;
+
+    let mut command = CommandBuilder::new(&spec.cmd);
+    for arg in &spec.args {
+        command.arg(arg);
+    }
+    command.cwd(&directory);
+
+    let child = pair
+        .slave
+        .spawn_command(command)
+        .map_err(|error| error.to_string())?;
+
+    let mut reader = pair.master.try_clone_reader().map_err(|error| error.to_string())?;
+    let writer = pair.master.take_writer().map_err(|error| error.to_string())?;
+
+    let session = TerminalSession {
+        master: pair.master,
+        writer,
+        child,
+        marker: marker.clone(),
+        cwd: directory.to_string_lossy().to_string(),
+        shell: shell_name.clone(),
+    };
+
+    let app_clone = app.clone();
+    let marker_clone = marker.clone();
+    let shell_kind = spec.kind_name.clone();
+    std::thread::spawn(move || {
+        let mut buffer = String::new();
+        let mut chunk = [0u8; 4096];
+        loop {
+            match reader.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(count) => {
+                    buffer.push_str(&String::from_utf8_lossy(&chunk[..count]));
+                    // Process complete lines, keeping the trailing partial line.
+                    while let Some(pos) = buffer.find('\n') {
+                        let line = buffer[..=pos].to_string();
+                        buffer = buffer[pos + 1..].to_string();
+                        let trimmed = line.trim();
+                        if trimmed == marker_clone {
+                            emit(&app_clone, "stdout", Some(String::new()), None);
+                        } else {
+                            emit(&app_clone, "stdout", Some(line), None);
+                        }
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+        if !buffer.is_empty() {
+            if buffer.trim() == marker_clone {
+                emit(&app_clone, "stdout", Some(String::new()), None);
+            } else {
+                emit(&app_clone, "stdout", Some(buffer), None);
+            }
+        }
+        let _ = shell_kind;
+        emit(&app_clone, "exit", None, None);
+    });
 
     let result = TerminalStartResult {
         ok: true,
-        cwd: folder.to_string_lossy().to_string(),
-        shell: spec.cmd.clone(),
+        cwd: session.cwd.clone(),
+        shell: session.shell.clone(),
         error: None,
     };
 
-    {
-        let mut guard = state.inner.lock().await;
-        *guard = Some(TerminalSession {
-            child,
-            stdin,
-            kind: spec.kind,
-            eol: spec.eol,
-            marker: marker.clone(),
-            cwd: result.cwd.clone(),
-            shell: result.shell.clone(),
-        });
-    }
-
-    if let Some(stream) = stdout {
-        let handle = app.clone();
-        tokio::spawn(async move {
-            read_stream(handle, stream, true, marker, token).await;
-        });
-    }
-    if let Some(stream) = stderr {
-        let handle = app.clone();
-        tokio::spawn(async move {
-            read_stream(handle, stream, false, String::new(), token).await;
-        });
-    }
-
+    let mut guard = state.inner.lock().await;
+    *guard = Some(session);
     Ok(result)
 }
 
-impl ShellKind {
-    fn kind_name(self) -> String {
-        match self {
-            ShellKind::PowerShell => "powershell".to_string(),
-            ShellKind::Cmd => "cmd".to_string(),
-            ShellKind::Bash => "bash".to_string(),
-        }
-    }
-}
-
-async fn read_stream(
-    app: AppHandle,
-    stream: impl tokio::io::AsyncRead + Unpin,
-    is_stdout: bool,
-    marker: String,
-    token: u64,
-) {
-    let mut lines = BufReader::new(stream).lines();
-    loop {
-        match lines.next_line().await {
-            Ok(Some(line)) => {
-                let clean = clean_text(&line);
-                if is_stdout && !marker.is_empty() && clean.trim() == marker {
-                    emit(
-                        &app,
-                        TerminalEvent {
-                            kind: "stdout".to_string(),
-                            text: Some(String::new()),
-                            code: None,
-                        },
-                    );
-                    continue;
-                }
-                emit(
-                    &app,
-                    TerminalEvent {
-                        kind: if is_stdout { "stdout" } else { "stderr" }.to_string(),
-                        text: Some(format!("{clean}\n")),
-                        code: None,
-                    },
-                );
-            }
-            _ => break,
-        }
-    }
-    if is_stdout {
-        // The token is not used by the renderer; it is kept in the signature
-        // so that a future pty implementation can ignore stale streams.
-        let _ = token;
-        emit(
-            &app,
-            TerminalEvent {
-                kind: "exit".to_string(),
-                text: None,
-                code: None,
-            },
-        );
-    }
-}
-
 #[tauri::command]
-pub async fn terminal_write(state: State<'_, TerminalState>, text: String) -> Result<bool, String> {
+pub async fn terminal_write(
+    state: State<'_, TerminalState>,
+    text: String,
+) -> Result<bool, String> {
     let mut guard = state.inner.lock().await;
     let Some(session) = guard.as_mut() else {
         return Ok(false);
     };
-    let payload = text.replace("\r\n", "\n").replace('\r', "");
-    for line in payload.split('\n') {
-        session
-            .stdin
-            .write_all(line.as_bytes())
-            .await
-            .map_err(|error| error.to_string())?;
-        session
-            .stdin
-            .write_all(session.eol.as_bytes())
-            .await
-            .map_err(|error| error.to_string())?;
+    let mut payload = text.replace("\r\n", "\n").replace('\n', "\r\n");
+    if !payload.ends_with("\r\n") {
+        payload.push_str("\r\n");
     }
-    let marker = session.kind.marker_command(&session.marker);
+    // Append a marker so the renderer learns when the command has finished.
+    let marker_cmd = marker_command(&session.shell, &session.marker);
+    // The shell name stored is the program path, not the kind. Infer from it.
+    let marker_line = if session.shell.contains("powershell") || session.shell.contains("pwsh") {
+        format!("Write-Output \"{}\"\r\n", session.marker)
+    } else {
+        format!("echo {}\r\n", session.marker)
+    };
+    let _ = marker_cmd;
     session
-        .stdin
-        .write_all(marker.as_bytes())
-        .await
+        .writer
+        .write_all(payload.as_bytes())
         .map_err(|error| error.to_string())?;
     session
-        .stdin
-        .write_all(session.eol.as_bytes())
-        .await
+        .writer
+        .write_all(marker_line.as_bytes())
         .map_err(|error| error.to_string())?;
     session
-        .stdin
+        .writer
         .flush()
-        .await
         .map_err(|error| error.to_string())?;
     Ok(true)
 }
@@ -369,22 +250,9 @@ pub async fn terminal_interrupt(
     let Some(session) = guard.as_mut() else {
         return Ok(false);
     };
-    #[cfg(unix)]
-    {
-        let _ = crate::process::interrupt_process_tree(&mut session.child, libc::SIGINT).await;
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = session.stdin.write_all(b"\x03\n").await;
-    }
-    emit(
-        &app,
-        TerminalEvent {
-            kind: "stdout".to_string(),
-            text: Some(String::new()),
-            code: None,
-        },
-    );
+    let _ = session.writer.write_all(b"\x03");
+    let _ = session.writer.flush();
+    emit(&app, "stdout", Some(String::new()), None);
     Ok(true)
 }
 
@@ -395,27 +263,34 @@ pub async fn terminal_stop(
 ) -> Result<bool, String> {
     let mut guard = state.inner.lock().await;
     if let Some(mut session) = guard.take() {
-        kill_session(&mut session).await;
-        emit(
-            &app,
-            TerminalEvent {
-                kind: "exit".to_string(),
-                text: None,
-                code: None,
-            },
-        );
+        let _ = session.child.kill();
+        emit(&app, "exit", None, None);
     }
     Ok(true)
 }
 
 #[tauri::command]
-pub fn terminal_resize(_cols: u32, _rows: u32) -> bool {
-    // A pipe has no size.
-    true
+pub async fn terminal_resize(
+    state: State<'_, TerminalState>,
+    cols: u32,
+    rows: u32,
+) -> Result<bool, String> {
+    let guard = state.inner.lock().await;
+    if let Some(session) = guard.as_ref() {
+        session
+            .master
+            .resize(PtySize {
+                rows: rows as u16,
+                cols: cols as u16,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .map_err(|error| error.to_string())?;
+        return Ok(true);
+    }
+    Ok(false)
 }
 
-/// The folder the shell runs in (kept public for the tests and for a future
-/// "open terminal here" command).
 #[allow(dead_code)]
 pub fn working_directory(cwd: Option<String>) -> PathBuf {
     cwd.map(PathBuf::from)

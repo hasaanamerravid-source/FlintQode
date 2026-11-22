@@ -25,6 +25,7 @@ regex = "1"
 rayon = "1"
 encoding_rs = "0.8"
 notify = "7"
+portable-pty = "0.8"
 url = "2"
 
 [target.'cfg(unix)'.dependencies]
