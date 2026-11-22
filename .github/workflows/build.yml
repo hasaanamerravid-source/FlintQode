@@ -50,6 +50,9 @@ jobs:
       - name: Sync version
         run: node scripts/sync-version.mjs
 
+      - name: Generate icons
+        run: npm run icons
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -64,9 +67,6 @@ jobs:
       - name: Rust tests
         working-directory: src-tauri
         run: cargo test --locked
-
-      - name: Generate icons
-        run: npm run icons
 
       - name: Build and release
         uses: tauri-apps/tauri-action@v0
