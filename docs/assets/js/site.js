@@ -120,33 +120,7 @@ function useLatestRelease() {
     });
 }
 
-function showBuildNumber() {
-  if (typeof fetch !== 'function') return;
-  Promise.all([
-    fetch(`${RAW_ROOT}/BUILD`).then((response) => (response.ok ? response.text() : '')),
-    fetch(`${RAW_ROOT}/VERSION`).then((response) => (response.ok ? response.text() : '')),
-  ])
-    .then(([build, version]) => {
-      const number = build.trim();
-      const release = version.trim();
-      if (/^\d+$/.test(number)) {
-        document.querySelectorAll('[data-release-build]').forEach((element) => {
-          element.textContent = `build ${number}`;
-        });
-      }
-      if (/^\d+\.\d+\.\d+$/.test(release)) {
-        document.querySelectorAll('[data-release-version]').forEach((element) => {
-          element.textContent = `v${release}`;
-        });
-      }
-    })
-    .catch(() => {
-      /* the static version and build stay visible */
-    });
-}
-
 useLatestRelease();
-showBuildNumber();
 
 /* ------------------------------------------------------------------ *
  * FAQ accordion
