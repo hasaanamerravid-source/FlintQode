@@ -38,6 +38,7 @@ import type {
   SearchRequest,
   SearchResult,
   TerminalEvent,
+  TerminalListItem,
   TerminalStartResult,
 } from '@shared/api'
 
@@ -322,10 +323,16 @@ export function createApi(): FlintQodeApi {
 
     terminal: {
       start: (cwd?: string) => call<TerminalStartResult>('terminal_start', { cwd: cwd ?? null }),
-      write: (text: string) => call<unknown>('terminal_write', { text }),
-      interrupt: () => call<unknown>('terminal_interrupt'),
-      stop: () => call<unknown>('terminal_stop'),
-      resize: (cols: number, rows: number) => call<unknown>('terminal_resize', { cols, rows }),
+      create: (cwd?: string, label?: string) =>
+        call<TerminalStartResult>('terminal_new', { cwd: cwd ?? null, label: label ?? null }),
+      write: (sessionId: string, text: string) => call<boolean>('terminal_write', { sessionId, text }),
+      interrupt: (sessionId: string) => call<boolean>('terminal_interrupt', { sessionId }),
+      stop: (sessionId: string) => call<boolean>('terminal_stop', { sessionId }),
+      close: (sessionId: string) => call<boolean>('terminal_close', { sessionId }),
+      list: () => call<TerminalListItem[]>('terminal_list'),
+      active: () => call<string>('terminal_active'),
+      resize: (sessionId: string, cols: number, rows: number) =>
+        call<boolean>('terminal_resize', { sessionId, cols, rows }),
       onOutput: (cb: (event: TerminalEvent) => void) => subscribe<TerminalEvent>('terminal:output', cb),
     },
 

@@ -191,6 +191,10 @@ export interface Settings {
   tabSize: number
   insertSpaces: boolean
   lineWrapping: boolean
+  /** Insert text past the end of the last line (like VS Code "scroll past end"). */
+  scrollPastEnd: boolean
+  /** Type in overwrite mode: new characters replace existing ones. */
+  overwriteMode: boolean
   showLineNumbers: boolean
   showInvisibles: boolean
   showMinimap: boolean
@@ -212,6 +216,8 @@ export interface Settings {
   sidebarWidth: number
   recentFiles: string[]
   plugins: string[]
+  /** Right-to-left text direction for the editor and panels. */
+  direction: 'ltr' | 'rtl'
 }
 
 /** Command executed from the palette, menu or keyboard map. */

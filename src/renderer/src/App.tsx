@@ -86,12 +86,13 @@ export default function App(): JSX.Element {
   useLspSync()
   useLspConfiguration()
 
-  // The shell starts as soon as the terminal is opened.
+  // A shell starts as soon as the terminal tab is opened.
   useEffect(() => {
     if (bottomTab !== 'terminal') return
     void import('./core/terminalState').then(({ useTerminalStore }) => {
       const terminal = useTerminalStore.getState()
-      if (!terminal.running) terminal.start(workspaceRoot ?? projectFolder() ?? undefined)
+      const active = terminal.getActive()
+      if (!active) void terminal.start(workspaceRoot ?? projectFolder() ?? undefined)
     })
   }, [bottomTab, workspaceRoot])
   const statusSet = useStatusStore((s) => s.set)
@@ -143,6 +144,7 @@ export default function App(): JSX.Element {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
       const theme = settings.theme === 'system' ? (prefersDark ? 'dark' : 'light') : settings.theme
       root.setAttribute('data-theme', theme)
+      root.setAttribute('data-direction', settings.direction)
       window.api.win.setTheme(theme === 'dark' ? '#1e1e28' : '#f6f8fa')
     }
     apply()
@@ -317,6 +319,8 @@ export default function App(): JSX.Element {
   useEffect(() => {
     const persist = (): void => {
       void useAppStore.getState().persistSession()
+      // The crash trail keeps unsaved buffers across a crash or exit.
+      void useAppStore.getState().saveCrashTrail()
       // Settings are normally auto-saved by the dialog, but a change made by a
       // command or a plugin may land here directly.
       void useAppStore.getState().saveSettings()
@@ -335,7 +339,7 @@ export default function App(): JSX.Element {
     if (!interval) return
     const timer = window.setInterval(() => {
       void useAppStore.getState().saveAll()
-    }, interval * 1000)
+    }, interval * 60_000)
     return () => window.clearInterval(timer)
   }, [settings.autosaveInterval])
 

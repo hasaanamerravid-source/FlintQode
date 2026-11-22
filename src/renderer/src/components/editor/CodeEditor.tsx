@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { useEffect, useRef } from 'react'
-import { EditorState, Compartment, type Extension } from '@codemirror/state'
+import { EditorState, EditorSelection, Compartment, type Extension } from '@codemirror/state'
 import {
   EditorView,
   keymap,
@@ -13,6 +13,7 @@ import {
   highlightSpecialChars,
   dropCursor,
   placeholder as cmPlaceholder,
+  scrollPastEnd,
 } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab, standardKeymap, undo, redo } from '@codemirror/commands'
 import {
@@ -287,9 +288,39 @@ const gutterCompartment = new Compartment()
 const guideCompartment = new Compartment()
 const invisiblesCompartment = new Compartment()
 const behaviourCompartment = new Compartment()
+const overwriteCompartment = new Compartment()
+const scrollPastEndCompartment = new Compartment()
 
 /** Guards the split-view state synchronisation against infinite recursion. */
 let forwarding = false
+
+/** Keymap for overwrite mode: printable characters replace the character at
+ *  the cursor instead of being inserted before it. */
+function overwriteKeymap(settings: { overwriteMode: boolean }): Extension {
+  if (!settings.overwriteMode) return []
+  return EditorView.domEventHandlers({
+    keydown: (event: KeyboardEvent, view: EditorView): boolean => {
+      const { key } = event
+      if (!key || key.length !== 1) return false
+      const code = key.charCodeAt(0)
+      // Printable range; skip control and modifier keys.
+      if (code < 32 || code === 127) return false
+      if (event.ctrlKey || event.metaKey || event.altKey) return false
+      const { state, dispatch } = view
+      const main = state.selection.main
+      if (!main.empty) return false
+      const pos = main.head
+      const line = state.doc.lineAt(pos)
+      // Nothing to overwrite at the end of the line: fall back to insert.
+      if (pos >= line.to) return false
+      dispatch({
+        changes: { from: pos, to: pos + 1, insert: key },
+        selection: EditorSelection.cursor(pos + key.length, pos + key.length),
+      })
+      return true
+    },
+  })
+}
 
 export function CodeEditor({ tab, onReady, onContentChange, onViewReady, syncGroup }: CodeEditorProps): JSX.Element {
   const hostRef = useRef<HTMLDivElement | null>(null)
@@ -360,6 +391,8 @@ export function CodeEditor({ tab, onReady, onContentChange, onViewReady, syncGro
         ]),
         themeCompartment.of(buildTheme(settingsNow)),
         editCompartment.of([EditorState.tabSize.of(settingsNow.tabSize), EditorState.readOnly.of(tab.readonly)]),
+        overwriteCompartment.of(settingsNow.overwriteMode ? overwriteKeymap(settingsNow) : []),
+        scrollPastEndCompartment.of(settingsNow.scrollPastEnd ? scrollPastEnd() : []),
         syntaxHighlighting(resolveTheme(settingsNow.syntaxTheme).style),
         highlightAllExtension(),
         bookmarkExtension(),
@@ -621,6 +654,8 @@ export function CodeEditor({ tab, onReady, onContentChange, onViewReady, syncGro
           indentUnit.of(settings.insertSpaces ? ' '.repeat(settings.tabSize) : '\t'),
           EditorState.readOnly.of(tab.readonly),
         ]),
+        overwriteCompartment.reconfigure(settings.overwriteMode ? overwriteKeymap(settings) : []),
+        scrollPastEndCompartment.reconfigure(settings.scrollPastEnd ? scrollPastEnd() : []),
       ],
     })
   }, [settings, tab.readonly])

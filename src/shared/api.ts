@@ -29,16 +29,33 @@ export interface RunEvent {
 /** One event of the integrated shell. */
 export interface TerminalEvent {
   type: 'stdout' | 'stderr' | 'exit' | 'error'
+  sessionId: string
   text?: string
   code?: number
 }
 
-/** The answer of `terminal.start`. */
+/** One line of the integrated shell log. */
+export interface TerminalLine {
+  type: 'input' | 'stdout' | 'stderr' | 'system'
+  text: string
+}
+
+/** The answer of `terminal.start` / `terminal.new`. */
 export interface TerminalStartResult {
+  id: string
   ok: boolean
   cwd: string
   shell: string
+  label: string
   error?: string
+}
+
+/** A terminal tab entry of `terminal.list`. */
+export interface TerminalListItem {
+  id: string
+  label: string
+  cwd: string
+  shell: string
 }
 
 /** A hit of the project wide search. */
@@ -184,11 +201,17 @@ export interface FlintQodeApi {
   }
 
   terminal: {
+    /** Start (or restart) the primary shell; used by the legacy callers. */
     start(cwd?: string): Promise<TerminalStartResult>
-    write(text: string): Promise<unknown>
-    interrupt(): Promise<unknown>
-    stop(): Promise<unknown>
-    resize(cols: number, rows: number): Promise<unknown>
+    /** Open a new terminal tab, optionally in a folder. */
+    create(cwd?: string, label?: string): Promise<TerminalStartResult>
+    write(sessionId: string, text: string): Promise<boolean>
+    interrupt(sessionId: string): Promise<boolean>
+    stop(sessionId: string): Promise<boolean>
+    close(sessionId: string): Promise<boolean>
+    list(): Promise<TerminalListItem[]>
+    active(): Promise<string>
+    resize(sessionId: string, cols: number, rows: number): Promise<boolean>
     onOutput(cb: (event: TerminalEvent) => void): () => void
   }
 

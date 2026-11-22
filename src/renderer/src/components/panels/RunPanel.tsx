@@ -6,6 +6,8 @@ import { useEffect, useRef } from 'react'
 import type { JSX } from 'react'
 import { useRunStore } from '@/core/runState'
 import { useT } from '../../core/i18n'
+import { getEditor } from '../../core/editors'
+import { useAppStore } from '../../store/app'
 
 export interface RunPanelProps {
   /** Start a run (the active file is used when this is not given). */
@@ -55,6 +57,40 @@ export function RunPanel({ onRun, onStop }: RunPanelProps): JSX.Element {
 
   const status = !running && exitCode !== null ? t('panel.runExited', { code: exitCode }) : ''
 
+  /** Jump to `file:line:col` / `file(line, col)` patterns, the way VS Code does. */
+  const jumpToMatch = (text: string): void => {
+    const state = useAppStore.getState()
+    const tab = state.tabs.find((t) => t.id === state.activeTabId)
+    const activeName = tab?.name ?? ''
+    // Match "file.ts:12:7", "file.py:12", "file.js(12, 7)", "path/file.java:3".
+    const match = text.match(/([^\s:]+\.[A-Za-z0-9_+-]+)(?::(\d+)(?::(\d+))?|\(\s*(\d+)\s*,\s*(\d+)\s*\))?/)
+    if (!match) return
+    const fileName = match[1].split(/[\\/]/).pop() ?? match[1]
+    const line = Number(match[2] ?? match[4] ?? 1) || 1
+    const col = Number(match[3] ?? match[5] ?? 1) || 1
+    const editor = getEditor(tab?.id ?? '')
+    if (!editor) return
+    // If the error is about the active file, jump directly.
+    if (fileName === activeName) {
+      editor.goToLine(line)
+      return
+    }
+    // Otherwise open the referenced file if it exists and jump to the line.
+    void window.api.fs
+      .exists(match[1])
+      .then(async (exists) => {
+        if (exists) await state.openPath(match[1])
+      })
+      .then(() => {
+        const newTab = useAppStore.getState().tabs.find((t) => t.name === fileName && t.id !== tab?.id)
+        if (newTab) getEditor(newTab.id)?.goToLine(line)
+      })
+      .catch(() => {
+        // Fall back to the active file at the parsed line.
+        editor.goToLine(line)
+      })
+  }
+
   return (
     <div className="panel run-panel">
       <div className="panel-header">
@@ -96,6 +132,7 @@ export function RunPanel({ onRun, onStop }: RunPanelProps): JSX.Element {
               <div
                 className={`run-line run-line-${line.type}`}
                 key={`${index}-${line.type}`}
+                title={t('panel.runClickJump')}
                 style={{
                   color:
                     line.type === 'stderr'
@@ -103,7 +140,9 @@ export function RunPanel({ onRun, onStop }: RunPanelProps): JSX.Element {
                       : line.type === 'system'
                         ? 'var(--fg-muted)'
                         : 'var(--fg-dim)',
+                  cursor: 'pointer',
                 }}
+                onClick={() => jumpToMatch(line.text)}
               >
                 {line.text}
               </div>

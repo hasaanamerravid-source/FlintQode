@@ -1,82 +1,77 @@
 /**
- * Terminal state: the output of the persistent shell.
+ * Terminal state: the interactive shells.
  *
- * The main process owns the shell, the renderer only asks it to start, to
- * write a command or to interrupt it and listens for the streamed output.
- *
- * Expected preload shape (the preload owner adds this binding):
- *
- *   terminal: {
- *     start(cwd?: string): Promise<unknown>
- *     write(text: string): Promise<unknown>
- *     interrupt(): Promise<unknown>
- *     stop(): Promise<unknown>
- *     resize(cols: number, rows: number): Promise<unknown>
- *     onOutput(cb: (event: TerminalEvent) => void): () => void
- *   }
- *
- * The binding does not exist in every build, so every call is guarded and the
- * module stays usable (and importable) without a browser window.
- *
- * The main process sends an empty stdout line when the shell has finished the
- * command (that is how the panel knows that the shell is ready again).
+ * The main process owns one PTY per tab. The renderer keeps one session per
+ * terminal tab and can switch between them, exactly like VS Code's shell tabs.
  */
 
 import { create } from 'zustand'
+import type { TerminalEvent, TerminalLine, TerminalListItem, TerminalStartResult } from '@shared/api'
 
-/** The events the main process sends for the terminal. */
-export interface TerminalEvent {
-  type: 'stdout' | 'stderr' | 'exit' | 'error'
-  text?: string
-  code?: number
-}
+export type { TerminalLine, TerminalStartResult }
 
-export interface TerminalLine {
-  type: 'input' | 'stdout' | 'stderr' | 'system'
-  text: string
-}
+/** The events the main process sends for a session. */
+export type TerminalEventLocal = Omit<TerminalEvent, 'sessionId'>
 
-export interface TerminalState {
-  running: boolean
+export interface TerminalSession {
+  id: string
+  label: string
   cwd: string
+  shell: string
+  running: boolean
+  busy: boolean
   lines: TerminalLine[]
   history: string[]
   historyIndex: number
-  /** True while a command is running (the shell did not answer yet). */
-  busy: boolean
-  /** Start (or restart) the shell. */
-  start: (cwd?: string) => void
+}
+
+export interface TerminalState {
+  sessions: TerminalSession[]
+  activeId: string | null
+  /** Start the first session (the tab bar shows it). */
+  start: (cwd?: string) => Promise<TerminalStartResult | null>
+  /** Create a new terminal tab. */
+  create: (cwd?: string, label?: string) => Promise<TerminalStartResult | null>
+  /** The active session. */
+  getActive: () => TerminalSession | undefined
+  /** Switch the active session. */
+  switch: (id: string) => void
+  /** Close a session. */
+  close: (id: string) => void
   /** Run a command. */
-  write: (command: string) => void
+  write: (sessionId: string, command: string) => void
   /** Stop the command that is running (Ctrl+C). */
-  interrupt: () => void
-  /** Stop the shell. */
-  stop: () => void
-  /** Clear the output. */
-  clear: () => void
-  /** Walk back in the history (ArrowUp), null when there is nothing. */
-  historyPrev: () => string | null
-  /** Walk forward in the history (ArrowDown), null when there is nothing. */
-  historyNext: () => string | null
+  interrupt: (sessionId: string) => void
+  /** Stop a session (the shell). */
+  stop: (sessionId: string) => void
+  /** Clear the output of a session. */
+  clear: (sessionId: string) => void
+  /** Walk back in the history of a session. */
+  historyPrev: (sessionId: string) => string | null
+  /** Walk forward in the history of a session. */
+  historyNext: (sessionId: string) => string | null
+  /** List the backend sessions. */
+  list: () => void
 }
 
 /** The oldest lines are dropped when the log grows too long. */
 export const MAX_TERMINAL_LINES = 2000
-
-/** The number of commands the history keeps. */
 export const MAX_TERMINAL_HISTORY = 100
 
 /** The bridge to the main process (it may be missing in an old build). */
 interface TerminalBridge {
-  start?: (cwd?: string) => Promise<unknown> | unknown
-  write?: (text: string) => Promise<unknown> | unknown
-  interrupt?: () => Promise<unknown> | unknown
-  stop?: () => Promise<unknown> | unknown
-  resize?: (cols: number, rows: number) => Promise<unknown> | unknown
+  start?: (cwd?: string) => Promise<TerminalStartResult | null> | unknown
+  create?: (cwd?: string, label?: string) => Promise<TerminalStartResult | null> | unknown
+  write?: (sessionId: string, text: string) => Promise<unknown> | unknown
+  interrupt?: (sessionId: string) => Promise<unknown> | unknown
+  stop?: (sessionId: string) => Promise<unknown> | unknown
+  close?: (sessionId: string) => Promise<unknown> | unknown
+  list?: () => Promise<TerminalListItem[] | null> | unknown
+  active?: () => Promise<string | null> | unknown
+  resize?: (sessionId: string, cols: number, rows: number) => Promise<unknown> | unknown
   onOutput?: (cb: (event: TerminalEvent) => void) => (() => void) | void
 }
 
-/** The bridge, if the preload exposes it. */
 function terminalBridge(): TerminalBridge | undefined {
   if (typeof window === 'undefined') return undefined
   try {
@@ -87,82 +82,48 @@ function terminalBridge(): TerminalBridge | undefined {
   }
 }
 
-/** The folder the main process really used (it may fall back to the home). */
-function readCwd(value: unknown): string | null {
-  if (!value || typeof value !== 'object') return null
-  const cwd = (value as { cwd?: unknown }).cwd
-  return typeof cwd === 'string' && cwd.trim() ? cwd : null
-}
-
-/** The error message of a rejected bridge call. */
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-/** Split a piece of output into lines (the last empty part is dropped). */
-function toLines(text: string): string[] {
+function toLines(text: string): TerminalLine[] {
   const parts = text.split('\n')
   if (parts.length > 0 && parts[parts.length - 1] === '') parts.pop()
-  return parts.map((part) => (part.endsWith('\r') ? part.slice(0, -1) : part))
+  return parts.map((part) => ({ type: 'stdout' as const, text: part.endsWith('\r') ? part.slice(0, -1) : part }))
 }
 
-/** Append lines to the log and drop the oldest ones. */
 function append(lines: TerminalLine[], fresh: TerminalLine[]): TerminalLine[] {
   if (fresh.length === 0) return lines
   const next = lines.concat(fresh)
   return next.length > MAX_TERMINAL_LINES ? next.slice(next.length - MAX_TERMINAL_LINES) : next
 }
 
-/** A system line is always appended at the end. */
 function appendSystem(lines: TerminalLine[], text: string): TerminalLine[] {
   return append(lines, [{ type: 'system', text }])
 }
 
-/** Handle one event of the main process. */
-function handleEvent(event: TerminalEvent): void {
-  if (!event || typeof event.type !== 'string') return
-  switch (event.type) {
-    case 'stdout':
-      useTerminalStore.setState((s) => {
-        const text = event.text ?? ''
-        // An empty line means: the shell has finished the command.
-        if (!text) return { busy: false }
-        return {
-          lines: append(
-            s.lines,
-            toLines(text).map((line) => ({ type: 'stdout' as const, text: line })),
-          ),
-        }
-      })
-      break
-    case 'stderr':
-      useTerminalStore.setState((s) => ({
-        lines: append(
-          s.lines,
-          toLines(event.text ?? '').map((text) => ({ type: 'stderr' as const, text })),
-        ),
-      }))
-      break
-    case 'error':
-      useTerminalStore.setState((s) => ({
-        running: false,
-        busy: false,
-        lines: appendSystem(s.lines, event.text ?? 'The shell failed.'),
-      }))
-      break
-    case 'exit':
-      useTerminalStore.setState((s) => ({
-        running: false,
-        busy: false,
-        lines: appendSystem(s.lines, 'The shell stopped.'),
-      }))
-      break
-    default:
-      break
+function upsertSession(state: TerminalState, id: string, patch: Partial<TerminalSession>): void {
+  const session = state.sessions.find((entry) => entry.id === id)
+  if (session) {
+    Object.assign(session, patch)
+    return
   }
+  const next: TerminalSession = {
+    id,
+    label: patch.label ?? id,
+    cwd: patch.cwd ?? '',
+    shell: patch.shell ?? '',
+    running: patch.running ?? false,
+    busy: patch.busy ?? false,
+    lines: patch.lines ?? [],
+    history: patch.history ?? [],
+    historyIndex: patch.historyIndex ?? -1,
+  }
+  state.sessions.push(next)
 }
 
 let dispose: (() => void) | null = null
+let listingTimer: number | null = null
 
 /** Listen to the output events of the main process (only once). */
 function subscribe(): void {
@@ -170,155 +131,271 @@ function subscribe(): void {
   const onOutput = terminalBridge()?.onOutput
   if (typeof onOutput !== 'function') return
   try {
-    const stop = onOutput(handleEvent)
+    const stop = onOutput((event) => {
+      useTerminalStore.setState((state) => {
+        const session = state.sessions.find((entry) => entry.id === event.sessionId)
+        if (session) {
+          if (event.type === 'stdout') {
+            session.lines = append(
+              session.lines,
+              event.text ? toLines(event.text).map((line) => ({ ...line, type: line.type as 'stdout' })) : [],
+            )
+            if (!event.text) session.busy = false
+          } else if (event.type === 'stderr') {
+            session.lines = append(
+              session.lines,
+              toLines(event.text ?? '').map((line) => ({ ...line, type: 'stderr' as const })),
+            )
+          } else if (event.type === 'exit') {
+            session.running = false
+            session.busy = false
+            session.lines = appendSystem(session.lines, 'The shell stopped.')
+          } else if (event.type === 'error') {
+            session.running = false
+            session.busy = false
+            session.lines = appendSystem(session.lines, event.text ?? 'The shell failed.')
+          }
+          if (state.activeId === event.sessionId && event.type === 'stdout' && !event.text) {
+            return { sessions: state.sessions }
+          }
+          return { sessions: state.sessions.map((s) => (s.id === event.sessionId ? session : s)) }
+        }
+        return state
+      })
+    })
     dispose = typeof stop === 'function' ? stop : () => undefined
   } catch {
     dispose = null
   }
 }
 
+/** Ask the main process which sessions exist and pick a new active one. */
+function resyncFromMain(state: TerminalState): void {
+  const bridge = terminalBridge()
+  if (typeof bridge?.list !== 'function') return
+  void Promise.resolve(bridge.list())
+    .then((list) => {
+      if (!Array.isArray(list)) return
+      useTerminalStore.setState((s) => {
+        const sessions = s.sessions.map((session) => {
+          const item = list.find((entry) => entry.id === session.id)
+          return item ? { ...session, cwd: item.cwd, shell: item.shell, label: item.label } : session
+        })
+        return { sessions }
+      })
+    })
+    .catch(() => undefined)
+}
+
 export const useTerminalStore = create<TerminalState>((set, get) => ({
-  running: false,
-  cwd: '',
-  lines: [],
-  history: [],
-  historyIndex: -1,
-  busy: false,
+  sessions: [],
+  activeId: null,
 
-  start: (cwd) => {
-    const folder = (cwd ?? '').trim()
-    set((s) => ({
-      running: true,
-      busy: false,
-      cwd: folder || s.cwd,
-      historyIndex: -1,
-      lines: appendSystem(s.lines, folder ? `Shell started in ${folder}` : 'Shell started'),
-    }))
-    subscribe()
+  getActive: () => get().sessions.find((s) => s.id === get().activeId),
+
+  create: async (cwd, label) => {
     const bridge = terminalBridge()
-    if (typeof bridge?.start !== 'function') {
-      set((s) => ({
-        running: false,
-        lines: appendSystem(s.lines, 'The terminal bridge is not available in this build.'),
-      }))
-      return
+    if (typeof bridge?.create !== 'function') return null
+    const result = await Promise.resolve(bridge.create?.(cwd, label) ?? null).catch(() => null)
+    const info = result as TerminalStartResult | null
+    if (info) {
+      set((s) => {
+        const session: TerminalSession = {
+          id: info.id,
+          label: info.label,
+          cwd: info.cwd,
+          shell: info.shell,
+          running: true,
+          busy: false,
+          lines: appendSystem([], info.cwd ? `Shell started in ${info.cwd}` : 'Shell started'),
+          history: [],
+          historyIndex: -1,
+        }
+        return { sessions: [...s.sessions, session], activeId: info.id }
+      })
     }
-    try {
-      void Promise.resolve(bridge.start(folder || undefined))
-        .then((value) => {
-          // The main process may use another folder (the home directory).
-          const actual = readCwd(value)
-          if (actual) set({ cwd: actual })
-        })
-        .catch((error: unknown) => {
-          set((s) => ({
-            running: false,
-            lines: appendSystem(s.lines, `Could not start the shell: ${errorMessage(error)}`),
-          }))
-        })
-    } catch (error) {
-      set((s) => ({
-        running: false,
-        lines: appendSystem(s.lines, `Could not start the shell: ${errorMessage(error)}`),
-      }))
-    }
+    return info
   },
 
-  write: (command) => {
+  start: async (cwd) => {
+    const bridge = terminalBridge()
+    if (typeof bridge?.start !== 'function') return null
+    // Prefer the multiple-tab API when available; fall back to `terminal_start`.
+    const useNew = typeof bridge.create === 'function'
+    const call = useNew ? () => bridge.create?.(cwd, undefined) : () => bridge.start?.(cwd)
+    const result = await Promise.resolve(call()).catch(() => null)
+    const info = (result ?? null) as TerminalStartResult | null
+    if (!info) return null
+    const id = info.id
+    set((s) => {
+      const sessions = s.sessions.map((session) =>
+        session.id === id
+          ? {
+              ...session,
+              label: info.label,
+              cwd: info.cwd,
+              shell: info.shell,
+              running: true,
+              lines: appendSystem(session.lines, info.cwd ? `Shell started in ${info.cwd}` : 'Shell started'),
+            }
+          : session,
+      )
+      const seen = sessions.some((session) => session.id === id)
+      return {
+        sessions: seen
+          ? sessions
+          : [
+              ...sessions,
+              {
+                id,
+                label: info.label,
+                cwd: info.cwd,
+                shell: info.shell,
+                running: true,
+                busy: false,
+                lines: appendSystem([], info.cwd ? `Shell started in ${info.cwd}` : 'Shell started'),
+                history: [],
+                historyIndex: -1,
+              },
+            ],
+        activeId: id,
+      }
+    })
+    return info
+  },
+
+  switch: (id) => {
+    set((s) => (s.sessions.some((session) => session.id === id) ? { activeId: id } : s))
+    const bridge = terminalBridge()
+    if (typeof bridge?.active === 'function') void Promise.resolve(bridge.active()).catch(() => undefined)
+  },
+
+  close: (id) => {
+    const bridge = terminalBridge()
+    if (typeof bridge?.close === 'function') void Promise.resolve(bridge.close(id)).catch(() => undefined)
+    set((s) => {
+      const sessions = s.sessions.filter((session) => session.id !== id)
+      const activeId = s.activeId === id ? (sessions[0]?.id ?? null) : s.activeId
+      return { sessions, activeId }
+    })
+  },
+
+  write: (sessionId, command) => {
     if (!command.trim()) return
-    set((s) => ({
-      lines: append(s.lines, [{ type: 'input', text: command }]),
-      // The history keeps the commands in the order they were typed, so that
-      // ArrowUp can walk through it backwards.
-      history: s.history.concat(command).slice(-MAX_TERMINAL_HISTORY),
-      historyIndex: -1,
-      busy: true,
-    }))
+    const session = get().sessions.find((entry) => entry.id === sessionId)
+    set((s) => {
+      const session = s.sessions.find((entry) => entry.id === sessionId)
+      if (!session) return s
+      const lines = append(session.lines, [{ type: 'input', text: command }])
+      const history = session.history.concat(command).slice(-MAX_TERMINAL_HISTORY)
+      return {
+        sessions: s.sessions.map((entry) =>
+          entry.id === sessionId ? { ...entry, lines, history, historyIndex: -1, busy: true } : entry,
+        ),
+      }
+    })
     const bridge = terminalBridge()
-    if (typeof bridge?.write !== 'function') {
-      set((s) => ({
-        lines: appendSystem(s.lines, 'The terminal bridge is not available in this build.'),
-      }))
-      return
-    }
+    if (typeof bridge?.write !== 'function') return
     try {
-      void Promise.resolve(bridge.write(command))
-        .then((value) => {
-          // The main process says that there is no shell.
-          if (value === false) {
-            set((s) => ({
-              running: false,
-              lines: appendSystem(s.lines, 'The shell is not running.'),
-            }))
-          }
-        })
-        .catch((error: unknown) => {
-          set((s) => ({
-            lines: appendSystem(s.lines, `Could not run the command: ${errorMessage(error)}`),
-          }))
-        })
-    } catch (error) {
-      set((s) => ({
-        lines: appendSystem(s.lines, `Could not run the command: ${errorMessage(error)}`),
-      }))
+      void Promise.resolve(bridge.write(sessionId, command)).catch((error: unknown) => {
+        set((s) => ({
+          sessions: s.sessions.map((entry) =>
+            entry.id === sessionId
+              ? { ...entry, lines: appendSystem(entry.lines, `Could not run the command: ${errorMessage(error)}`) }
+              : entry,
+          ),
+        }))
+      })
+    } catch {
+      /* ignore */
     }
   },
 
-  interrupt: () => {
+  interrupt: (sessionId) => {
     const bridge = terminalBridge()
     if (typeof bridge?.interrupt !== 'function') return
     try {
-      void Promise.resolve(bridge.interrupt()).catch(() => undefined)
+      void Promise.resolve(bridge.interrupt(sessionId)).catch(() => undefined)
     } catch {
       /* the command is killed anyway */
     }
   },
 
-  stop: () => {
+  stop: (sessionId) => {
     const bridge = terminalBridge()
     if (typeof bridge?.stop === 'function') {
       try {
-        void Promise.resolve(bridge.stop()).catch(() => undefined)
+        void Promise.resolve(bridge.stop(sessionId)).catch(() => undefined)
       } catch {
         /* the shell is stopped anyway */
       }
     }
-    set({ running: false, busy: false })
+    set((s) => ({
+      sessions: s.sessions.map((session) =>
+        session.id === sessionId ? { ...session, running: false, busy: false } : session,
+      ),
+    }))
   },
 
-  clear: () => {
-    set({ lines: [] })
+  clear: (sessionId) => {
+    set((s) => ({
+      sessions: s.sessions.map((session) => (session.id === sessionId ? { ...session, lines: [] } : session)),
+    }))
   },
 
-  historyPrev: () => {
+  historyPrev: (sessionId) => {
     const state = get()
-    if (state.history.length === 0) return null
-    const index = state.historyIndex < 0 ? state.history.length - 1 : Math.max(0, state.historyIndex - 1)
-    set({ historyIndex: index })
-    return state.history[index]
+    const session = state.sessions.find((entry) => entry.id === sessionId)
+    if (!session || session.history.length === 0) return null
+    const index = session.historyIndex < 0 ? session.history.length - 1 : Math.max(0, session.historyIndex - 1)
+    set((s) => ({
+      sessions: s.sessions.map((entry) => (entry.id === sessionId ? { ...entry, historyIndex: index } : entry)),
+    }))
+    return session.history[index]
   },
 
-  historyNext: () => {
+  historyNext: (sessionId) => {
     const state = get()
-    if (state.historyIndex < 0) return null
-    const index = state.historyIndex + 1
-    if (index >= state.history.length) {
-      set({ historyIndex: -1 })
+    const session = state.sessions.find((entry) => entry.id === sessionId)
+    if (!session || session.historyIndex < 0) return null
+    const index = session.historyIndex + 1
+    if (index >= session.history.length) {
+      set((s) => ({
+        sessions: s.sessions.map((entry) => (entry.id === sessionId ? { ...entry, historyIndex: -1 } : entry)),
+      }))
       return null
     }
-    set({ historyIndex: index })
-    return state.history[index]
+    set((s) => ({
+      sessions: s.sessions.map((entry) => (entry.id === sessionId ? { ...entry, historyIndex: index } : entry)),
+    }))
+    return session.history[index]
+  },
+
+  list: () => {
+    if (listingTimer) clearInterval(listingTimer)
+    listingTimer = window.setInterval(() => resyncFromMain(get()), 5000)
   },
 }))
 
-// The subscription starts as soon as the module is loaded, so that the output
-// of a shell that was started elsewhere still shows up. Importing the module
-// without a browser (tests, scripts) must not throw.
-if (typeof window !== 'undefined') {
-  subscribe()
+if (typeof window !== 'undefined') subscribe()
+
+// Legacy exports used by older callers.
+/** The primary session's lines (used by compact panels). */
+export function terminalLines(): TerminalLine[] {
+  return useTerminalStore.getState().getActive()?.lines ?? []
 }
 
-/** A snapshot of the terminal state, for the command layer. */
+/** The primary session's cwd. */
+export function terminalCwd(): string {
+  return useTerminalStore.getState().getActive()?.cwd ?? ''
+}
+
+/** The primary session's running flag. */
+export function terminalRunning(): boolean {
+  return useTerminalStore.getState().getActive()?.running ?? false
+}
+
+/** A snapshot of the primary session, for the command layer. */
 export interface TerminalSnapshot {
   running: boolean
   cwd: string
@@ -326,27 +403,35 @@ export interface TerminalSnapshot {
   history: string[]
   historyIndex: number
   busy: boolean
+  id: string
+  label: string
+  shell: string
 }
 
-/** The current terminal state without a React hook. */
 export function terminalState(): TerminalSnapshot {
   const state = useTerminalStore.getState()
+  const active = state.getActive()
   return {
-    running: state.running,
-    cwd: state.cwd,
-    lines: state.lines,
-    history: state.history,
-    historyIndex: state.historyIndex,
-    busy: state.busy,
+    running: active?.running ?? false,
+    cwd: active?.cwd ?? '',
+    lines: active?.lines ?? [],
+    history: active?.history ?? [],
+    historyIndex: active?.historyIndex ?? -1,
+    busy: active?.busy ?? false,
+    id: active?.id ?? '',
+    label: active?.label ?? '',
+    shell: active?.shell ?? '',
   }
 }
 
-/** Start the shell (used by the command layer). */
-export function startTerminal(cwd?: string): void {
-  useTerminalStore.getState().start(cwd)
+/** Start the primary shell (used by the command layer). */
+export function startTerminal(cwd?: string): Promise<TerminalStartResult | null> {
+  return useTerminalStore.getState().start(cwd)
 }
 
-/** Stop the shell (used by the command layer). */
+/** Stop the primary shell (used by the command layer). */
 export function stopTerminal(): void {
-  useTerminalStore.getState().stop()
+  const state = useTerminalStore.getState()
+  const id = state.activeId
+  if (id) state.stop(id)
 }

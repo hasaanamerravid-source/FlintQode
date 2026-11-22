@@ -917,6 +917,41 @@ export function SettingsDialog(): JSX.Element | null {
               onChange={(e) => setSettings({ showLineNumbers: e.target.checked })}
             />
           </Row>
+          <Row label={t('settings.direction')}>
+            <select
+              value={settings.direction}
+              onChange={(e) => setSettings({ direction: e.target.value as 'ltr' | 'rtl' })}
+            >
+              <option value="ltr">LTR</option>
+              <option value="rtl">RTL (Right-to-left)</option>
+            </select>
+          </Row>
+          <Row label={t('settings.overwriteMode')}>
+            <input
+              type="checkbox"
+              checked={settings.overwriteMode}
+              onChange={(e) => setSettings({ overwriteMode: e.target.checked })}
+            />
+          </Row>
+          <Row label={t('settings.scrollPastEnd')}>
+            <input
+              type="checkbox"
+              checked={settings.scrollPastEnd}
+              onChange={(e) => setSettings({ scrollPastEnd: e.target.checked })}
+            />
+          </Row>
+          <Row label={t('settings.autosaveInterval')} hint={t('settings.autosaveIntervalHint')}>
+            <input
+              type="number"
+              min={0}
+              max={120}
+              step={1}
+              value={settings.autosaveInterval}
+              onChange={(e) => setSettings({ autosaveInterval: Math.max(0, Number(e.target.value) || 0) })}
+              style={{ width: 90 }}
+            />
+            <span className="hint">min</span>
+          </Row>
           <Row label={t('settings.showInvisibles')}>
             <input
               type="checkbox"

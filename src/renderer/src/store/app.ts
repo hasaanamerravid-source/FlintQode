@@ -93,11 +93,23 @@ interface AppState {
   dismissToast: (id: number) => void
   setWorkspaceRoot: (root: string | null) => void
   persistSession: () => Promise<void>
+  saveCrashTrail: () => Promise<void>
+  loadCrashTrail: () => Promise<void>
 }
 
 function nextTabId(): string {
   // A UUID keeps ids unique even for very rapid tab creation sequences.
   return `tab-${crypto.randomUUID()}`
+}
+
+interface CrashTrailTab {
+  id: string
+  path: string | null
+  name: string
+  mode: Tab['mode']
+  language: string
+  dirty: boolean
+  content: string
 }
 
 /** File watchers, one per open file, used to detect external changes. */
@@ -476,6 +488,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     }
     set({ ready: true })
+    // Recover unsaved buffers that were saved before a crash or exit.
+    void get().loadCrashTrail()
   },
 
   newTab: (opts) => {
@@ -780,6 +794,49 @@ export const useAppStore = create<AppState>((set, get) => ({
       await window.api.session.save(state)
     } catch {
       /* a failed session write must never break the app */
+    }
+  },
+
+  /** Persist every open tab (with its content) to the session as a crash trail. */
+  saveCrashTrail: async () => {
+    const session = await window.api.session.load()
+    const crashTrail = get().tabs.map((tab) => ({
+      id: tab.id,
+      path: tab.path,
+      name: tab.name,
+      mode: tab.mode,
+      language: tab.language,
+      dirty: tab.dirty,
+      content: tab.content,
+    }))
+    try {
+      await window.api.session.save({ ...session, crashTrail } as SessionState)
+    } catch {
+      /* a failed write just means we lose the trail on crash */
+    }
+  },
+
+  /** Re-open any tabs that exist in the crash trail but not in the session. */
+  loadCrashTrail: async () => {
+    const session = (await window.api.session.load()) as (SessionState & { crashTrail?: CrashTrailTab[] }) | null
+    const trail = session?.crashTrail ?? []
+    for (const entry of trail) {
+      const existing = get().tabs.find((t) => t.path?.toLowerCase() === entry.path?.toLowerCase())
+      if (existing) continue
+      const tab: Tab = {
+        id: nextTabId(),
+        path: entry.path,
+        name: entry.name,
+        mode: entry.mode,
+        language: entry.language,
+        content: entry.content,
+        dirty: entry.dirty,
+        encoding: DEFAULT_SETTINGS.defaultEncoding,
+        eol: DEFAULT_SETTINGS.defaultEol,
+        readonly: false,
+        view: 'source',
+      }
+      set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }))
     }
   },
 }))

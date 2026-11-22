@@ -32,6 +32,8 @@ export const DEFAULT_SETTINGS: Settings = {
   tabSize: 4,
   insertSpaces: true,
   lineWrapping: true,
+  scrollPastEnd: false,
+  overwriteMode: false,
   showLineNumbers: true,
   showInvisibles: false,
   showMinimap: false,
@@ -53,6 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarWidth: 280,
   recentFiles: [],
   plugins: [],
+  direction: 'ltr',
 }
 
 export const ENCODING_LABELS: Record<string, string> = {
