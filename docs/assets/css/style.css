@@ -35,8 +35,8 @@
   --space-6: 4rem;
   --space-8: 6rem;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-display: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Sora', 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Monaco, monospace;
   --max-width: 1000px;
   --header-height: 4.5rem;
@@ -110,50 +110,90 @@ img { max-width: 100%; display: block; }
   position: sticky;
   top: 0;
   z-index: 50;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.66);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  backdrop-filter: blur(20px) saturate(160%);
-  transition: background 0.3s ease, border-color 0.3s ease;
+  padding: 0.75rem var(--space-3);
 }
-[data-theme='dark'] .site-header { background: rgba(11, 13, 20, 0.6); }
+.site-header::before {
+  content: '';
+  position: absolute;
+  inset: 0.5rem var(--space-3);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: 0 10px 40px -20px rgba(15, 23, 42, 0.35);
+  z-index: -1;
+}
+[data-theme='dark'] .site-header::before { background: color-mix(in srgb, var(--surface) 55%, transparent); }
 
 .header-inner {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 0 var(--space-3);
-  min-height: var(--header-height);
-  height: var(--header-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  min-height: 3.25rem;
 }
 @media (max-width: 719px) {
-  .header-inner { height: auto; min-height: 4rem; flex-wrap: wrap; padding: 0.6rem var(--space-2); row-gap: 0; }
+  .header-inner { flex-wrap: wrap; gap: 0.6rem; }
 }
 
 .nav-brand {
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--ink);
-  padding-right: var(--space-3);
-  border-right: 1px solid var(--border);
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 .nav-logo {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px -2px rgba(37, 99, 235, 0.4);
-  transition: transform 0.3s ease;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.5);
+  transition: transform 0.35s cubic-bezier(.2,.8,.2,1);
 }
-.nav-brand:hover .nav-logo { transform: rotate(-6deg) scale(1.05); }
+.nav-brand:hover .nav-logo { transform: rotate(-8deg) scale(1.08); }
 .nav-brand .accent { color: var(--accent); }
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--surface-3) 70%, transparent);
+  padding: 0.3rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.nav-links a {
+  color: var(--ink-soft);
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+.nav-links a:hover,
+.nav-links a.active {
+  color: var(--ink);
+  background: var(--surface);
+  transform: translateY(-1px);
+}
+.theme-btn {
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.55rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.theme-btn:hover { background: var(--surface); transform: rotate(12deg); }
 
 .nav-links {
   display: flex;
@@ -533,4 +573,14 @@ h1, h2, h3, .cta h2 { font-family: var(--font-display); }
   .hero-actions, .hero-shot, .feature-card, .download-card, .gallery-item {
     animation: none;
   }
+}
+
+/* Cross-document view transitions for snappy tab/page changes. */
+@view-transition {
+  navigation: auto;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.32s;
+  animation-timing-function: cubic-bezier(.2,.8,.2,1);
 }
