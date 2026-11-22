@@ -156,7 +156,10 @@ function subscribe(): void {
             session.lines = appendSystem(session.lines, event.text ?? 'The shell failed.')
           }
           if (state.activeId === event.sessionId && event.type === 'stdout' && !event.text) {
-            return { sessions: state.sessions }
+            // Mutating `session` in place is not enough: Zustand compares the
+            // top-level state with Object.is, so a new array reference is needed
+            // to trigger a re-render (otherwise the busy spinner never clears).
+            return { sessions: state.sessions.map((s) => (s.id === event.sessionId ? { ...s, busy: false } : s)) }
           }
           return { sessions: state.sessions.map((s) => (s.id === event.sessionId ? session : s)) }
         }
