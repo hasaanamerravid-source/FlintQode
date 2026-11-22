@@ -218,7 +218,6 @@ pub async fn terminal_write(
         payload.push_str("\r\n");
     }
     // Append a marker so the renderer learns when the command has finished.
-    let marker_cmd = marker_command(&session.shell, &session.marker);
     // The shell name stored is the program path, not the kind. Infer from it.
     let marker_line = if session.shell.contains("powershell") || session.shell.contains("pwsh") {
         format!("Write-Output \"{}\"\r\n", session.marker)
