@@ -343,7 +343,7 @@ export function createApi(): FlintQodeApi {
       start: (cwd?: string) => call<TerminalStartResult>('terminal_start', { cwd: cwd ?? null }),
       create: (cwd?: string, label?: string) =>
         call<TerminalStartResult>('terminal_new', { cwd: cwd ?? null, label: label ?? null }),
-      write: (sessionId: string, text: string) => call<boolean>('terminal_write', { session_id: sessionId, text }),
+      write: (sessionId: string, text: string) => call<boolean>('terminal_write', { request: { session_id: sessionId, text } }),
       interrupt: (sessionId: string) => call<boolean>('terminal_interrupt', { session_id: sessionId }),
       stop: (sessionId: string) => call<boolean>('terminal_stop', { session_id: sessionId }),
       close: (sessionId: string) => call<boolean>('terminal_close', { session_id: sessionId }),

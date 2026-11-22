@@ -283,6 +283,57 @@ export async function runActiveFile(): Promise<boolean> {
   }
   const tab = state.tabs.find((entry) => entry.id === id)
   if (!tab) return false
+
+  // Detect Gradle/Fabric projects: if the active file is a Gradle wrapper
+  // script, run the project's Gradle task instead of trying to execute the
+  // wrapper script itself (which fails on Linux for .bat files).
+  const filePath = tab.path ?? ''
+  const fileName = filePath.split(/[\\/]/).pop()?.toLowerCase() ?? ''
+  const isGradleWrapper = fileName === 'gradlew' || fileName === 'gradlew.bat' || fileName === 'gradlew.cmd'
+
+  if (isGradleWrapper) {
+    // Find the project root (directory containing build.gradle or build.gradle.kts)
+    const folder = filePath.replace(/[\\/][^\\/]*$/, '')
+    let projectRoot = folder
+    // Walk up to find the project root with build.gradle
+    const parts = folder.split(/[\\/]/)
+    for (let i = parts.length; i > 0; i--) {
+      const candidate = parts.slice(0, i).join('/')
+      // Check if build.gradle or build.gradle.kts exists
+      try {
+        const exists = await window.api.fs.exists(candidate + '/build.gradle') ||
+                       await window.api.fs.exists(candidate + '/build.gradle.kts')
+        if (exists) {
+          projectRoot = candidate
+          break
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // Use the terminal to run the Gradle task
+    useAppStore.getState().setBottomTab('terminal')
+    useAppStore.getState().setBottomPanelVisible(true)
+
+    // Start terminal if not running
+    const { useTerminalStore } = await import('./terminalState')
+    const terminalStore = useTerminalStore.getState()
+    if (terminalStore.sessions.length === 0) {
+      await useTerminalStore.getState().start(projectRoot)
+    }
+
+    // Write the Gradle command to the terminal
+    const isWindows = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
+    const gradleCmd = isWindows ? 'gradlew.bat' : './gradlew'
+    const task = 'runClient'
+    const activeId = useTerminalStore.getState().activeId
+    if (activeId) {
+      useTerminalStore.getState().write(activeId, `${gradleCmd} ${task}`)
+    }
+    return true
+  }
+
   if (!tab.path || tab.dirty) {
     const saved = await state.saveTab(id)
     if (!saved) return false
