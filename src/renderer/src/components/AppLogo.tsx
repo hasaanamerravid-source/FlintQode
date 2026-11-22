@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import type { JSX } from 'react'
+import { useAppStore } from '../store/app'
 
 export interface AppLogoProps {
   size?: number
@@ -14,8 +15,13 @@ export interface AppLogoProps {
  */
 export function AppLogo({ size = 18, className, monochrome = false }: AppLogoProps): JSX.Element {
   const gradientId = useId()
-  const from = monochrome ? 'currentColor' : '#5B9BFF'
-  const to = monochrome ? 'currentColor' : '#8A63F2'
+  const appTheme = useAppStore((s) => s.settings.theme)
+  const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+  const dark = appTheme === 'system' ? prefersDark : appTheme === 'dark'
+
+  // Adapt colours to the current theme for better visibility
+  const from = monochrome ? 'currentColor' : (dark ? '#5B9BFF' : '#2563eb')
+  const to = monochrome ? 'currentColor' : (dark ? '#8A63F2' : '#7c3aed')
 
   return (
     <svg
