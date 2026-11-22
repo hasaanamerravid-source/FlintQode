@@ -588,36 +588,3 @@ h1, h2, h3, .cta h2 { font-family: var(--font-display); }
   body { animation: none; }
 }
 
-.hero-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-  max-width: 420px;
-}
-.hero-stats div {
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-radius: var(--radius);
-  padding: 0.7rem 0.8rem;
-  text-align: center;
-}
-.hero-stats strong {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: var(--primary);
-}
-.hero-stats span {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--muted);
-  font-weight: 600;
-}
-@media (max-width: 719px) {
-  .hero-stats { grid-template-columns: repeat(2, 1fr); max-width: 100%; }
-}
