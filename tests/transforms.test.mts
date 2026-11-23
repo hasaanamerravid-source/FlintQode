@@ -16,12 +16,26 @@ import {
   removeDuplicateLines,
   removeLineNumbers,
   sortLines,
+  sortLinesByLength,
   trimTrailingWhitespace,
 } from '../src/renderer/src/core/transforms'
 
 test('the lines are sorted', () => {
   assert.equal(sortLines('b\na\nc'), 'a\nb\nc')
   assert.equal(sortLines('b\na\nc', true), 'c\nb\na')
+})
+
+test('the lines are sorted by length', () => {
+  assert.equal(sortLinesByLength('ccc\na\nbb'), 'a\nbb\nccc')
+  assert.equal(sortLinesByLength('ccc\na\nbb', true), 'ccc\nbb\na')
+})
+
+test('the sorting by length keeps equal-length order', () => {
+  assert.equal(sortLinesByLength('ab\ncd'), 'ab\ncd')
+})
+
+test('the sorting by length keeps a trailing newline', () => {
+  assert.equal(sortLinesByLength('ccc\na\n'), 'a\nccc\n')
 })
 
 test('the sorting keeps the line ending', () => {

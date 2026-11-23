@@ -204,6 +204,8 @@ export const MENU_SECTIONS: MenuSection[] = [
       { id: 'format.sortDescInsensitive', label: 'Sort Lines Descending (Case-insensitive)' },
       { id: 'format.reverseLines', label: 'Reverse Lines' },
       { id: 'format.shuffleLines', label: 'Shuffle Lines' },
+      { id: 'format.sortByLengthAsc', label: 'Sort Lines by Length (Shortest first)' },
+      { id: 'format.sortByLengthDesc', label: 'Sort Lines by Length (Longest first)' },
       sep('format.sep3'),
       { id: 'format.camelCase', label: 'camelCase' },
       { id: 'format.pascalCase', label: 'PascalCase' },

@@ -21,6 +21,7 @@ import {
   reverseLines,
   shuffleLines,
   sortLines,
+  sortLinesByLength,
   sortLinesCaseInsensitive,
   transposeChars,
   trimTrailingWhitespace,
@@ -1145,6 +1146,18 @@ export const builtinCommands: Command[] = [
     title: 'Shuffle lines',
     category: 'Format',
     run: () => applyTransform(shuffleLines),
+  },
+  {
+    id: 'format.sortByLengthAsc',
+    title: 'Sort lines by length (shortest first)',
+    category: 'Format',
+    run: () => applyTransform((text) => sortLinesByLength(text, false)),
+  },
+  {
+    id: 'format.sortByLengthDesc',
+    title: 'Sort lines by length (longest first)',
+    category: 'Format',
+    run: () => applyTransform((text) => sortLinesByLength(text, true)),
   },
   {
     id: 'format.removeDuplicates',

@@ -281,6 +281,24 @@ export function reverseLines(text: string): string {
   return assemble([...lines].reverse(), eol, trailing)
 }
 
+/**
+ * Sort the lines of a text by their length.
+ *
+ * Lines of equal length keep their original relative order (stable sort). `desc`
+ * reverses the result so the longest lines come first.
+ */
+export function sortLinesByLength(text: string, desc = false): string {
+  const { eol, lines, trailing } = splitLines(text)
+  const indexed = lines.map((line, index) => ({ line, index }))
+  indexed.sort((a, b) => a.line.length - b.line.length || a.index - b.index)
+  if (desc) indexed.reverse()
+  return assemble(
+    indexed.map((entry) => entry.line),
+    eol,
+    trailing,
+  )
+}
+
 /** Shuffle the lines (Fisher–Yates, good enough for lists and test data). */
 export function shuffleLines(text: string): string {
   const { eol, lines, trailing } = splitLines(text)
