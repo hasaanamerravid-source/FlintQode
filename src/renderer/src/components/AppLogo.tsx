@@ -20,8 +20,8 @@ export function AppLogo({ size = 18, className, monochrome = false }: AppLogoPro
   const dark = appTheme === 'system' ? prefersDark : appTheme === 'dark'
 
   // Adapt colours to the current theme for better visibility
-  const from = monochrome ? 'currentColor' : (dark ? '#5B9BFF' : '#2563eb')
-  const to = monochrome ? 'currentColor' : (dark ? '#8A63F2' : '#7c3aed')
+  const from = monochrome ? 'currentColor' : dark ? '#5B9BFF' : '#2563eb'
+  const to = monochrome ? 'currentColor' : dark ? '#8A63F2' : '#7c3aed'
 
   return (
     <svg

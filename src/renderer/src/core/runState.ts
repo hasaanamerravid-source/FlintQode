@@ -301,8 +301,9 @@ export async function runActiveFile(): Promise<boolean> {
       const candidate = parts.slice(0, i).join('/')
       // Check if build.gradle or build.gradle.kts exists
       try {
-        const exists = await window.api.fs.exists(candidate + '/build.gradle') ||
-                       await window.api.fs.exists(candidate + '/build.gradle.kts')
+        const exists =
+          (await window.api.fs.exists(candidate + '/build.gradle')) ||
+          (await window.api.fs.exists(candidate + '/build.gradle.kts'))
         if (exists) {
           projectRoot = candidate
           break
