@@ -1399,6 +1399,7 @@ body {
   padding: 0 8px 0 10px;
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
+  user-select: none;
 }
 
 .titlebar::before,
@@ -1814,6 +1815,11 @@ body {
 .lsp-tooltip.code {
   font-family: var(--font-mono);
   font-size: 12px;
+}
+
+.icon-btn-active {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* Multiple terminal tabs. */

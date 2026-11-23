@@ -91,7 +91,13 @@ function errorMessage(error: unknown): string {
 function toLines(text: string): TerminalLine[] {
   const parts = text.split('\n')
   if (parts.length > 0 && parts[parts.length - 1] === '') parts.pop()
-  return parts.map((part) => ({ type: 'stdout' as const, text: part.endsWith('\r') ? part.slice(0, -1) : part }))
+  return parts.map((part) => {
+    // Carriage returns overwrite the current line (progress bars). Keep the
+    // last segment so the log shows the final state instead of every step.
+    const segments = part.split('\r')
+    const value = segments[segments.length - 1]
+    return { type: 'stdout' as const, text: value.endsWith('\r') ? value.slice(0, -1) : value }
+  })
 }
 
 function append(lines: TerminalLine[], fresh: TerminalLine[]): TerminalLine[] {
@@ -149,6 +155,16 @@ function subscribe(): void {
                 ? append(session.lines, [{ type: 'stdout', text: session.pending }])
                 : session.lines
               next = { ...session, lines, pending: '', busy: false }
+              // Surface build/task failures so they are never buried in noise.
+              const recent = lines
+                .slice(-40)
+                .map((line) => line.text)
+                .join('\n')
+              if (/BUILD FAILED|FAILED!|exception|error:/i.test(recent)) {
+                void import('../store/app').then(({ useAppStore }) => {
+                  useAppStore.getState().toast('Build failed — check the terminal', 'error')
+                })
+              }
               break
             }
             // Chunks can end mid-line. Keep the unfinished tail in `pending`
@@ -156,11 +172,13 @@ function subscribe(): void {
             // progress output stay readable).
             const combined = session.pending + event.text
             const parts = combined.split('\n')
-            const pending = parts.pop() ?? ''
-            const complete = parts.map((text) => ({
-              type: 'stdout' as const,
-              text: text.endsWith('\r') ? text.slice(0, -1) : text,
-            }))
+            const rawPending = parts.pop() ?? ''
+            const pendingSegments = rawPending.split('\r')
+            const pending = pendingSegments[pendingSegments.length - 1]
+            const complete = parts.map((text) => {
+              const segments = text.split('\r')
+              return { type: 'stdout' as const, text: segments[segments.length - 1] }
+            })
             next = {
               ...session,
               lines: complete.length > 0 ? append(session.lines, complete) : session.lines,

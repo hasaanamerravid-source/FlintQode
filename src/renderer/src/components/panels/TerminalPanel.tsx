@@ -7,8 +7,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { JSX, KeyboardEvent } from 'react'
-import { useTerminalStore, type TerminalSession } from '@/core/terminalState'
 import { useAppStore } from '@/store/app'
+import { useTerminalStore, type TerminalSession } from '@/core/terminalState'
+import { parseAnsi } from '../../core/ansi'
 import { useT } from '../../core/i18n'
 
 export interface TerminalPanelProps {
@@ -26,10 +27,14 @@ function folderName(folder: string): string {
   return parts[parts.length - 1] ?? folder
 }
 
-function lineColor(type: string): string {
+function lineColor(type: string, text?: string): string {
   if (type === 'stderr') return 'var(--danger)'
   if (type === 'system') return 'var(--fg-muted)'
   if (type === 'input') return 'var(--accent)'
+  const value = (text ?? '').toLowerCase()
+  if (value.includes('error') || value.includes('failed') || value.includes('exception')) return 'var(--danger)'
+  if (value.includes('warning')) return 'var(--warning)'
+  if (value.includes('success') || value.includes('finished')) return 'var(--success)'
   return 'var(--fg-dim)'
 }
 
@@ -261,14 +266,42 @@ export function TerminalPanel({ cwd }: TerminalPanelProps): JSX.Element {
               <div
                 className={`terminal-line terminal-line-${line.type}`}
                 key={`${index}-${line.type}`}
-                style={{ color: lineColor(line.type) }}
+                style={{ color: lineColor(line.type, line.text) }}
               >
-                {line.type === 'input' ? `${prompt}${line.text}` : line.text}
+                {line.type === 'input'
+                  ? `${prompt}${line.text}`
+                  : parseAnsi(line.text).map((segment, segmentIndex) => (
+                      <span
+                        key={segmentIndex}
+                        style={{
+                          color: segment.color,
+                          backgroundColor: segment.background,
+                          fontWeight: segment.bold ? 'bold' : undefined,
+                          fontStyle: segment.italic ? 'italic' : undefined,
+                          textDecoration: segment.underline ? 'underline' : undefined,
+                        }}
+                      >
+                        {segment.text}
+                      </span>
+                    ))}
               </div>
             ))}
             {pending ? (
-              <div className="terminal-line terminal-line-stdout" style={{ color: lineColor('stdout') }}>
-                {pending}
+              <div className="terminal-line terminal-line-stdout" style={{ color: lineColor('stdout', pending) }}>
+                {parseAnsi(pending).map((segment, segmentIndex) => (
+                  <span
+                    key={segmentIndex}
+                    style={{
+                      color: segment.color,
+                      backgroundColor: segment.background,
+                      fontWeight: segment.bold ? 'bold' : undefined,
+                      fontStyle: segment.italic ? 'italic' : undefined,
+                      textDecoration: segment.underline ? 'underline' : undefined,
+                    }}
+                  >
+                    {segment.text}
+                  </span>
+                ))}
               </div>
             ) : null}
           </div>

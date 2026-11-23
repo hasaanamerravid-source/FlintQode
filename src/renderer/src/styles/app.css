@@ -86,7 +86,7 @@ body {
   color: var(--fg);
   background: var(--bg);
   overflow: hidden;
-  user-select: none;
+  user-select: text;
 }
 
 ::-webkit-scrollbar {

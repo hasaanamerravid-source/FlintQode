@@ -8,6 +8,8 @@ import { MainMenu } from './MainMenu'
 import { AppLogo } from './AppLogo'
 import { Icon } from './Icons'
 import { FileIcon } from './FileIcon'
+import { useRunStore } from '../core/runState'
+import { useTerminalStore } from '../core/terminalState'
 import { useT } from '../core/i18n'
 
 export function TitleBar(): JSX.Element {
@@ -21,10 +23,26 @@ export function TitleBar(): JSX.Element {
   const iconTheme = useAppStore((s) => s.settings.iconTheme)
   const [menuOpen, setMenuOpen] = useState(false)
   const maximized = useStatusStore((s) => s.maximized)
+  const runRunning = useRunStore((s) => s.running)
+  const terminalBusy = useTerminalStore((s) => s.sessions.some((entry) => entry.busy))
   const active = tabs.find((t) => t.id === activeTabId)
   const showHamburger = settings.mainMenuStyle !== 'native'
   const t = useT()
   const listRef = useRef<HTMLDivElement | null>(null)
+
+  const anyRunning = runRunning || terminalBusy
+  const runTitle = anyRunning ? t('cmd.tools.stopRun') : t('title.runFile')
+  const runAria = anyRunning ? t('cmd.tools.stopRun') : t('title.runFile')
+  const handleRunClick = (): void => {
+    if (runRunning) {
+      void runCommand('tools.stopRun')
+    } else if (terminalBusy) {
+      const id = useTerminalStore.getState().activeId
+      if (id) useTerminalStore.getState().interrupt(id)
+    } else {
+      void runCommand('tools.run')
+    }
+  }
 
   /** Show a tab and give it the keyboard focus. */
   const focusTab = (index: number): void => {
@@ -154,12 +172,12 @@ export function TitleBar(): JSX.Element {
           <Icon name="search" />
         </button>
         <button
-          className="icon-btn"
-          title={t('title.runFile')}
-          aria-label={t('title.runFile')}
-          onClick={() => void runCommand('tools.run')}
+          className={`icon-btn${anyRunning ? ' icon-btn-active' : ''}`}
+          title={runTitle}
+          aria-label={runAria}
+          onClick={handleRunClick}
         >
-          <Icon name="run" />
+          <Icon name={anyRunning ? 'stop' : 'run'} />
         </button>
         <button
           className="icon-btn"

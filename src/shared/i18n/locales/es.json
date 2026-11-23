@@ -535,5 +535,15 @@
   "welcome.action.new": "Documento nuevo vacío",
   "welcome.action.open": "Abrir un archivo del disco",
   "welcome.action.clipboard": "Abrir la ruta del portapapeles",
-  "welcome.action.commands": "Explorar todos los comandos"
+  "welcome.action.commands": "Explorar todos los comandos",
+  "settings.tab.updates": "Updates",
+  "settings.updatesHint": "Check for a newer FlintQode release and install it in place.",
+  "settings.updatesChecking": "Checking for updates…",
+  "settings.updatesUpToDate": "You are already on the latest version.",
+  "settings.updatesAvailable": "Version {version} is available.",
+  "settings.updatesDownloadPrompt": "Download version {version} now?",
+  "settings.updatesDownloaded": "Downloaded. Ready to install.",
+  "settings.updatesInstallPrompt": "Install the update now? (requires administrator privileges)",
+  "settings.updatesInstalled": "Update installed. Restart FlintQode to use the new version.",
+  "settings.checkForUpdates": "Check for updates"
 }

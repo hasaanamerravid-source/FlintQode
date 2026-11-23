@@ -13,6 +13,7 @@ mod search;
 mod shell;
 mod store;
 mod terminal;
+mod updater;
 
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -149,6 +150,9 @@ pub fn run() {
             terminal::terminal_close,
             terminal::terminal_list,
             terminal::terminal_active,
+            updater::app_check_update,
+            updater::app_download_update,
+            updater::app_install_update,
             lsp::lsp_start,
             lsp::lsp_did_open,
             lsp::lsp_did_change,

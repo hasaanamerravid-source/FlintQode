@@ -535,5 +535,15 @@
   "welcome.action.new": "Neues leeres Dokument",
   "welcome.action.open": "Datei von der Festplatte öffnen",
   "welcome.action.clipboard": "Pfad in der Zwischenablage öffnen",
-  "welcome.action.commands": "Alle Befehle durchsuchen"
+  "welcome.action.commands": "Alle Befehle durchsuchen",
+  "settings.tab.updates": "Updates",
+  "settings.updatesHint": "Check for a newer FlintQode release and install it in place.",
+  "settings.updatesChecking": "Checking for updates…",
+  "settings.updatesUpToDate": "You are already on the latest version.",
+  "settings.updatesAvailable": "Version {version} is available.",
+  "settings.updatesDownloadPrompt": "Download version {version} now?",
+  "settings.updatesDownloaded": "Downloaded. Ready to install.",
+  "settings.updatesInstallPrompt": "Install the update now? (requires administrator privileges)",
+  "settings.updatesInstalled": "Update installed. Restart FlintQode to use the new version.",
+  "settings.checkForUpdates": "Check for updates"
 }

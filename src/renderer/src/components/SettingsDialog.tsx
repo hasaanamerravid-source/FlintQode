@@ -30,7 +30,8 @@ import {
 } from '../core/i18n'
 import { Modal } from './Modal'
 
-type Section = 'appearance' | 'typography' | 'icons' | 'toolchain' | 'workspace' | 'editor' | 'files' | 'shortcuts'
+type Section =
+  'appearance' | 'typography' | 'icons' | 'toolchain' | 'workspace' | 'editor' | 'files' | 'shortcuts' | 'updates'
 
 /** Monospace fonts that are commonly installed, offered as suggestions. */
 const FONT_CHOICES = [
@@ -181,6 +182,8 @@ export function SettingsDialog(): JSX.Element | null {
   const [section, setSection] = useState<Section>('appearance')
   const [importText, setImportText] = useState('')
   const [bindings, setBindings] = useState<Keybindings>({})
+  const [updateStatus, setUpdateStatus] = useState<string>('')
+  const [updateBusy, setUpdateBusy] = useState(false)
   const commandsWithShortcuts = getCommands().filter((command) => command.shortcut && !command.hidden)
   const progress = translationProgress(settings.language)
 
@@ -233,6 +236,7 @@ export function SettingsDialog(): JSX.Element | null {
               ['editor', 'settings.tab.editor'],
               ['files', 'settings.tab.files'],
               ['shortcuts', 'settings.tab.shortcuts'],
+              ['updates', 'settings.tab.updates'],
             ] as [Section, MessageKey][]
           ).map(([id, label]) => (
             <div
@@ -1185,6 +1189,55 @@ export function SettingsDialog(): JSX.Element | null {
             </tbody>
           </table>
         </>
+      )}
+      {section === 'updates' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="hint">{t('settings.updatesHint')}</div>
+          <button
+            className="panel-button"
+            disabled={updateBusy}
+            onClick={async () => {
+              setUpdateBusy(true)
+              setUpdateStatus(t('settings.updatesChecking'))
+              try {
+                const info = await (
+                  window.api as unknown as {
+                    app?: {
+                      checkUpdate?: (v: string) => Promise<{ version: string; url: string; assetName: string } | null>
+                    }
+                  }
+                ).app?.checkUpdate?.((await window.api.info()).version)
+                if (!info) {
+                  setUpdateStatus(t('settings.updatesUpToDate'))
+                } else {
+                  setUpdateStatus(t('settings.updatesAvailable', { version: info.version }))
+                  const ok = window.confirm(t('settings.updatesDownloadPrompt', { version: info.version }))
+                  if (ok) {
+                    const dest = `/tmp/opencode/flintqode-update.deb`
+                    await (
+                      window.api as unknown as { app?: { downloadUpdate?: (u: string, d: string) => Promise<string> } }
+                    ).app?.downloadUpdate?.(info.url, dest)
+                    setUpdateStatus(t('settings.updatesDownloaded'))
+                    const install = window.confirm(t('settings.updatesInstallPrompt'))
+                    if (install) {
+                      await (
+                        window.api as unknown as { app?: { installUpdate?: (p: string) => Promise<string> } }
+                      ).app?.installUpdate?.(dest)
+                      setUpdateStatus(t('settings.updatesInstalled'))
+                    }
+                  }
+                }
+              } catch (error) {
+                setUpdateStatus(String(error))
+              } finally {
+                setUpdateBusy(false)
+              }
+            }}
+          >
+            {updateBusy ? t('settings.updatesChecking') : t('settings.checkForUpdates')}
+          </button>
+          {updateStatus && <div className="hint">{updateStatus}</div>}
+        </div>
       )}
     </Modal>
   )

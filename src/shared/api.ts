@@ -156,6 +156,12 @@ export interface TestApi {
 export interface FlintQodeApi {
   info(): Promise<AppInfo>
 
+  app: {
+    checkUpdate(currentVersion: string): Promise<{ version: string; url: string; assetName: string } | null>
+    downloadUpdate(url: string, dest: string): Promise<string>
+    installUpdate(path: string): Promise<string>
+  }
+
   fs: {
     openDialog(opts: OpenDialogOptions): Promise<DialogResult>
     saveDialog(opts: SaveDialogOptions): Promise<DialogResult>
