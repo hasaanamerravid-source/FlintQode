@@ -24,6 +24,7 @@ import {
   sortLinesByLength,
   sortLinesCaseInsensitive,
   transposeChars,
+  trimLeadingWhitespace,
   trimTrailingWhitespace,
   unescapeHtml,
   urlDecode,
@@ -1170,6 +1171,12 @@ export const builtinCommands: Command[] = [
     title: 'Trim trailing whitespace',
     category: 'Format',
     run: () => applyTransform(trimTrailingWhitespace),
+  },
+  {
+    id: 'format.trimLeading',
+    title: 'Trim leading whitespace',
+    category: 'Format',
+    run: () => applyTransform(trimLeadingWhitespace),
   },
   {
     id: 'format.joinLines',

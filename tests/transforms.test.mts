@@ -17,6 +17,7 @@ import {
   removeLineNumbers,
   sortLines,
   sortLinesByLength,
+  trimLeadingWhitespace,
   trimTrailingWhitespace,
 } from '../src/renderer/src/core/transforms'
 
@@ -62,6 +63,10 @@ test('the empty lines are removed', () => {
 
 test('the trailing whitespace is removed', () => {
   assert.equal(trimTrailingWhitespace('a  \nb\t\nc'), 'a\nb\nc')
+})
+
+test('the leading whitespace is removed', () => {
+  assert.equal(trimLeadingWhitespace('  a\n\tb\nc'), 'a\nb\nc')
 })
 
 test('the lines are joined into one line', () => {

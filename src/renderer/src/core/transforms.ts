@@ -88,6 +88,13 @@ export function trimTrailingWhitespace(text: string): string {
   return assemble(out, eol, trailing)
 }
 
+/** Strip leading spaces and tabs from every line. */
+export function trimLeadingWhitespace(text: string): string {
+  const { eol, lines, trailing } = splitLines(text)
+  const out = lines.map((line) => line.replace(/^[ \t\f\v\u00A0]+/, ''))
+  return assemble(out, eol, trailing)
+}
+
 /**
  * Join every line into a single line.
  *

@@ -194,6 +194,7 @@ export const MENU_SECTIONS: MenuSection[] = [
       { id: 'format.sortDesc', label: 'Sort Lines Descending' },
       { id: 'format.removeDuplicates', label: 'Remove Duplicate Lines' },
       { id: 'format.trimTrailing', label: 'Trim Trailing Whitespace' },
+      { id: 'format.trimLeading', label: 'Trim Leading Whitespace' },
       { id: 'format.joinLines', label: 'Join Lines' },
       sep('format.sep2'),
       { id: 'format.upperCase', label: 'UPPERCASE' },
