@@ -99,11 +99,6 @@ export function ProblemsPanel({ problems, onSelect, onRefresh }: ProblemsPanelPr
                 role="button"
                 tabIndex={0}
                 title={problem.message}
-                onMouseDown={(event) => {
-                  // Keep the keyboard focus in the editor: the row must not
-                  // take it, otherwise typing after a jump goes nowhere.
-                  event.preventDefault()
-                }}
                 onClick={() => select(problem)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') select(problem)

@@ -172,12 +172,12 @@ export function TitleBar(): JSX.Element {
           <Icon name="search" />
         </button>
         <button
-          className={`icon-btn${anyRunning ? ' icon-btn-active' : ''}`}
-          title={runTitle}
-          aria-label={runAria}
-          onClick={handleRunClick}
+          className="icon-btn"
+          title={t('cmd.view.toggleTerminal')}
+          aria-label={t('cmd.view.toggleTerminal')}
+          onClick={() => void runCommand('view.toggleTerminal')}
         >
-          <Icon name={anyRunning ? 'stop' : 'run'} />
+          <Icon name="terminal" />
         </button>
         <button
           className="icon-btn"
