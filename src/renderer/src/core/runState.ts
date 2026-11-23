@@ -267,6 +267,49 @@ export function startRun(filePath: string, language: string): void {
   useRunStore.getState().start(filePath, language)
 }
 
+/** Files that belong to a Gradle build. */
+const GRADLE_FILES = new Set([
+  'gradlew',
+  'gradlew.bat',
+  'gradlew.cmd',
+  'build.gradle',
+  'build.gradle.kts',
+  'settings.gradle',
+  'settings.gradle.kts',
+  'gradle.properties',
+])
+
+/** Quote a path for the shell that the terminal is running. */
+function shellQuote(value: string): string {
+  if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(value)) return value
+  return `'${value.replace(/'/g, `'\\''`)}'`
+}
+
+/** Walk up from a file to the folder that holds the Gradle build. */
+async function gradleProjectRoot(start: string): Promise<string | null> {
+  const parts = start.split(/[\\/]/).filter(Boolean)
+  for (let index = parts.length; index > 0; index -= 1) {
+    // Keep the leading slash of POSIX paths.
+    const candidate = (start.startsWith('/') ? '/' : '') + parts.slice(0, index).join('/')
+    const separator = candidate.includes('\\') ? '\\' : '/'
+    try {
+      for (const marker of [
+        'build.gradle',
+        'build.gradle.kts',
+        'settings.gradle',
+        'settings.gradle.kts',
+        'gradlew',
+        'gradlew.bat',
+      ]) {
+        if (await window.api.fs.exists(`${candidate}${separator}${marker}`)) return candidate
+      }
+    } catch {
+      /* the folder is not readable; keep walking up */
+    }
+  }
+  return null
+}
+
 /**
  * Save the active editor if needed and run it.
  *
@@ -284,55 +327,46 @@ export async function runActiveFile(): Promise<boolean> {
   const tab = state.tabs.find((entry) => entry.id === id)
   if (!tab) return false
 
-  // Detect Gradle/Fabric projects: if the active file is a Gradle wrapper
-  // script, run the project's Gradle task instead of trying to execute the
-  // wrapper script itself (which fails on Linux for .bat files).
+  // Gradle projects: a wrapper script (or a build file) is not a program, so
+  // executing it directly fails - especially `gradlew.bat` on Linux. Run the
+  // project's Gradle task in the terminal instead.
   const filePath = tab.path ?? ''
   const fileName = filePath.split(/[\\/]/).pop()?.toLowerCase() ?? ''
-  const isGradleWrapper = fileName === 'gradlew' || fileName === 'gradlew.bat' || fileName === 'gradlew.cmd'
-
-  if (isGradleWrapper) {
-    // Find the project root (directory containing build.gradle or build.gradle.kts)
+  const isGradleFile = Boolean(filePath) && (GRADLE_FILES.has(fileName) || tab.language.startsWith('gradle'))
+  if (isGradleFile) {
     const folder = filePath.replace(/[\\/][^\\/]*$/, '')
-    let projectRoot = folder
-    // Walk up to find the project root with build.gradle
-    const parts = folder.split(/[\\/]/)
-    for (let i = parts.length; i > 0; i--) {
-      const candidate = parts.slice(0, i).join('/')
-      // Check if build.gradle or build.gradle.kts exists
+    const projectRoot = await gradleProjectRoot(folder)
+    if (projectRoot) {
+      const isWindows = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
+      // Fabric projects have a `runClient` task; plain Gradle builds do not.
+      let fabric = false
       try {
-        const exists =
-          (await window.api.fs.exists(candidate + '/build.gradle')) ||
-          (await window.api.fs.exists(candidate + '/build.gradle.kts'))
-        if (exists) {
-          projectRoot = candidate
-          break
-        }
+        fabric =
+          (await window.api.fs.exists(`${projectRoot}/fabric.mod.json`)) ||
+          (await window.api.fs.exists(`${projectRoot}/src/main/resources/fabric.mod.json`))
       } catch {
-        /* ignore */
+        /* assume a plain Gradle build */
       }
-    }
+      const task = fabric ? 'runClient' : 'build'
+      const command = isWindows
+        ? `cd /d "${projectRoot.replace(/"/g, '""')}" && gradlew.bat ${task}`
+        : `cd ${shellQuote(projectRoot)} && (chmod +x gradlew 2>/dev/null || true) && ./gradlew ${task}`
 
-    // Use the terminal to run the Gradle task
-    useAppStore.getState().setBottomTab('terminal')
-    useAppStore.getState().setBottomPanelVisible(true)
+      useAppStore.getState().setBottomTab('terminal')
+      useAppStore.getState().setBottomPanelVisible(true)
 
-    // Start terminal if not running
-    const { useTerminalStore } = await import('./terminalState')
-    const terminalStore = useTerminalStore.getState()
-    if (terminalStore.sessions.length === 0) {
-      await useTerminalStore.getState().start(projectRoot)
+      const { useTerminalStore } = await import('./terminalState')
+      if (useTerminalStore.getState().sessions.length === 0) {
+        await useTerminalStore.getState().start(projectRoot)
+      }
+      const activeId = useTerminalStore.getState().activeId
+      if (!activeId) {
+        state.toast('Could not start the terminal.', 'error')
+        return false
+      }
+      useTerminalStore.getState().write(activeId, command)
+      return true
     }
-
-    // Write the Gradle command to the terminal
-    const isWindows = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
-    const gradleCmd = isWindows ? 'gradlew.bat' : './gradlew'
-    const task = 'runClient'
-    const activeId = useTerminalStore.getState().activeId
-    if (activeId) {
-      useTerminalStore.getState().write(activeId, `${gradleCmd} ${task}`)
-    }
-    return true
   }
 
   if (!tab.path || tab.dirty) {

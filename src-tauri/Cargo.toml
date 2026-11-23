@@ -1,6 +1,6 @@
 [package]
 name = "flintqode"
-version = "1.4.2"
+version = "1.4.3"
 description = "FlintQode - a fast, native all-in-one text editor"
 authors = ["FlintQode"]
 license = "MIT"

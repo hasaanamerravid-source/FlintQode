@@ -188,6 +188,30 @@
   color: #ffffff;
 }
 
+/* The default glass/gradient layer is almost white in the light theme, so the
+   white title text above would disappear. Use the theme foreground instead. */
+:root[data-theme='light'][data-glass='on'] .titlebar .titlebar-logo,
+:root[data-theme='light'][data-gradient='on'] .titlebar .titlebar-logo {
+  color: var(--fg-bright);
+  text-shadow: none;
+}
+
+:root[data-theme='light'][data-glass='on'] .titlebar .titlebar-title,
+:root[data-theme='light'][data-gradient='on'] .titlebar .titlebar-title {
+  color: var(--fg-muted);
+}
+
+:root[data-theme='light'][data-glass='on'] .titlebar .icon-btn,
+:root[data-theme='light'][data-gradient='on'] .titlebar .icon-btn {
+  color: var(--fg-dim);
+}
+
+:root[data-theme='light'][data-glass='on'] .titlebar .icon-btn:hover,
+:root[data-theme='light'][data-gradient='on'] .titlebar .icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--fg-bright);
+}
+
 /* --------------------------- main menu button ------------------------ */
 
 .main-menu-button {

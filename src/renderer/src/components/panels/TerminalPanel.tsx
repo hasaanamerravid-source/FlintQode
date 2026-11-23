@@ -36,7 +36,7 @@ function lineColor(type: string): string {
 export function TerminalPanel({ cwd }: TerminalPanelProps): JSX.Element {
   const sessions = useTerminalStore((s) => s.sessions)
   const activeId = useTerminalStore((s) => s.activeId)
-  const session = useTerminalStore((s) => s.getActive())
+  const session = useTerminalStore((s) => s.sessions.find((entry) => entry.id === s.activeId))
   const start = useTerminalStore((s) => s.start)
   const write = useTerminalStore((s) => s.write)
   const interrupt = useTerminalStore((s) => s.interrupt)
@@ -56,6 +56,7 @@ export function TerminalPanel({ cwd }: TerminalPanelProps): JSX.Element {
   const t = useT()
 
   const lines = session?.lines ?? []
+  const pending = session?.pending ?? ''
   const running = session?.running ?? false
   const busy = session?.busy ?? false
   const folder = session?.cwd || cwd || ''
@@ -67,7 +68,7 @@ export function TerminalPanel({ cwd }: TerminalPanelProps): JSX.Element {
   useEffect(() => {
     const element = logRef.current
     if (element) element.scrollTop = element.scrollHeight
-  }, [lines])
+  }, [lines, pending])
 
   useEffect(() => {
     if (session?.running) inputRef.current?.focus()
@@ -79,7 +80,6 @@ export function TerminalPanel({ cwd }: TerminalPanelProps): JSX.Element {
     setValue('')
     if (session) write(session.id, command)
   }
-
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
     if (!session) return
     if (event.key === 'Enter') {
@@ -242,7 +242,7 @@ export function TerminalPanel({ cwd }: TerminalPanelProps): JSX.Element {
       </div>
 
       <div className="panel-body terminal-body">
-        {lines.length > 0 ? (
+        {lines.length > 0 || pending ? (
           <div
             className="terminal-log"
             ref={logRef}
@@ -266,6 +266,11 @@ export function TerminalPanel({ cwd }: TerminalPanelProps): JSX.Element {
                 {line.type === 'input' ? `${prompt}${line.text}` : line.text}
               </div>
             ))}
+            {pending ? (
+              <div className="terminal-line terminal-line-stdout" style={{ color: lineColor('stdout') }}>
+                {pending}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

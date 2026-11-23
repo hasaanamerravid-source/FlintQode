@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex as StdMutex};
 
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
 use serde::{Deserialize, Serialize};
@@ -27,6 +28,11 @@ struct TerminalSession {
     writer: Box<dyn Write + Send>,
     child: Box<dyn Child + Send>,
     marker: String,
+    /// "bash", "cmd" or "powershell" (how the marker command is written).
+    kind: String,
+    /// Commands that were just written; the shell echoes them back and the
+    /// reader removes that copy so the log shows each command only once.
+    echoes: Arc<StdMutex<Vec<String>>>,
     cwd: String,
     shell: String,
     label: String,
@@ -47,6 +53,9 @@ pub struct TerminalStartResult {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TerminalWriteRequest {
+    // Accept both spellings: the renderer used to send `session_id`, and
+    // older builds still do. The canonical serde name is `sessionId`.
+    #[serde(alias = "session_id")]
     pub session_id: String,
     pub text: String,
 }
@@ -131,6 +140,87 @@ fn marker_for(kind_name: &str, token: u64) -> String {
     format!("__FLINTQODE_DONE_{}_{}_{}__", kind_name, std::process::id(), token)
 }
 
+/// The command that prints the completion marker.
+///
+/// The marker is assembled from two pieces so the line the terminal echoes
+/// back (the command itself) does not contain the marker and cannot be
+/// mistaken for the end of the command.
+fn marker_command(kind_name: &str, marker: &str) -> String {
+    let suffix = marker.trim_start_matches("__FLINTQODE");
+    if kind_name.contains("powershell") || kind_name.contains("pwsh") {
+        format!("Write-Output ('__FLINTQODE' + '{suffix}')")
+    } else if kind_name == "cmd" {
+        format!("echo __FLINTQODE^{suffix}")
+    } else {
+        format!("printf '__FLINTQODE%s\\n' '{suffix}'")
+    }
+}
+
+/// Length of the longest suffix of `text` that could be the beginning of
+/// `marker`. The reader keeps those bytes buffered so a marker split across
+/// two reads is still recognised (and never printed).
+fn partial_marker_len(text: &str, marker: &str) -> usize {
+    let bytes = text.as_bytes();
+    let marker = marker.as_bytes();
+    if marker.is_empty() {
+        return 0;
+    }
+    let max = bytes.len().min(marker.len() - 1);
+    for len in (0..=max).rev() {
+        if bytes[bytes.len() - len..] == marker[..len] {
+            return len;
+        }
+    }
+    0
+}
+
+/// Remove the shell's echo of a command from the output buffer.
+///
+/// Terminals echo what is typed, and the panel already prints the command as
+/// an input line, so the echo is dropped. The buffer is untouched when the
+/// echo has not arrived yet; a large buffer means the shell does not echo, in
+/// which case the pending entry is discarded instead of stalling the output.
+fn strip_echoes(buffer: &mut String, echoes: &StdMutex<Vec<String>>) {
+    let Ok(mut pending) = echoes.lock() else {
+        return;
+    };
+    while !pending.is_empty() {
+        let command = pending[0].trim_end_matches(['\r', '\n']).to_string();
+        if command.is_empty() {
+            pending.remove(0);
+            continue;
+        }
+        let Some(pos) = buffer.find(&command) else {
+            if buffer.len() > 4096 {
+                // No echo: this shell (or a full screen program) does not
+                // print what is written. Forget the entry and stream on.
+                pending.remove(0);
+                continue;
+            }
+            break;
+        };
+        let after = pos + command.len();
+        let rest = &buffer[after..];
+        let mut skip = 0usize;
+        if rest.starts_with('\r') {
+            skip += 1;
+        }
+        if rest[skip..].starts_with('\n') {
+            skip += 1;
+        }
+        if skip == 0 {
+            // The echoed line has not been completed yet.
+            if buffer.len() > 4096 {
+                pending.remove(0);
+                continue;
+            }
+            break;
+        }
+        buffer.replace_range(pos..after + skip, "");
+        pending.remove(0);
+    }
+}
+
 /// Spawn a new PTY and return the session id and shell info.
 async fn spawn_session(
     app: &AppHandle,
@@ -143,6 +233,7 @@ async fn spawn_session(
     let token = state.token.fetch_add(1, Ordering::SeqCst) + 1;
     let session_id = format!("term-{token}");
     let marker = marker_for(&spec.kind_name, token);
+    let marker_line = marker_command(&spec.kind_name, &marker);
 
     let pty_system = native_pty_system();
     let pair = pty_system
@@ -159,6 +250,13 @@ async fn spawn_session(
         command.arg(arg);
     }
     command.cwd(&directory);
+    // A predictable terminal description: without TERM many programs fall
+    // back to plain output or refuse to draw their interface at all.
+    command.env("TERM", "xterm-256color");
+    command.env("COLORTERM", "truecolor");
+    // The panel draws its own prompt and input line, so the shell prompt is
+    // redundant (and would otherwise be chopped into partial lines).
+    command.env("PS1", "");
 
     let child = pair
         .slave
@@ -167,11 +265,16 @@ async fn spawn_session(
     let mut reader = pair.master.try_clone_reader().map_err(|error| error.to_string())?;
     let writer = pair.master.take_writer().map_err(|error| error.to_string())?;
 
+    let echoes = Arc::new(StdMutex::new(Vec::new()));
+    let echoes_clone = Arc::clone(&echoes);
+
     let session = TerminalSession {
         master: pair.master,
         writer,
         child,
         marker: marker.clone(),
+        kind: spec.kind_name.clone(),
+        echoes: Arc::clone(&echoes),
         cwd: directory.to_string_lossy().to_string(),
         shell: spec.cmd.clone(),
         label: label.unwrap_or_else(|| spec.kind_name.clone()),
@@ -179,23 +282,53 @@ async fn spawn_session(
 
     let app_clone = app.clone();
     let marker_clone = marker;
+    let echo_line = marker_line.clone();
     let session_id_clone = session_id.clone();
     std::thread::spawn(move || {
         let mut buffer = String::new();
-        let mut chunk = [0u8; 4096];
+        let mut chunk = [0u8; 8192];
+        let echoed_crlf = format!("{echo_line}\r\n");
+        let echoed_lf = format!("{echo_line}\n");
         loop {
             match reader.read(&mut chunk) {
                 Ok(0) => break,
                 Ok(count) => {
                     buffer.push_str(&String::from_utf8_lossy(&chunk[..count]));
-                    while let Some(pos) = buffer.find('\n') {
-                        let line = buffer[..=pos].to_string();
-                        buffer = buffer[pos + 1..].to_string();
-                        let trimmed = line.trim();
-                        if trimmed == marker_clone {
-                            emit(&app_clone, "stdout", &session_id_clone, Some(String::new()), None);
-                        } else {
-                            emit(&app_clone, "stdout", &session_id_clone, Some(line), None);
+                    // The terminal echoes the marker command back. Drop it so
+                    // it never shows up in the log.
+                    if buffer.contains(echo_line.as_str()) {
+                        buffer = buffer.replace(&echoed_crlf, "").replace(&echoed_lf, "");
+                    }
+                    // Drop the echo of every command that was just written.
+                    strip_echoes(&mut buffer, &echoes_clone);
+                    // Strip every complete marker. Its presence means the
+                    // command that was written has finished, so an empty
+                    // stdout event tells the renderer to clear the spinner.
+                    while let Some(pos) = buffer.find(marker_clone.as_str()) {
+                        let before = buffer[..pos].to_string();
+                        let mut after = pos + marker_clone.len();
+                        let rest = &buffer[after..];
+                        if rest.starts_with("\r\n") {
+                            after += 2;
+                        } else if rest.starts_with('\n') {
+                            after += 1;
+                        }
+                        if !before.is_empty() {
+                            emit(&app_clone, "stdout", &session_id_clone, Some(before), None);
+                        }
+                        emit(&app_clone, "stdout", &session_id_clone, Some(String::new()), None);
+                        buffer = buffer[after..].to_string();
+                    }
+                    // Emit everything except a possible partial marker at
+                    // the end; prompts and partial lines are forwarded as-is
+                    // so the terminal feels live (and interactive programs
+                    // such as vim keep working).
+                    let keep = partial_marker_len(&buffer, marker_clone.as_str());
+                    if buffer.len() > keep {
+                        let ready = buffer[..buffer.len() - keep].to_string();
+                        buffer = buffer[buffer.len() - keep..].to_string();
+                        if !ready.is_empty() {
+                            emit(&app_clone, "stdout", &session_id_clone, Some(ready), None);
                         }
                     }
                 }
@@ -203,11 +336,7 @@ async fn spawn_session(
             }
         }
         if !buffer.is_empty() {
-            if buffer.trim() == marker_clone {
-                emit(&app_clone, "stdout", &session_id_clone, Some(String::new()), None);
-            } else {
-                emit(&app_clone, "stdout", &session_id_clone, Some(buffer), None);
-            }
+            emit(&app_clone, "stdout", &session_id_clone, Some(buffer), None);
         }
         emit(&app_clone, "exit", &session_id_clone, None, None);
     });
@@ -253,9 +382,9 @@ pub async fn terminal_close(state: State<'_, TerminalState>, session_id: String)
 pub async fn terminal_list(state: State<'_, TerminalState>) -> Result<Vec<TerminalListItem>, String> {
     let guard = state.inner.lock().await;
     Ok(guard
-        .values()
-        .map(|session| TerminalListItem {
-            id: session.label.clone(),
+        .iter()
+        .map(|(id, session)| TerminalListItem {
+            id: id.clone(),
             label: session.label.clone(),
             cwd: session.cwd.clone(),
             shell: session.shell.clone(),
@@ -286,11 +415,13 @@ pub async fn terminal_write(
     if !payload.ends_with("\r\n") {
         payload.push_str("\r\n");
     }
-    let marker_line = if session.shell.contains("powershell") || session.shell.contains("pwsh") {
-        format!("Write-Output \"{}\"\r\n", session.marker)
-    } else {
-        format!("echo {}\r\n", session.marker)
-    };
+    let marker_line = format!("{}\r\n", marker_command(&session.kind, &session.marker));
+    // Remember what was written so the reader can drop the shell's echo.
+    if let Ok(mut pending) = session.echoes.lock() {
+        for line in request.text.lines() {
+            pending.push(line.to_string());
+        }
+    }
     session
         .writer
         .write_all(payload.as_bytes())

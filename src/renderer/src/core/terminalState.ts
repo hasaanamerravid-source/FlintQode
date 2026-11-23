@@ -21,6 +21,8 @@ export interface TerminalSession {
   running: boolean
   busy: boolean
   lines: TerminalLine[]
+  /** Text of the line that is still being written (no newline yet). */
+  pending: string
   history: string[]
   historyIndex: number
 }
@@ -116,6 +118,7 @@ function upsertSession(state: TerminalState, id: string, patch: Partial<Terminal
     running: patch.running ?? false,
     busy: patch.busy ?? false,
     lines: patch.lines ?? [],
+    pending: patch.pending ?? '',
     history: patch.history ?? [],
     historyIndex: patch.historyIndex ?? -1,
   }
@@ -133,37 +136,72 @@ function subscribe(): void {
   try {
     const stop = onOutput((event) => {
       useTerminalStore.setState((state) => {
-        const session = state.sessions.find((entry) => entry.id === event.sessionId)
-        if (session) {
-          if (event.type === 'stdout') {
-            session.lines = append(
-              session.lines,
-              event.text ? toLines(event.text).map((line) => ({ ...line, type: line.type as 'stdout' })) : [],
-            )
-            if (!event.text) session.busy = false
-          } else if (event.type === 'stderr') {
-            session.lines = append(
-              session.lines,
-              toLines(event.text ?? '').map((line) => ({ ...line, type: 'stderr' as const })),
-            )
-          } else if (event.type === 'exit') {
-            session.running = false
-            session.busy = false
-            session.lines = appendSystem(session.lines, 'The shell stopped.')
-          } else if (event.type === 'error') {
-            session.running = false
-            session.busy = false
-            session.lines = appendSystem(session.lines, event.text ?? 'The shell failed.')
+        const index = state.sessions.findIndex((entry) => entry.id === event.sessionId)
+        if (index < 0) return state
+        const session = state.sessions[index]
+        let next: TerminalSession = session
+        switch (event.type) {
+          case 'stdout': {
+            // An empty stdout event is the "command finished" marker: the
+            // backend sends it after the shell prints the marker line.
+            if (!event.text) {
+              const lines = session.pending
+                ? append(session.lines, [{ type: 'stdout', text: session.pending }])
+                : session.lines
+              next = { ...session, lines, pending: '', busy: false }
+              break
+            }
+            // Chunks can end mid-line. Keep the unfinished tail in `pending`
+            // so the next chunk continues the same line (and so prompts and
+            // progress output stay readable).
+            const combined = session.pending + event.text
+            const parts = combined.split('\n')
+            const pending = parts.pop() ?? ''
+            const complete = parts.map((text) => ({
+              type: 'stdout' as const,
+              text: text.endsWith('\r') ? text.slice(0, -1) : text,
+            }))
+            next = {
+              ...session,
+              lines: complete.length > 0 ? append(session.lines, complete) : session.lines,
+              pending,
+            }
+            break
           }
-          if (state.activeId === event.sessionId && event.type === 'stdout' && !event.text) {
-            // Mutating `session` in place is not enough: Zustand compares the
-            // top-level state with Object.is, so a new array reference is needed
-            // to trigger a re-render (otherwise the busy spinner never clears).
-            return { sessions: state.sessions.map((s) => (s.id === event.sessionId ? { ...s, busy: false } : s)) }
-          }
-          return { sessions: state.sessions.map((s) => (s.id === event.sessionId ? session : s)) }
+          case 'stderr':
+            next = {
+              ...session,
+              lines: append(
+                session.lines,
+                toLines(event.text ?? '').map((line) => ({ ...line, type: 'stderr' as const })),
+              ),
+            }
+            break
+          case 'exit':
+            next = {
+              ...session,
+              running: false,
+              busy: false,
+              lines: appendSystem(session.lines, 'The shell stopped.'),
+            }
+            break
+          case 'error':
+            next = {
+              ...session,
+              running: false,
+              busy: false,
+              lines: appendSystem(session.lines, event.text ?? 'The shell failed.'),
+            }
+            break
+          default:
+            break
         }
-        return state
+        if (next === session) return state
+        // Replace the session object instead of mutating it: selectors that
+        // return a single session must see a new reference to re-render.
+        const sessions = state.sessions.slice()
+        sessions[index] = next
+        return { sessions }
       })
     })
     dispose = typeof stop === 'function' ? stop : () => undefined
@@ -211,6 +249,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
           running: true,
           busy: false,
           lines: appendSystem([], info.cwd ? `Shell started in ${info.cwd}` : 'Shell started'),
+          pending: '',
           history: [],
           historyIndex: -1,
         }
@@ -257,6 +296,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
                 running: true,
                 busy: false,
                 lines: appendSystem([], info.cwd ? `Shell started in ${info.cwd}` : 'Shell started'),
+                pending: '',
                 history: [],
                 historyIndex: -1,
               },
@@ -285,7 +325,6 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
 
   write: (sessionId, command) => {
     if (!command.trim()) return
-    const session = get().sessions.find((entry) => entry.id === sessionId)
     set((s) => {
       const session = s.sessions.find((entry) => entry.id === sessionId)
       if (!session) return s
@@ -300,17 +339,47 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     const bridge = terminalBridge()
     if (typeof bridge?.write !== 'function') return
     try {
-      void Promise.resolve(bridge.write(sessionId, command)).catch((error: unknown) => {
-        set((s) => ({
-          sessions: s.sessions.map((entry) =>
-            entry.id === sessionId
-              ? { ...entry, lines: appendSystem(entry.lines, `Could not run the command: ${errorMessage(error)}`) }
-              : entry,
-          ),
-        }))
-      })
-    } catch {
-      /* ignore */
+      void Promise.resolve(bridge.write(sessionId, command))
+        .then((ok) => {
+          if (ok === false) {
+            set((s) => ({
+              sessions: s.sessions.map((entry) =>
+                entry.id === sessionId
+                  ? {
+                      ...entry,
+                      busy: false,
+                      lines: appendSystem(entry.lines, 'The terminal session is no longer available. Start a new one.'),
+                    }
+                  : entry,
+              ),
+            }))
+          }
+        })
+        .catch((error: unknown) => {
+          set((s) => ({
+            sessions: s.sessions.map((entry) =>
+              entry.id === sessionId
+                ? {
+                    ...entry,
+                    busy: false,
+                    lines: appendSystem(entry.lines, `Could not run the command: ${errorMessage(error)}`),
+                  }
+                : entry,
+            ),
+          }))
+        })
+    } catch (error) {
+      set((s) => ({
+        sessions: s.sessions.map((entry) =>
+          entry.id === sessionId
+            ? {
+                ...entry,
+                busy: false,
+                lines: appendSystem(entry.lines, `Could not run the command: ${errorMessage(error)}`),
+              }
+            : entry,
+        ),
+      }))
     }
   },
 
@@ -342,7 +411,9 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
 
   clear: (sessionId) => {
     set((s) => ({
-      sessions: s.sessions.map((session) => (session.id === sessionId ? { ...session, lines: [] } : session)),
+      sessions: s.sessions.map((session) =>
+        session.id === sessionId ? { ...session, lines: [], pending: '' } : session,
+      ),
     }))
   },
 

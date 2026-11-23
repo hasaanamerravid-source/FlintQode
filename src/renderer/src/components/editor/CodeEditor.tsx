@@ -78,8 +78,9 @@ function buildTheme(settings: {
   tabSize: number
   syntaxTheme: string
   editorBackground: 'app' | 'theme'
+  theme: string
 }): Extension {
-  const theme = resolveTheme(settings.syntaxTheme)
+  const theme = editorTheme(settings)
   const c = theme.editor
   const dark = theme.dark
   // With "app" the editor surface uses the very same colours as the rest of
@@ -292,6 +293,31 @@ const invisiblesCompartment = new Compartment()
 const behaviourCompartment = new Compartment()
 const overwriteCompartment = new Compartment()
 const scrollPastEndCompartment = new Compartment()
+const syntaxCompartment = new Compartment()
+
+/** Whether the app theme is dark ("system" follows the OS preference). */
+function settingsAreDark(theme?: string): boolean {
+  if (theme === 'dark') return true
+  if (theme === 'light') return false
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+/**
+ * Pick the syntax theme that fits the editor surface.
+ *
+ * In "theme" mode the editor paints its own background, so the chosen theme is
+ * used as-is. In "app" mode the editor borrows the window colours, which means
+ * a light palette on a dark window (or the reverse) would be unreadable; pair
+ * the palette with the window instead of showing invisible text.
+ */
+function editorTheme(settings: { syntaxTheme: string; editorBackground: 'app' | 'theme'; theme?: string }) {
+  const chosen = resolveTheme(settings.syntaxTheme)
+  if (settings.editorBackground !== 'app') return chosen
+  const dark = settingsAreDark(settings.theme)
+  if (chosen.dark === dark) return chosen
+  return resolveTheme(dark ? 'darcula' : 'intellij-light')
+}
 
 /** Guards the split-view state synchronisation against infinite recursion. */
 let forwarding = false
@@ -395,7 +421,7 @@ export function CodeEditor({ tab, onReady, onContentChange, onViewReady, syncGro
         editCompartment.of([EditorState.tabSize.of(settingsNow.tabSize), EditorState.readOnly.of(tab.readonly)]),
         overwriteCompartment.of(settingsNow.overwriteMode ? overwriteKeymap(settingsNow) : []),
         scrollPastEndCompartment.of(settingsNow.scrollPastEnd ? scrollPastEnd() : []),
-        syntaxHighlighting(resolveTheme(settingsNow.syntaxTheme).style),
+        syntaxCompartment.of(syntaxHighlighting(editorTheme(settingsNow).style)),
         highlightAllExtension(),
         bookmarkExtension(),
         guideCompartment.of(
@@ -658,6 +684,7 @@ export function CodeEditor({ tab, onReady, onContentChange, onViewReady, syncGro
           settings.autoCloseBrackets ? closeBrackets() : [],
         ]),
         themeCompartment.reconfigure(buildTheme(settings)),
+        syntaxCompartment.reconfigure(syntaxHighlighting(editorTheme(settings).style)),
         editCompartment.reconfigure([
           EditorState.tabSize.of(settings.tabSize),
           indentUnit.of(settings.insertSpaces ? ' '.repeat(settings.tabSize) : '\t'),

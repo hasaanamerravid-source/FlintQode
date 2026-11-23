@@ -1470,7 +1470,11 @@ export const builtinCommands: Command[] = [
       state.setBottomPanelVisible(true)
       const { useTerminalStore } = await import('./terminalState')
       const terminal = useTerminalStore.getState()
-      if (!terminal.getActive()) void terminal.start(terminal.getActive()?.cwd)
+      if (!terminal.getActive()) {
+        const tab = state.activeTabId ? state.tabs.find((entry) => entry.id === state.activeTabId) : undefined
+        const cwd = tab?.path ? tab.path.replace(/[\\/][^\\/]*$/, '') : (state.workspaceRoot ?? undefined)
+        void terminal.start(cwd)
+      }
     },
   },
   {
@@ -1490,7 +1494,8 @@ export const builtinCommands: Command[] = [
     shortcut: 'Ctrl+Shift+`',
     run: async () => {
       const { useTerminalStore } = await import('./terminalState')
-      const tab = await useTerminalStore.getState().create(undefined, undefined)
+      const current = useTerminalStore.getState().getActive()
+      const tab = await useTerminalStore.getState().create(current?.cwd || undefined, undefined)
       if (tab) {
         const state = store()
         state.setBottomTab('terminal')
@@ -1504,9 +1509,9 @@ export const builtinCommands: Command[] = [
     category: 'Tools',
     run: async () => {
       const { useTerminalStore } = await import('./terminalState')
-      const id = useTerminalStore.getState().activeId
-      if (id) useTerminalStore.getState().stop(id)
-      void useTerminalStore.getState().start(undefined)
+      const current = useTerminalStore.getState().getActive()
+      if (current) useTerminalStore.getState().close(current.id)
+      void useTerminalStore.getState().start(current?.cwd || undefined)
     },
   },
   {

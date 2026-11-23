@@ -3,28 +3,24 @@ import { useAppStore } from '../store/app'
 import { ICON_SHAPES, iconKindFor, type IconKind } from '../core/iconShapes'
 import { iconTheme } from '../core/iconThemes'
 
-/** Compute the luminance of a hex colour (0 = black, 1 = white). */
-function luminance(hex: string): number {
-  const value = hex.replace('#', '').trim()
-  const full =
-    value.length === 3
-      ? value
-          .split('')
-          .map((c) => c + c)
-          .join('')
-      : value
-  const num = Number.parseInt(full.slice(0, 6) || '000000', 16)
-  if (Number.isNaN(num)) return 0.5
-  const r = ((num >> 16) & 255) / 255
-  const g = ((num >> 8) & 255) / 255
-  const b = (num & 255) / 255
-  const channel = (c: number): number => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+/** Relative luminance of an RGB triple (WCAG definition). */
+function rgbLuminance(r: number, g: number, b: number): number {
+  const channel = (value: number): number => {
+    const c = value / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }
   return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
 }
 
-/** Darken or lighten a hex colour so it stays readable on the current theme. */
-function adaptColor(hex: string, dark: boolean): string {
-  if (!/^#[0-9a-f]{3,8}$/i.test(hex)) return hex
+/** Contrast ratio between two relative luminances. */
+function contrastRatio(first: number, second: number): number {
+  const light = Math.max(first, second)
+  const dark = Math.min(first, second)
+  return (light + 0.05) / (dark + 0.05)
+}
+
+/** Expand `#rgb` / `#rrggbb` (ignoring alpha) into its channels. */
+function parseHex(hex: string): [number, number, number] {
   const value = hex.replace('#', '').trim()
   const full =
     value.length === 3
@@ -33,28 +29,32 @@ function adaptColor(hex: string, dark: boolean): string {
           .map((c) => c + c)
           .join('')
       : value
-  let r = Number.parseInt(full.slice(0, 2), 16) || 0
-  let g = Number.parseInt(full.slice(2, 4), 16) || 0
-  let b = Number.parseInt(full.slice(4, 6), 16) || 0
+  return [
+    Number.parseInt(full.slice(0, 2), 16) || 0,
+    Number.parseInt(full.slice(2, 4), 16) || 0,
+    Number.parseInt(full.slice(4, 6), 16) || 0,
+  ]
+}
 
-  // In light mode, make very light colours darker.
-  // In dark mode, make very dark colours lighter.
-  if (dark) {
-    const lum = luminance(hex)
-    if (lum < 0.15) {
-      const factor = 0.4
-      r = Math.round(r + (255 - r) * factor)
-      g = Math.round(g + (255 - g) * factor)
-      b = Math.round(b + (255 - b) * factor)
-    }
-  } else {
-    const lum = luminance(hex)
-    if (lum > 0.85) {
-      const factor = 0.35
-      r = Math.round(r * (1 - factor))
-      g = Math.round(g * (1 - factor))
-      b = Math.round(b * (1 - factor))
-    }
+/**
+ * Keep an icon colour readable on the current background.
+ *
+ * Icon themes ship colours picked for one background; in the other theme
+ * light greys on white (or near-black greens on black) disappear. Blend the
+ * colour toward the background's opposite until the WCAG AA contrast ratio is
+ * met, which preserves the hue and only changes its brightness.
+ */
+function adaptColor(hex: string, dark: boolean): string {
+  if (!/^#[0-9a-f]{3,8}$/i.test(hex)) return hex
+  let [r, g, b] = parseHex(hex)
+  const background = dark ? rgbLuminance(15, 17, 21) : rgbLuminance(251, 252, 254)
+  const target = dark ? 255 : 0
+  let luminance = rgbLuminance(r, g, b)
+  for (let step = 0; step < 24 && contrastRatio(luminance, background) < 4.5; step += 1) {
+    r = Math.round(r + (target - r) * 0.12)
+    g = Math.round(g + (target - g) * 0.12)
+    b = Math.round(b + (target - b) * 0.12)
+    luminance = rgbLuminance(r, g, b)
   }
   const toHex = (n: number): string => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0')
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`
