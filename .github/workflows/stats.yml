@@ -44,5 +44,6 @@ jobs:
           else
             # [skip ci] keeps the installer workflow from running for a data-only commit.
             git commit -m "docs: refresh site statistics [skip ci]"
-            git push
+            # A release event checks out a detached HEAD, so name the branch explicitly.
+            git push origin HEAD:main
           fi
