@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.7] - 2026-11-24
+
+### Fixed
+- **Check for updates no longer freezes the app.** Release checks, downloads and installs now run in bounded background tasks instead of on the webview's event loop, with timeouts for slow connections. Confirmation uses the existing in-app dialog rather than a blocking browser prompt, and the button shows the current step.
+- An update is only offered when the published tag is actually newer than the running version.
+- **Removed the "Line is longer than 120 characters" problem.** It was always on, could not be disabled and came back after every edit. Syntax, JSON, Java, TODO/FIXME, trailing whitespace, indentation and end-of-file diagnostics are unchanged.
+- **The integrated terminal opens once, in the workspace.** Closing and reopening the panel no longer starts a shell in the filesystem root or home directory first; a single PTY is created with the live workspace/project folder as its working directory.
+
+### Changed
+- Performance review confirmed that the native hot paths (file IO, search, PTY, LSP, Git, process supervision) are already Rust with Rayon and dedicated threads. Adding a Java or C++ runtime would add packaging and a second bridge without removing the remaining renderer work, which belongs to CodeMirror and SolidJS. No new language runtime was added.
+- The website has a dedicated Stats tab with visitors, clones and installer downloads refreshed from GitHub.
+
 ## [1.4.6] - 2026-11-24
 
 ### Added

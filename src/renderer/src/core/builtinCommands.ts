@@ -1475,18 +1475,9 @@ export const builtinCommands: Command[] = [
     title: 'Show the integrated terminal',
     category: 'View',
     shortcut: 'Ctrl+`',
-    run: async () => {
-      const state = store()
-      state.setBottomTab('terminal')
-      state.setBottomPanelVisible(true)
-      const { useTerminalStore } = await import('./terminalState')
-      const terminal = useTerminalStore.getState()
-      if (!terminal.getActive()) {
-        const tab = state.activeTabId ? state.tabs.find((entry) => entry.id === state.activeTabId) : undefined
-        const cwd = tab?.path ? tab.path.replace(/[\\/][^\\/]*$/, '') : (state.workspaceRoot ?? undefined)
-        void terminal.start(cwd)
-      }
-    },
+    // Opening the panel is enough: TerminalView owns the first shell and
+    // starts it once, with the live workspace directory as its cwd.
+    run: () => store().setBottomTab('terminal'),
   },
   {
     id: 'terminal.clear',
@@ -1506,7 +1497,9 @@ export const builtinCommands: Command[] = [
     run: async () => {
       const { useTerminalStore } = await import('./terminalState')
       const current = useTerminalStore.getState().getActive()
-      const tab = await useTerminalStore.getState().create(current?.cwd || undefined, undefined)
+      const tab = current
+        ? await useTerminalStore.getState().create(current.cwd)
+        : await useTerminalStore.getState().start()
       if (tab) {
         const state = store()
         state.setBottomTab('terminal')

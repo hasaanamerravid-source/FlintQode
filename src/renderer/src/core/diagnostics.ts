@@ -7,9 +7,9 @@
  * - syntax errors that the Lezer grammar found (unclosed brackets,
  *   unterminated strings, unexpected tokens, ...)
  * - parse errors of data formats (`JSON.parse` for JSON)
- * - warnings that every editor knows: TODO/FIXME markers, over long lines,
- *   trailing whitespace, a missing newline at the end of the file and tabs in
- *   files whose indentation is part of the syntax.
+ * - warnings that every editor knows: TODO/FIXME markers, trailing whitespace,
+ *   a missing newline at the end of the file and tabs in files whose
+ *   indentation is part of the syntax.
  *
  * The analysis is completely synchronous and linear in the size of the
  * document, so it stays fast enough to run while the user types. The result
@@ -43,9 +43,6 @@ export interface Problem {
 
 /** The number of problems that are reported for a single document at most. */
 export const MAX_PROBLEMS = 500
-
-/** Lines that are longer than this are reported. */
-export const MAX_LINE_LENGTH = 120
 
 /** How many "tab indentation" problems are reported at most. */
 const MAX_TAB_PROBLEMS = 20
@@ -85,7 +82,7 @@ interface Span {
 /**
  * Documents that are bigger than this are not parsed: the syntax tree of a
  * huge file takes seconds to build and the editor would freeze while typing.
- * The cheap checks (long lines, trailing space) still run.
+ * The cheap checks (trailing space) still run.
  */
 export const MAX_DIAGNOSTIC_CHARS = 1_500_000
 
@@ -473,7 +470,7 @@ function insideComment(comments: Span[], offset: number): boolean {
  * ------------------------------------------------------------------ */
 
 /** Report the problems that every line of the document can have. */
-function collectLineProblems(doc: Text, text: string, language: string): Problem[] {
+export function collectLineProblems(doc: Text, text: string, language: string): Problem[] {
   const problems: Problem[] = []
   const length = text.length
   const tabsRelevant = INDENTATION_SENSITIVE.has(language)
@@ -487,18 +484,6 @@ function collectLineProblems(doc: Text, text: string, language: string): Problem
     // A carriage return is part of the line break, not of the line.
     let contentEnd = end
     if (contentEnd > lineStart && text.charCodeAt(contentEnd - 1) === 13) contentEnd--
-
-    if (contentEnd - lineStart > MAX_LINE_LENGTH) {
-      problems.push({
-        line: lineNumber,
-        column: 1,
-        from: lineStart,
-        to: contentEnd,
-        severity: 'warning',
-        message: `Line is longer than ${MAX_LINE_LENGTH} characters`,
-        source: 'line-length',
-      })
-    }
 
     let whitespaceStart = contentEnd
     while (whitespaceStart > lineStart) {

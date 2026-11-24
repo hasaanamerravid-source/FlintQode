@@ -38,35 +38,33 @@
     <div class="section-inner">
       <div class="section-head">
         <span class="kicker">Release notes</span>
-        <h2>What's new in FlintQode 1.4.6</h2>
+        <h2>What's new in FlintQode 1.4.7</h2>
         <p>Released 2026-11-24.</p>
       </div>
       <div class="whats-new">
-        <h3>Highlights</h3>
+        <h3>Fixed in this release</h3>
         <ul>
-          <li><strong>Extensions, made simple.</strong> A VS Code-style view lets you search a bundled marketplace, read details and install, uninstall, enable or disable extensions with one click. You can also install a plugin file.</li>
-          <li><strong>Power save mode.</strong> Switch off glass, gradients, shadows and animations, pause the minimap loop and stretch background polling in Settings, the View menu or the command palette. Your appearance choices are kept for when you switch it back off.</li>
-          <li><strong>More control over the window.</strong> Scale the whole interface, hide secondary toolbar buttons, and enjoy a flatter, less boxy shell.</li>
-          <li><strong>Code colours you control.</strong> Recolour keywords, strings, comments, numbers, functions, types, variables and more from Settings. The editor background stays exactly as you set it.</li>
-          <li>Full editor typography and colour customisation, applied live and saved automatically.</li>
-          <li>Real PTY terminal with tabs, resize and interactive programs.</li>
-          <li>Git integration, multi-root workspace, LSP tools, crash recovery and Markdown preview.</li>
+          <li><strong>Check for updates no longer freezes the app.</strong> Release checks, downloads and installs run in bounded background tasks, the button shows what is happening, and confirmations use the normal in-app dialog. An update is only offered when the published version is newer.</li>
+          <li><strong>No more 120-character warning.</strong> The always-on line-length problem is gone; syntax, JSON, Java, TODO/FIXME, whitespace, indentation and end-of-file diagnostics are unchanged.</li>
+          <li><strong>One terminal, in the right folder.</strong> Closing and reopening the panel no longer opens a shell in the filesystem root or home directory before the workspace shell.</li>
         </ul>
-        <h3>Interface and fixes</h3>
+        <h3>Performance</h3>
         <ul>
-          <li>Removed duplicate title-bar buttons, menu entries and rail icons; tabs and window controls now share one visual language.</li>
-          <li>Fixed pill tabs conflicting with the accent underline, and made the glass opacity slider actually work.</li>
-          <li>Plugin changes now refresh the command registry immediately after install or uninstall.</li>
-          <li>Run File saves first and reports backend errors in the Run panel; atomic writes and safe paths remain in place.</li>
+          <li>Reviewed the native hot paths: file IO, project search, PTY, LSP, Git and process handling are already Rust with Rayon and dedicated threads. Java or C++ would add another runtime and build matrix without replacing the CodeMirror and SolidJS renderer work, so neither was added.</li>
         </ul>
-        <h3>Website and installers</h3>
+        <h3>Carried over from 1.4.6</h3>
         <ul>
-          <li>Download links, release notes and installers now describe v1.4.6, with screenshots refreshed from the new interface.</li>
-          <li>Version-aware download links and full OS installer coverage for Linux, Windows and macOS.</li>
-          <li>CI builds with Node 22.12 to match the renderer toolchain.</li>
+          <li>VS Code-style Extensions view with search, details, install, uninstall, enable, disable and local install from a plugin file.</li>
+          <li>Power save mode, interface scale, a minimal toolbar and editable code token colours.</li>
+          <li>Full editor typography and colour customisation, a real PTY terminal, Git integration, multi-root workspace and LSP tools.</li>
+        </ul>
+        <h3>Website</h3>
+        <ul>
+          <li>The new <a href="stats.html">Stats tab</a> shows visitors, clones and installer downloads, refreshed from GitHub nightly and after each release.</li>
+          <li>Download links, release notes and installers now describe v1.4.7, with full OS installer coverage for Linux, Windows and macOS.</li>
         </ul>
         <p style="margin-top:var(--space-4);">
-          <a href="downloads.html" class="btn btn-primary" data-download="primary">Download 1.4.6</a>
+          <a href="downloads.html" class="btn btn-primary" data-download="primary">Download 1.4.7</a>
           <a href="https://github.com/hasaanamerravid-source/FlintQode/blob/main/CHANGELOG.md" class="btn btn-ghost" target="_blank" rel="noopener">Full changelog</a>
         </p>
       </div>

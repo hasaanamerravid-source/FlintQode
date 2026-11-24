@@ -199,9 +199,11 @@ export function TerminalView(props: { cwd?: string }): JSX.Element {
   const t = useT()
 
   createEffect(
-    () => ({ count: sessions().length, cwd: props.cwd }),
-    (source) => {
-      if (source.count === 0) void actions.start(source.cwd)
+    () => sessions().length,
+    (count) => {
+      // The store resolves the workspace directory. The in-flight guard in
+      // terminalState makes this safe even if two UI paths ask at once.
+      if (count === 0) void actions.start(props.cwd)
     },
   )
 

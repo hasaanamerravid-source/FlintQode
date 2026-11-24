@@ -9,6 +9,7 @@
 
 import type { TerminalStartResult } from '@shared/api'
 import { create } from '@/state/compat'
+import { projectFolder } from './projectConfig'
 import { useAppStore } from '../store/app'
 
 export interface TerminalSession {
@@ -61,6 +62,10 @@ function notify<T>(map: Map<string, Set<Listener<T>>>, id: string, value: T): vo
 }
 
 let unsubscribeEvents: (() => void) | undefined
+// Two UI paths can ask for the first terminal in the same tick. Share the
+// in-flight promise so only one PTY is created, and resolve its directory from
+// live state instead of a stale store snapshot.
+let pendingStart: Promise<TerminalSession | undefined> | undefined
 
 /** The listener is installed lazily: `window.api` exists only after bootstrap. */
 function ensureSubscribed(): void {
@@ -104,7 +109,16 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     return sessions.find((session) => session.id === activeId) ?? sessions[0]
   },
 
-  start: (cwd, label) => get().create(cwd, label),
+  start: (cwd, label) => {
+    if (pendingStart) return pendingStart
+    const directory = cwd ?? useAppStore.getState().workspaceRoot ?? projectFolder() ?? undefined
+    pendingStart = get()
+      .create(directory, label)
+      .finally(() => {
+        pendingStart = undefined
+      })
+    return pendingStart
+  },
 
   create: async (cwd, label) => {
     ensureSubscribed()

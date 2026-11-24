@@ -2,6 +2,7 @@ import { createEffect, createMemo, createSignal, For, Match, Show, Switch } from
 import type { JSX } from '@solidjs/web'
 import type { Settings, SyntaxColorKey } from '@shared/types'
 import { useAppStore } from '../store/app'
+import { confirm } from '../store/ui'
 import { useSettings } from '../state/solid'
 import { DEFAULT_SETTINGS, ENCODING_LABELS, EOL_LABELS } from '../core/defaults'
 import { themeGroups, resolveTheme, syntaxTokens, editorTheme, SYNTAX_COLOR_KEYS } from '../core/themeResolver'
@@ -199,6 +200,48 @@ export function SettingsDialog(): JSX.Element {
   const [bindings, setBindings] = createSignal<Keybindings>({})
   const [updateStatus, setUpdateStatus] = createSignal('')
   const [updateBusy, setUpdateBusy] = createSignal(false)
+
+  // Update work happens in the native async commands. This handler only waits
+  // for them and uses the in-app confirm dialog instead of window.confirm(),
+  // so the webview stays responsive from the first click to the last prompt.
+  const checkForUpdate = async (): Promise<void> => {
+    setUpdateBusy(true)
+    setUpdateStatus(t('settings.updatesChecking'))
+    try {
+      const app = await window.api.info()
+      const update = await window.api.app.checkUpdate(app.version)
+      if (!update) {
+        setUpdateStatus(t('settings.updatesUpToDate'))
+        return
+      }
+      setUpdateStatus(t('settings.updatesAvailable', { version: update.version }))
+      setUpdateBusy(false)
+      const download = await confirm(
+        t('settings.title'),
+        t('settings.updatesDownloadPrompt', { version: update.version }),
+        t('common.yes'),
+      )
+      if (!download) return
+      setUpdateBusy(true)
+      setUpdateStatus(t('settings.updatesDownloading'))
+      const temp = app.temp.replace(/[\\/]+$/, '') || '/tmp'
+      const dest = `${temp}/flintqode-update.deb`
+      await window.api.app.downloadUpdate(update.url, dest)
+      setUpdateStatus(t('settings.updatesDownloaded'))
+      setUpdateBusy(false)
+      const install = await confirm(t('settings.title'), t('settings.updatesInstallPrompt'), t('common.yes'))
+      if (!install) return
+      setUpdateBusy(true)
+      setUpdateStatus(t('settings.updatesInstalling'))
+      await window.api.app.installUpdate(dest)
+      setUpdateStatus(t('settings.updatesInstalled'))
+    } catch (error) {
+      setUpdateStatus(String(error))
+    } finally {
+      setUpdateBusy(false)
+    }
+  }
+
   const commandsWithShortcuts = getCommands().filter((command) => command.shortcut && !command.hidden)
   const progress = createMemo(() => translationProgress(settings().language))
 
@@ -1333,53 +1376,9 @@ export function SettingsDialog(): JSX.Element {
           <Match when={section() === 'updates'}>
             <div style={{ display: 'flex', 'flex-direction': 'column', gap: '10px' }}>
               <div class="hint">{t('settings.updatesHint')}</div>
-              <button
-                class="panel-button"
-                disabled={updateBusy()}
-                onClick={async () => {
-                  setUpdateBusy(true)
-                  setUpdateStatus(t('settings.updatesChecking'))
-                  try {
-                    const info = await (
-                      window.api as unknown as {
-                        app?: {
-                          checkUpdate?: (
-                            v: string,
-                          ) => Promise<{ version: string; url: string; assetName: string } | null>
-                        }
-                      }
-                    ).app?.checkUpdate?.((await window.api.info()).version)
-                    if (!info) {
-                      setUpdateStatus(t('settings.updatesUpToDate'))
-                    } else {
-                      setUpdateStatus(t('settings.updatesAvailable', { version: info.version }))
-                      const ok = window.confirm(t('settings.updatesDownloadPrompt', { version: info.version }))
-                      if (ok) {
-                        const dest = `/tmp/opencode/flintqode-update.deb`
-                        await (
-                          window.api as unknown as {
-                            app?: { downloadUpdate?: (u: string, d: string) => Promise<string> }
-                          }
-                        ).app?.downloadUpdate?.(info.url, dest)
-                        setUpdateStatus(t('settings.updatesDownloaded'))
-                        const install = window.confirm(t('settings.updatesInstallPrompt'))
-                        if (install) {
-                          await (
-                            window.api as unknown as { app?: { installUpdate?: (p: string) => Promise<string> } }
-                          ).app?.installUpdate?.(dest)
-                          setUpdateStatus(t('settings.updatesInstalled'))
-                        }
-                      }
-                    }
-                  } catch (error) {
-                    setUpdateStatus(String(error))
-                  } finally {
-                    setUpdateBusy(false)
-                  }
-                }}
-              >
+              <button class="panel-button" disabled={updateBusy()} onClick={() => void checkForUpdate()}>
                 <Show when={updateBusy()} fallback={t('settings.checkForUpdates')}>
-                  {t('settings.updatesChecking')}
+                  {updateStatus()}
                 </Show>
               </button>
               <Show when={updateStatus()}>{(status) => <div class="hint">{status()}</div>}</Show>
