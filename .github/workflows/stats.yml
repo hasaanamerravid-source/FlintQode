@@ -36,8 +36,8 @@ jobs:
 
       - name: Commit refreshed stats
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "hasaanamerravid-source"
+          git config user.email "hasaanamerravid@gmail.com"
           git add docs/assets/data/stats.json
           if git diff --cached --quiet; then
             echo "Stats are already current."
