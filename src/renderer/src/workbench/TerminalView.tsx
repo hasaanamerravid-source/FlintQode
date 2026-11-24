@@ -199,11 +199,12 @@ export function TerminalView(props: { cwd?: string }): JSX.Element {
   const t = useT()
 
   createEffect(
-    () => sessions().length,
-    (count) => {
-      // The store resolves the workspace directory. The in-flight guard in
-      // terminalState makes this safe even if two UI paths ask at once.
-      if (count === 0) void actions.start(props.cwd)
+    () => ({ count: sessions().length, cwd: props.cwd }),
+    (source) => {
+      // Both values come from the tracked compute function. The in-flight
+      // guard in terminalState prevents a second PTY if another UI path asks
+      // for the first shell at the same time.
+      if (source.count === 0) void actions.start(source.cwd)
     },
   )
 
