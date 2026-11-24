@@ -1,5 +1,5 @@
-import type { JSX } from 'react'
-import { useEffect, useRef } from 'react'
+import type { JSX } from '@solidjs/web'
+import { createEffect, createSignal } from 'solid-js'
 import { EditorState, EditorSelection, Compartment, type Extension } from '@codemirror/state'
 import {
   EditorView,
@@ -50,6 +50,7 @@ import { highlightAllExtension } from '../../core/highlightAll'
 import { bookmarkExtension } from '../../core/bookmarks'
 import { indentGuidesExtension } from '../../core/indentGuides'
 import { gitGutterExtension } from '../../core/gitGutter'
+import { useSettings } from '../../state/solid'
 
 export interface CodeEditorProps {
   tab: Tab
@@ -59,8 +60,6 @@ export interface CodeEditorProps {
   onContentChange?: (content: string) => void
   /** Called with the underlying CodeMirror view (for the minimap). */
   onViewReady?: (view: EditorView | null) => void
-  /** Views sharing a group edit the same buffer (split view). */
-  syncGroup?: string
 }
 
 function buildTheme(settings: {
@@ -350,20 +349,29 @@ function overwriteKeymap(settings: { overwriteMode: boolean }): Extension {
   })
 }
 
-export function CodeEditor({ tab, onReady, onContentChange, onViewReady, syncGroup }: CodeEditorProps): JSX.Element {
-  const hostRef = useRef<HTMLDivElement | null>(null)
-  const viewRef = useRef<EditorView | null>(null)
-  const changeRef = useRef(onContentChange)
-  changeRef.current = onContentChange
-  const syncTimer = useRef<number | null>(null)
-  const settings = useAppStore((s) => s.settings)
-  const setTabDirty = useAppStore((s) => s.setTabDirty)
-  const statusSet = useStatusStore((s) => s.set)
+export function CodeEditor(props: CodeEditorProps): JSX.Element {
+  let host!: HTMLDivElement
+  let viewRef: EditorView | null = null
+  let syncTimer: number | null = null
+  let disposeEditor: (() => void) | null = null
+  let currentTabId = ''
+  // Keep editor creation off the app store's version signal: the teardown
+  // flushes the document back into that store, so tracking it directly made
+  // the create/dispose effect feed itself. The id signal only changes when
+  // the tab really changes.
+  const [editorTabId, setEditorTabId] = createSignal<string | null>(null)
+  const settings = useSettings()
+  const setTabDirty = useAppStore.getState().setTabDirty
+  const statusSet = useStatusStore.getState().set
 
-  useEffect(() => {
-    if (!hostRef.current) return
+  /** Create the CodeMirror view from a plain tab snapshot. */
+  function createEditor(tab: Tab): () => void {
     let disposed = false
-    const settingsNow = useAppStore.getState().settings
+    const stateNow = useAppStore.getState()
+    const settingsNow = stateNow.settings
+    // Same one-time snapshot as the old editor: the group is decided when the
+    // CodeMirror view is created, not tracked as a reactive prop.
+    const syncGroup = stateNow.splitView ? `split-${tab.id}` : undefined
 
     const state = EditorState.create({
       doc: tab.content ?? '',
@@ -438,21 +446,23 @@ export function CodeEditor({ tab, onReady, onContentChange, onViewReady, syncGro
           if (update.docChanged) {
             setTabDirty(tab.id, true)
             const text = update.state.doc.toString()
-            changeRef.current?.(text)
+            // Read the prop when the change happens: Solid props are live getters,
+            // so the freshest callback is used without rebuilding the editor.
+            props.onContentChange?.(text)
             // Keep the store in sync (tab switches, session restore) without
             // re-rendering on every keystroke. Large files are skipped:
             // copying megabytes per keystroke would freeze the editor.
             if (tab.largeFile) return
             if (text.length > 2_000_000) return
-            if (syncTimer.current !== null) window.clearTimeout(syncTimer.current)
-            syncTimer.current = window.setTimeout(() => {
+            if (syncTimer !== null) window.clearTimeout(syncTimer)
+            syncTimer = window.setTimeout(() => {
               useAppStore.getState().updateTab(tab.id, { content: text })
             }, 400)
           }
           // Split view: the other pane shows the same document, so it gets the
           // very same state (contents, selection and configuration).
           if (syncGroup && update.transactions.length > 0 && !forwarding) {
-            const peers = peersOf(syncGroup, view)
+            const peers = peersOf(syncGroup, update.view)
             if (peers.length) {
               forwarding = true
               try {
@@ -509,8 +519,8 @@ export function CodeEditor({ tab, onReady, onContentChange, onViewReady, syncGro
       ],
     })
 
-    const view = new EditorView({ state, parent: hostRef.current })
-    viewRef.current = view
+    const view = new EditorView({ state, parent: host })
+    viewRef = view
     if (typeof tab.cursor === 'number' && tab.cursor > 0) {
       const pos = Math.min(tab.cursor, view.state.doc.length)
       view.dispatch({ selection: { anchor: pos } })
@@ -641,81 +651,121 @@ export function CodeEditor({ tab, onReady, onContentChange, onViewReady, syncGro
     const unregister = registerEditor(handle)
     const unregisterView = registerView(tab.id, view)
     const leaveGroup = syncGroup ? joinGroup(syncGroup, view) : undefined
-    onReady?.(handle)
-    onViewReady?.(view)
+    props.onReady?.(handle)
+    props.onViewReady?.(view)
     view.focus()
 
     return () => {
       disposed = true
-      if (syncTimer.current !== null) {
-        window.clearTimeout(syncTimer.current)
-        syncTimer.current = null
+      if (syncTimer !== null) {
+        window.clearTimeout(syncTimer)
+        syncTimer = null
       }
       // Flush the final content and cursor position back into the store so the
       // tab can be re-created without losing anything.
-      const state = useAppStore.getState()
+      const currentState = useAppStore.getState()
       const cursor = view.state.selection.main.head
-      state.updateTab(tab.id, { content: view.state.doc.toString(), cursor })
+      currentState.updateTab(tab.id, { content: view.state.doc.toString(), cursor })
       unregister()
       unregisterView()
       leaveGroup?.()
-      onViewReady?.(null)
+      props.onViewReady?.(null)
       view.destroy()
-      viewRef.current = null
+      viewRef = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab.id])
+  }
+
+  // Mirror the prop id into a local signal so the editor lifecycle does not
+  // track the whole app store (its teardown writes back to that store).
+  createEffect(
+    () => props.tab.id,
+    (id) => {
+      setEditorTabId(id)
+    },
+  )
+
+  // The editor is created from a plain snapshot; none of its imperative setup
+  // reads a reactive value from an untracked scope. The ref callback only
+  // captures the host element; the effect runs after the first render.
+  createEffect(editorTabId, (id) => {
+    if (!id) return
+    const tab = useAppStore.getState().tabs.find((entry) => entry.id === id)
+    if (!tab || (id === currentTabId && viewRef)) return
+    disposeEditor?.()
+    currentTabId = id
+    disposeEditor = createEditor(tab)
+    return () => {
+      disposeEditor?.()
+      disposeEditor = null
+    }
+  })
 
   // Reconfigure when relevant settings change.
-  useEffect(() => {
-    const view = viewRef.current
-    if (!view) return
-    view.dispatch({
-      effects: [
-        wrapCompartment.reconfigure(settings.lineWrapping ? EditorView.lineWrapping : []),
-        gutterCompartment.reconfigure(settings.showLineNumbers ? lineNumbers() : []),
-        guideCompartment.reconfigure(
-          indentGuidesExtension({ tabSize: settings.tabSize, enabled: settings.showIndentGuides }),
-        ),
-        invisiblesCompartment.reconfigure(settings.showInvisibles ? highlightSpecialChars() : []),
-        behaviourCompartment.reconfigure([
-          settings.autoIndent ? indentOnInput() : [],
-          settings.matchBrackets ? bracketMatching() : [],
-          settings.autoCloseBrackets ? closeBrackets() : [],
-        ]),
-        themeCompartment.reconfigure(buildTheme(settings)),
-        syntaxCompartment.reconfigure(syntaxHighlighting(editorTheme(settings).style)),
-        editCompartment.reconfigure([
-          EditorState.tabSize.of(settings.tabSize),
-          indentUnit.of(settings.insertSpaces ? ' '.repeat(settings.tabSize) : '\t'),
-          EditorState.readOnly.of(tab.readonly),
-        ]),
-        overwriteCompartment.reconfigure(settings.overwriteMode ? overwriteKeymap(settings) : []),
-        scrollPastEndCompartment.reconfigure(settings.scrollPastEnd ? scrollPastEnd() : []),
-      ],
-    })
-  }, [settings, tab.readonly])
+  createEffect(
+    () => ({ current: settings(), readonly: props.tab.readonly }),
+    ({ current, readonly }) => {
+      const view = viewRef
+      if (!view) return
+      view.dispatch({
+        effects: [
+          wrapCompartment.reconfigure(current.lineWrapping ? EditorView.lineWrapping : []),
+          gutterCompartment.reconfigure(current.showLineNumbers ? lineNumbers() : []),
+          guideCompartment.reconfigure(
+            indentGuidesExtension({ tabSize: current.tabSize, enabled: current.showIndentGuides }),
+          ),
+          invisiblesCompartment.reconfigure(current.showInvisibles ? highlightSpecialChars() : []),
+          behaviourCompartment.reconfigure([
+            current.autoIndent ? indentOnInput() : [],
+            current.matchBrackets ? bracketMatching() : [],
+            current.autoCloseBrackets ? closeBrackets() : [],
+          ]),
+          themeCompartment.reconfigure(buildTheme(current)),
+          syntaxCompartment.reconfigure(syntaxHighlighting(editorTheme(current).style)),
+          editCompartment.reconfigure([
+            EditorState.tabSize.of(current.tabSize),
+            indentUnit.of(current.insertSpaces ? ' '.repeat(current.tabSize) : '\t'),
+            EditorState.readOnly.of(readonly),
+          ]),
+          overwriteCompartment.reconfigure(current.overwriteMode ? overwriteKeymap(current) : []),
+          scrollPastEndCompartment.reconfigure(current.scrollPastEnd ? scrollPastEnd() : []),
+        ],
+      })
+    },
+  )
 
-  useEffect(() => {
-    const view = viewRef.current
-    if (!view) return
-    view.dispatch({
-      effects: langCompartment.reconfigure(tab.largeFile ? [] : languageExtension(tab.language)),
-    })
-  }, [tab.language])
+  createEffect(
+    () => ({ language: props.tab.language, largeFile: props.tab.largeFile }),
+    ({ language, largeFile }) => {
+      const view = viewRef
+      if (!view) return
+      view.dispatch({
+        effects: langCompartment.reconfigure(largeFile ? [] : languageExtension(language)),
+      })
+    },
+  )
 
-  useEffect(() => {
-    const view = viewRef.current
-    if (!view) return
-    const current = view.state.doc.toString()
-    const state = useAppStore.getState()
-    const isDirty = state.tabs.find((t) => t.id === tab.id)?.dirty
-    if (current !== (tab.content ?? '') && !isDirty) {
-      // The file was reloaded from disk (or the tab was restored).
-      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: tab.content ?? '' } })
-      state.setTabDirty(tab.id, false)
-    }
-  }, [tab.content, tab.id])
+  createEffect(
+    () => ({ content: props.tab.content, id: props.tab.id }),
+    ({ content, id }) => {
+      const view = viewRef
+      if (!view) return
+      const current = view.state.doc.toString()
+      const state = useAppStore.getState()
+      const isDirty = state.tabs.find((t) => t.id === id)?.dirty
+      if (current !== (content ?? '') && !isDirty) {
+        // The file was reloaded from disk (or the tab was restored).
+        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content ?? '' } })
+        state.setTabDirty(id, false)
+      }
+    },
+  )
 
-  return <div className="cm-host" ref={hostRef} />
+  return (
+    <div
+      class="cm-host"
+      ref={(el) => {
+        host = el
+      }}
+    />
+  )
 }

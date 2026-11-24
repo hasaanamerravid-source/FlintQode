@@ -1,4 +1,5 @@
-import type { JSX } from 'react'
+import { createMemo, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { useAppStore } from '../store/app'
 import { ICON_SHAPES, iconKindFor, type IconKind } from '../core/iconShapes'
 import { iconTheme } from '../core/iconThemes'
@@ -71,34 +72,46 @@ export interface FileIconProps {
 }
 
 /** Renders the file type icon of the active icon theme. */
-export function FileIcon({
-  name,
-  isDirectory = false,
-  theme = 'seti',
-  size = 15,
-  className,
-}: FileIconProps): JSX.Element | null {
-  const appTheme = useAppStore((s) => s.settings.theme)
-  const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
-  const dark = appTheme === 'system' ? prefersDark : appTheme === 'dark'
+export function FileIcon(props: FileIconProps): JSX.Element {
+  const dark = createMemo(() => {
+    const appTheme = useAppStore().settings.theme
+    const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+    return appTheme === 'system' ? prefersDark : appTheme === 'dark'
+  })
 
-  const pack = iconTheme(theme)
-  const kind: IconKind = iconKindFor(name, isDirectory)
-  const path = pack.shapes?.[kind] ?? ICON_SHAPES[kind]
-  if (!path) return null
-  if (theme === 'none') return null
-  const rawColor = pack.monochrome ? 'currentColor' : (pack.colors[kind] ?? 'currentColor')
-  const color = rawColor === 'currentColor' ? rawColor : adaptColor(rawColor, dark)
+  const icon = createMemo(() => {
+    const theme = props.theme ?? 'seti'
+    if (theme === 'none') return null
+    const pack = iconTheme(theme)
+    const kind: IconKind = iconKindFor(props.name, props.isDirectory ?? false)
+    const path = pack.shapes?.[kind] ?? ICON_SHAPES[kind]
+    if (!path) return null
+    const rawColor = pack.monochrome ? 'currentColor' : (pack.colors[kind] ?? 'currentColor')
+    return {
+      path,
+      color: rawColor === 'currentColor' ? rawColor : adaptColor(rawColor, dark()),
+    }
+  })
+
   return (
-    <svg
-      className={className}
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      style={{ color, flex: '0 0 auto', display: 'inline-block', verticalAlign: '-2px' }}
-      aria-hidden="true"
-    >
-      <path d={path} fill="currentColor" />
-    </svg>
+    <Show when={icon()}>
+      {(data) => (
+        <svg
+          class={props.className}
+          width={props.size ?? 15}
+          height={props.size ?? 15}
+          viewBox="0 0 24 24"
+          style={{
+            color: data().color,
+            flex: '0 0 auto',
+            display: 'inline-block',
+            'vertical-align': '-2px',
+          }}
+          aria-hidden="true"
+        >
+          <path d={data().path} fill="currentColor" />
+        </svg>
+      )}
+    </Show>
   )
 }

@@ -1,5 +1,5 @@
-import type { JSX, ReactNode } from 'react'
-import { useEffect, useId, useRef } from 'react'
+import { createEffect, createUniqueId, onSettled, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { useT } from '../core/i18n'
 
 /**
@@ -19,11 +19,11 @@ export interface ModalProps {
   title: string
   /** Called when the dialog is closed (the button, the escape key, the backdrop). */
   onClose: () => void
-  children: ReactNode
+  children: JSX.Element
   /** The buttons at the bottom of the dialog. */
-  footer?: ReactNode
+  footer?: JSX.Element
   /** A row of tabs below the title (the settings dialog has one). */
-  tabs?: ReactNode
+  tabs?: JSX.Element
   /** A small dialog is used for the prompts. */
   size?: 'small' | 'normal'
   className?: string
@@ -39,78 +39,76 @@ export interface ModalProps {
  * * the focus goes back to the control that opened it,
  * * it is announced as a dialog with its title.
  */
-export function Modal({ title, onClose, children, footer, tabs, size = 'normal', className }: ModalProps): JSX.Element {
-  const panelRef = useRef<HTMLDivElement | null>(null)
-  const titleId = useId()
+export function Modal(props: ModalProps): JSX.Element {
+  let panel!: HTMLDivElement
+  const titleId = createUniqueId()
   const t = useT()
 
-  useEffect(() => {
+  onSettled(() => {
     // The control that opened the dialog gets the focus back when it closes.
     const opener = document.activeElement as HTMLElement | null
-    const panel = panelRef.current
-    if (panel) {
-      const first = panel.querySelector<HTMLElement>(FOCUSABLE)
-      ;(first ?? panel).focus()
-    }
+    const first = panel.querySelector<HTMLElement>(FOCUSABLE)
+    ;(first ?? panel).focus()
     return () => {
       if (opener && document.contains(opener)) opener.focus()
     }
-  }, [])
+  })
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        event.stopPropagation()
-        onClose()
-        return
+  createEffect(
+    () => props.onClose,
+    (onClose) => {
+      const onKeyDown = (event: KeyboardEvent): void => {
+        if (event.key === 'Escape') {
+          event.stopPropagation()
+          onClose()
+          return
+        }
+        if (event.key !== 'Tab') return
+        const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+          (element) => element.offsetParent !== null || element === document.activeElement,
+        )
+        if (!focusable.length) {
+          event.preventDefault()
+          return
+        }
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        const active = document.activeElement as HTMLElement | null
+        if (event.shiftKey && (active === first || !panel.contains(active))) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && active === last) {
+          event.preventDefault()
+          first.focus()
+        }
       }
-      if (event.key !== 'Tab') return
-      const panel = panelRef.current
-      if (!panel) return
-      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-        (element) => element.offsetParent !== null || element === document.activeElement,
-      )
-      if (!focusable.length) {
-        event.preventDefault()
-        return
-      }
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      const active = document.activeElement as HTMLElement | null
-      if (event.shiftKey && (active === first || !panel.contains(active))) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-    // The listener sits on the window: a key that is sent to the window
-    // itself never reaches the document.
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
+      // The listener sits on the window: a key that is sent to the window
+      // itself never reaches the document.
+      window.addEventListener('keydown', onKeyDown)
+      return () => window.removeEventListener('keydown', onKeyDown)
+    },
+  )
 
   return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
+    <div class="modal-backdrop" onMouseDown={() => props.onClose()}>
       <div
-        ref={panelRef}
-        className={`modal ${size === 'small' ? 'small' : ''} ${className ?? ''}`.trim()}
+        ref={(element) => (panel = element)}
+        class={['modal', { small: props.size === 'small' }, props.className]}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        tabIndex={-1}
+        tabindex={-1}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="modal-header">
-          <span id={titleId}>{title}</span>
-          <button className="icon-btn" aria-label={t('common.close')} onClick={onClose}>
+        <div class="modal-header">
+          <span id={titleId}>{props.title}</span>
+          <button class="icon-btn" aria-label={t('common.close')} onClick={() => props.onClose()}>
             ×
           </button>
         </div>
-        {tabs}
-        <div className="modal-body">{children}</div>
-        {footer && <div className="modal-footer">{footer}</div>}
+        {props.tabs}
+        <div class="modal-body">{props.children}</div>
+        <Show when={props.footer}>{(footer) => <div class="modal-footer">{footer()}</div>}</Show>
       </div>
     </div>
   )

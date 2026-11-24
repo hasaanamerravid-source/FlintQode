@@ -10,7 +10,9 @@ source; the file is named where it matters.
 | [adr/0002-a-language-server-client-without-a-library.md](adr/0002-a-language-server-client-without-a-library.md) | Why the LSP client is written by hand instead of using a library, and what the protocol surface therefore is. |
 | [adr/0003-plain-text-files-for-everything.md](adr/0003-plain-text-files-for-everything.md) | Why the keybindings, the project configuration and the settings are plain JSON files in the application-data folder, and what that buys. |
 | [adr/0004-tauri-instead-of-electron.md](adr/0004-tauri-instead-of-electron.md) | Why the Electron shell was replaced by Tauri 2, how the existing renderer was kept, and what the migration costs. |
+| [adr/0005-solidjs-2-renderer.md](adr/0005-solidjs-2-renderer.md) | Why 1.4.5 moved the interface to SolidJS 2, how the native bridge was preserved, and what the Aurora Slate design layer changes. |
 | [extension-api.md](extension-api.md) | The plugin API: what a plugin is, the context it receives during activation, the commands it can register and the bridge it can use. |
+| [solid-port-guide.md](solid-port-guide.md) | The completed renderer port: Solid 2 API differences, store conventions and the invariants that must not change. |
 | [keyboard-shortcuts.md](keyboard-shortcuts.md) | The complete list of the keyboard shortcuts, and which of the binding mechanisms is responsible for each of them. |
 | [testing.md](testing.md) | The checks, the commands that run them and the rules for writing a test. |
 | [i18n.md](i18n.md) | The languages of the interface: how the catalogue works and how to add a language or a new string. |

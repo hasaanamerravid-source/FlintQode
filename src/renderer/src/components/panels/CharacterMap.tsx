@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { JSX } from 'react'
+import { createEffect, createMemo, createSignal, For, onSettled, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 export interface CharacterMapProps {
   /** Called with the character when the user picks one. */
@@ -110,198 +110,197 @@ const STYLES = `
 .cm-empty { padding: 12px; color: var(--fg-muted, #8b8b9b); }
 `
 
-export function CharacterMap({ onInsert, onClose }: CharacterMapProps): JSX.Element {
-  const [query, setQuery] = useState('')
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
-  const [selected, setSelected] = useState(0)
-  const [columns, setColumns] = useState(12)
-  const [copied, setCopied] = useState<string | null>(null)
-  const bodyRef = useRef<HTMLDivElement | null>(null)
-  const searchRef = useRef<HTMLInputElement | null>(null)
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+export function CharacterMap(props: CharacterMapProps): JSX.Element {
+  const [query, setQuery] = createSignal('')
+  const [collapsed, setCollapsed] = createSignal<Set<string>>(new Set())
+  const [selected, setSelected] = createSignal(0)
+  const [columns, setColumns] = createSignal(12)
+  const [copied, setCopied] = createSignal<string | null>(null)
+  let bodyRef: HTMLDivElement | undefined
+  let searchRef: HTMLInputElement | undefined
+  let copyTimer: ReturnType<typeof setTimeout> | null = null
 
-  const needle = query.trim().toLowerCase()
+  const needle = createMemo(() => query().trim().toLowerCase())
 
-  const groups = useMemo(() => {
-    if (!needle) return GROUPS
+  const groups = createMemo(() => {
+    if (!needle()) return GROUPS
     return GROUPS.map((group) => ({
       ...group,
       items: group.items.filter((item) => {
         const code = formatCode(item.code)
         return (
-          item.char.toLowerCase().includes(needle) ||
-          code.toLowerCase().includes(needle) ||
-          code.slice(2).toLowerCase().includes(needle)
+          item.char.toLowerCase().includes(needle()) ||
+          code.toLowerCase().includes(needle()) ||
+          code.slice(2).toLowerCase().includes(needle())
         )
       }),
     })).filter((group) => group.items.length > 0)
-  }, [needle])
+  })
 
-  const isOpen = useCallback((id: string): boolean => (needle ? true : !collapsed.has(id)), [collapsed, needle])
+  const isOpen = (id: string): boolean => (needle() ? true : !collapsed().has(id))
 
   /** All characters of the visible groups, in the order they are painted. */
-  const visible = useMemo(() => {
+  const visible = createMemo(() => {
     const out: CharItem[] = []
-    for (const group of groups) {
+    for (const group of groups()) {
       if (!isOpen(group.id)) continue
       for (const item of group.items) out.push(item)
     }
     return out
-  }, [groups, isOpen])
+  })
 
   /** Position of every character inside the visible list. */
-  const indexOf = useMemo(() => {
+  const indexOf = createMemo(() => {
     const map = new Map<CharItem, number>()
-    visible.forEach((item, index) => map.set(item, index))
+    visible().forEach((item, index) => map.set(item, index))
     return map
-  }, [visible])
+  })
 
-  const toggleGroup = useCallback((id: string) => {
+  const toggleGroup = (id: string): void => {
     setCollapsed((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
-  }, [])
+  }
 
-  const insert = useCallback(
-    (char: string) => {
-      onInsert?.(char)
-    },
-    [onInsert],
-  )
+  const insert = (char: string): void => {
+    props.onInsert?.(char)
+  }
 
-  const copy = useCallback(async (char: string) => {
+  const copy = async (char: string): Promise<void> => {
     try {
       await navigator.clipboard.writeText(char)
       setCopied(char)
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
-      copyTimerRef.current = setTimeout(() => setCopied(null), 900)
+      if (copyTimer) clearTimeout(copyTimer)
+      copyTimer = setTimeout(() => setCopied(null), 900)
     } catch (err) {
       console.error('[flintqode] could not copy the character:', err)
     }
-  }, [])
+  }
 
   // Measure how many characters fit in one row so the arrow keys can navigate.
-  useLayoutEffect(() => {
-    const body = bodyRef.current
-    if (!body) return
-    const measure = (): void => {
-      const grid = body.querySelector<HTMLElement>('.charmap-grid')
-      if (!grid) {
-        setColumns(1)
-        return
+  createEffect(
+    () => ({ count: visible().length, needle: needle() }),
+    () => {
+      const body = bodyRef
+      if (!body) return
+      const measure = (): void => {
+        const grid = body.querySelector<HTMLElement>('.charmap-grid')
+        if (!grid) {
+          setColumns(1)
+          return
+        }
+        const cells = Array.from(grid.querySelectorAll<HTMLElement>('.charmap-cell'))
+        if (!cells.length) {
+          setColumns(1)
+          return
+        }
+        const top = cells[0].offsetTop
+        let count = 0
+        for (const cell of cells) {
+          if (cell.offsetTop !== top) break
+          count += 1
+        }
+        setColumns(Math.max(1, count))
       }
-      const cells = Array.from(grid.querySelectorAll<HTMLElement>('.charmap-cell'))
-      if (!cells.length) {
-        setColumns(1)
-        return
-      }
-      const top = cells[0].offsetTop
-      let count = 0
-      for (const cell of cells) {
-        if (cell.offsetTop !== top) break
-        count += 1
-      }
-      setColumns(Math.max(1, count))
-    }
-    measure()
-    if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => requestAnimationFrame(measure))
-    observer.observe(body)
-    return () => observer.disconnect()
-  }, [visible.length, needle])
+      measure()
+      if (typeof ResizeObserver === 'undefined') return
+      const observer = new ResizeObserver(() => requestAnimationFrame(measure))
+      observer.observe(body)
+      return () => observer.disconnect()
+    },
+  )
 
   // Keep the selection inside the visible range.
-  useEffect(() => {
-    if (selected >= visible.length) setSelected(Math.max(0, visible.length - 1))
-  }, [selected, visible.length])
+  createEffect(
+    () => ({ selected: selected(), count: visible().length }),
+    ({ selected: current, count }) => {
+      if (current >= count) setSelected(Math.max(0, count - 1))
+    },
+  )
 
   // Scroll the selected character into view.
-  useEffect(() => {
-    const body = bodyRef.current
-    if (!body) return
-    const cell = body.querySelector<HTMLElement>(`[data-index="${selected}"]`)
-    cell?.scrollIntoView({ block: 'nearest' })
-  }, [selected])
-
-  useEffect(() => {
-    return () => {
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
-    }
-  }, [])
-
-  const move = useCallback(
-    (delta: number) => {
-      if (!visible.length) return
-      setSelected((prev) => {
-        const next = prev + delta
-        if (next < 0) return 0
-        if (next >= visible.length) return visible.length - 1
-        return next
-      })
+  createEffect(
+    () => selected(),
+    (index) => {
+      const body = bodyRef
+      if (!body) return
+      const cell = body.querySelector<HTMLElement>(`[data-index="${index}"]`)
+      cell?.scrollIntoView({ block: 'nearest' })
     },
-    [visible.length],
   )
 
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      switch (event.key) {
-        case 'ArrowRight':
-          event.preventDefault()
-          move(1)
-          break
-        case 'ArrowLeft':
-          event.preventDefault()
-          move(-1)
-          break
-        case 'ArrowDown':
-          event.preventDefault()
-          move(columns)
-          break
-        case 'ArrowUp':
-          event.preventDefault()
-          move(-columns)
-          break
-        case 'Home':
-          event.preventDefault()
-          setSelected(0)
-          break
-        case 'End':
-          event.preventDefault()
-          setSelected(Math.max(0, visible.length - 1))
-          break
-        case 'Enter': {
-          event.preventDefault()
-          const item = visible[selected]
-          if (item) insert(item.char)
-          break
-        }
-        case 'Escape':
-          event.preventDefault()
-          if (query) setQuery('')
-          else searchRef.current?.blur()
-          break
-        default:
-          break
+  onSettled(() => () => {
+    if (copyTimer) clearTimeout(copyTimer)
+  })
+
+  const move = (delta: number): void => {
+    const count = visible().length
+    if (!count) return
+    setSelected((prev) => {
+      const next = prev + delta
+      if (next < 0) return 0
+      if (next >= count) return count - 1
+      return next
+    })
+  }
+
+  const handleKeyDown = (event: KeyboardEvent): void => {
+    switch (event.key) {
+      case 'ArrowRight':
+        event.preventDefault()
+        move(1)
+        break
+      case 'ArrowLeft':
+        event.preventDefault()
+        move(-1)
+        break
+      case 'ArrowDown':
+        event.preventDefault()
+        move(columns())
+        break
+      case 'ArrowUp':
+        event.preventDefault()
+        move(-columns())
+        break
+      case 'Home':
+        event.preventDefault()
+        setSelected(0)
+        break
+      case 'End':
+        event.preventDefault()
+        setSelected(Math.max(0, visible().length - 1))
+        break
+      case 'Enter': {
+        event.preventDefault()
+        const item = visible()[selected()]
+        if (item) insert(item.char)
+        break
       }
-    },
-    [columns, insert, move, query, selected, visible],
-  )
+      case 'Escape':
+        event.preventDefault()
+        if (query()) setQuery('')
+        else searchRef?.blur()
+        break
+      default:
+        break
+    }
+  }
 
   return (
-    <div className="cm-root">
+    <div class="cm-root">
       <style>{STYLES}</style>
-      <div className="cm-header">
+      <div class="cm-header">
         <input
-          ref={searchRef}
-          className="cm-search"
+          ref={(el) => (searchRef = el)}
+          class="cm-search"
           type="text"
-          value={query}
+          value={query()}
           placeholder="Search characters or code points (e.g. arrow, U+2190)"
-          onChange={(event) => {
-            setQuery(event.target.value)
+          onInput={(event) => {
+            setQuery(event.currentTarget.value)
             setSelected(0)
           }}
           onKeyDown={(event) => {
@@ -312,84 +311,89 @@ export function CharacterMap({ onInsert, onClose }: CharacterMapProps): JSX.Elem
             // Up and down navigate the grid while the search box keeps the focus.
             if (event.key === 'ArrowDown') {
               event.preventDefault()
-              move(columns)
+              move(columns())
               return
             }
             if (event.key === 'ArrowUp') {
               event.preventDefault()
-              move(-columns)
+              move(-columns())
               return
             }
             if (event.key === 'Enter') {
               event.preventDefault()
-              const item = visible[selected]
+              const item = visible()[selected()]
               if (item) insert(item.char)
             }
           }}
         />
-        <span className="cm-count">
-          {visible.length} character{visible.length === 1 ? '' : 's'}
+        <span class="cm-count">
+          {visible().length} character{visible().length === 1 ? '' : 's'}
         </span>
-        {copied ? <span className="cm-count">Copied {copied}</span> : null}
-        {onClose ? (
-          <button type="button" className="cm-btn" onClick={onClose} title="Close">
+        <Show when={copied()}>{(value) => <span class="cm-count">Copied {value()}</span>}</Show>
+        <Show when={props.onClose}>
+          <button type="button" class="cm-btn" onClick={() => props.onClose?.()} title="Close">
             ✕
           </button>
-        ) : null}
+        </Show>
       </div>
 
-      <div className="cm-body" ref={bodyRef} tabIndex={0} onKeyDown={handleKeyDown}>
-        {groups.length === 0 ? <div className="cm-empty">No character matches “{query}”.</div> : null}
+      <div class="cm-body" ref={(el) => (bodyRef = el)} tabindex={0} onKeyDown={handleKeyDown}>
+        <Show when={groups().length === 0}>
+          <div class="cm-empty">No character matches “{query()}”.</div>
+        </Show>
 
-        {groups.map((group) => {
-          const open = isOpen(group.id)
-          return (
-            <section className="cm-group" key={group.id}>
-              <button
-                type="button"
-                className="cm-group-head"
-                onClick={() => toggleGroup(group.id)}
-                aria-expanded={open}
-              >
-                <span className="cm-marker">{open ? '▾' : '▸'}</span>
-                <span>{group.name}</span>
-                <span className="cm-count">({group.items.length})</span>
-              </button>
-              {open ? (
-                <div className="charmap-grid cm-grid">
-                  {group.items.map((item) => {
-                    const flatIndex = indexOf.get(item) ?? -1
-                    return (
-                      <div
-                        key={item.code}
-                        className={`charmap-cell cm-cell${flatIndex === selected ? ' cm-selected' : ''}`}
-                        data-index={flatIndex}
-                        role="button"
-                        tabIndex={-1}
-                        title={`${item.char}  ${formatCode(item.code)}`}
-                        onClick={() => insert(item.char)}
-                      >
-                        <span className="glyph">{item.char}</span>
-                        <span className="code">{formatCode(item.code)}</span>
-                        <button
-                          type="button"
-                          className="cm-copy"
-                          title="Copy to clipboard"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            void copy(item.char)
-                          }}
-                        >
-                          ⧉
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : null}
-            </section>
-          )
-        })}
+        <For each={groups()}>
+          {(group) => {
+            const open = isOpen(group.id)
+            return (
+              <section class="cm-group">
+                <button
+                  type="button"
+                  class="cm-group-head"
+                  onClick={() => toggleGroup(group.id)}
+                  aria-expanded={open ? 'true' : 'false'}
+                >
+                  <span class="cm-marker">{open ? '▾' : '▸'}</span>
+                  <span>{group.name}</span>
+                  <span class="cm-count">({group.items.length})</span>
+                </button>
+                <Show when={open}>
+                  <div class="charmap-grid cm-grid">
+                    <For each={group.items}>
+                      {(item) => {
+                        const flatIndex = indexOf().get(item) ?? -1
+                        return (
+                          <div
+                            class={['charmap-cell', 'cm-cell', { 'cm-selected': flatIndex === selected() }]}
+                            data-index={flatIndex}
+                            role="button"
+                            tabindex={-1}
+                            title={`${item.char}  ${formatCode(item.code)}`}
+                            onClick={() => insert(item.char)}
+                          >
+                            <span class="glyph">{item.char}</span>
+                            <span class="code">{formatCode(item.code)}</span>
+                            <button
+                              type="button"
+                              class="cm-copy"
+                              title="Copy to clipboard"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                void copy(item.char)
+                              }}
+                            >
+                              ⧉
+                            </button>
+                          </div>
+                        )
+                      }}
+                    </For>
+                  </div>
+                </Show>
+              </section>
+            )
+          }}
+        </For>
       </div>
     </div>
   )

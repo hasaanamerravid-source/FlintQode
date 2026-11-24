@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { create } from '@/state/compat'
 import type { Eol, SessionState, Settings, Tab } from '@shared/types'
 import { translate, type MessageKey } from '@shared/i18n'
 import { DEFAULT_SETTINGS } from '../core/defaults'

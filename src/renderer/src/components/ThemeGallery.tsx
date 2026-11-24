@@ -1,4 +1,5 @@
-import type { JSX } from 'react'
+import { For } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { themeGroups, resolveTheme } from '../core/themeResolver'
 
 export interface ThemeGalleryProps {
@@ -7,45 +8,47 @@ export interface ThemeGalleryProps {
 }
 
 /** A grid of every available colour theme with a small preview. */
-export function ThemeGallery({ value, onChange }: ThemeGalleryProps): JSX.Element {
+export function ThemeGallery(props: ThemeGalleryProps): JSX.Element {
   const groups = themeGroups()
   return (
     <div>
-      {groups.map((group) => (
-        <div key={group.group} style={{ marginBottom: 14 }}>
-          <div className="panel-header">
-            <span>{group.group}</span>
-            <span>{group.themes.length}</span>
+      <For each={groups}>
+        {(group) => (
+          <div style={{ 'margin-bottom': '14px' }}>
+            <div class="panel-header">
+              <span>{group.group}</span>
+              <span>{group.themes.length}</span>
+            </div>
+            <div class="theme-gallery">
+              <For each={group.themes}>
+                {(theme) => {
+                  const full = resolveTheme(theme.id)
+                  return (
+                    <button
+                      class={['theme-card', { active: theme.id === props.value }]}
+                      onClick={() => props.onChange(theme.id)}
+                      title={theme.label}
+                    >
+                      <span
+                        class="theme-card-preview"
+                        style={{ background: full.editor.background, color: full.editor.foreground }}
+                      >
+                        <span style={{ color: full.tokens.keyword }}>if</span>{' '}
+                        <span style={{ color: full.tokens.function }}>run</span>
+                        <span style={{ color: full.tokens.punctuation }}>(</span>
+                        <span style={{ color: full.tokens.number }}>42</span>
+                        <span style={{ color: full.tokens.punctuation }}>)</span>{' '}
+                        <span style={{ color: full.tokens.string }}>'hi'</span>
+                      </span>
+                      <span class="theme-card-name">{theme.label}</span>
+                    </button>
+                  )
+                }}
+              </For>
+            </div>
           </div>
-          <div className="theme-gallery">
-            {group.themes.map((theme) => {
-              const full = resolveTheme(theme.id)
-              const selected = theme.id === value
-              return (
-                <button
-                  key={theme.id}
-                  className={`theme-card ${selected ? 'active' : ''}`}
-                  onClick={() => onChange(theme.id)}
-                  title={theme.label}
-                >
-                  <span
-                    className="theme-card-preview"
-                    style={{ background: full.editor.background, color: full.editor.foreground }}
-                  >
-                    <span style={{ color: full.tokens.keyword }}>if</span>{' '}
-                    <span style={{ color: full.tokens.function }}>run</span>
-                    <span style={{ color: full.tokens.punctuation }}>(</span>
-                    <span style={{ color: full.tokens.number }}>42</span>
-                    <span style={{ color: full.tokens.punctuation }}>)</span>{' '}
-                    <span style={{ color: full.tokens.string }}>'hi'</span>
-                  </span>
-                  <span className="theme-card-name">{theme.label}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      ))}
+        )}
+      </For>
     </div>
   )
 }

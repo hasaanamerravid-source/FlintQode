@@ -1,4 +1,5 @@
-import type { JSX } from 'react'
+import { createMemo, For, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { useAppStore } from '../store/app'
 import { runCommand } from '../core/commands'
 import { Modal } from './Modal'
@@ -28,68 +29,66 @@ const ACTIONS: [string, MessageKey][] = [
   ['view.commandPalette', 'welcome.action.commands'],
 ]
 
-export function WelcomeDialog(): JSX.Element | null {
-  const open = useAppStore((s) => s.welcomeOpen)
-  const setDialog = useAppStore((s) => s.setDialog)
-  const recent = useAppStore((s) => s.settings.recentFiles)
+export function WelcomeDialog(): JSX.Element {
+  const open = createMemo(() => useAppStore().welcomeOpen)
+  const recent = createMemo(() => useAppStore().settings.recentFiles)
   const t = useT()
 
-  if (!open) return null
-
-  const close = (): void => setDialog('welcome', false)
+  const close = (): void => useAppStore.getState().setDialog('welcome', false)
 
   return (
-    <Modal
-      title={t('dialog.welcome.title')}
-      onClose={close}
-      footer={
-        <button className="icon-btn" onClick={close}>
-          {t('common.close')}
-        </button>
-      }
-    >
-      <p className="hint">{t('dialog.welcome.subtitle')}</p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        <div>
-          <h3>{t('welcome.start')}</h3>
-          {ACTIONS.map(([id, key]) => (
-            <button key={id} className="panel-item" onClick={() => void runCommand(id)}>
-              <span className="name">{t(key)}</span>
-            </button>
-          ))}
-          {recent.length > 0 && (
-            <>
-              <h3>{t('welcome.recentFiles')}</h3>
-              {recent.slice(0, 8).map((file) => (
-                <button
-                  key={file}
-                  className="panel-item"
-                  title={file}
-                  onClick={() => void runCommand('file.openPath', file)}
-                >
-                  <span className="name">{file.split(/[\\/]/).pop()}</span>
-                  <span className="count">{file}</span>
+    <Show when={open()}>
+      <Modal
+        title={t('dialog.welcome.title')}
+        onClose={close}
+        footer={
+          <button class="icon-btn" onClick={close}>
+            {t('common.close')}
+          </button>
+        }
+      >
+        <p class="hint">{t('dialog.welcome.subtitle')}</p>
+        <div style={{ display: 'grid', 'grid-template-columns': '1fr 1fr', gap: '24px' }}>
+          <div>
+            <h3>{t('welcome.start')}</h3>
+            <For each={ACTIONS}>
+              {([id, key]) => (
+                <button class="panel-item" onClick={() => void runCommand(id)}>
+                  <span class="name">{t(key)}</span>
                 </button>
-              ))}
-            </>
-          )}
+              )}
+            </For>
+            <Show when={recent().length > 0}>
+              <h3>{t('welcome.recentFiles')}</h3>
+              <For each={recent().slice(0, 8)}>
+                {(file) => (
+                  <button class="panel-item" title={file} onClick={() => void runCommand('file.openPath', file)}>
+                    <span class="name">{file.split(/[\\/]/).pop()}</span>
+                    <span class="count">{file}</span>
+                  </button>
+                )}
+              </For>
+            </Show>
+          </div>
+          <div>
+            <h3>{t('welcome.shortcuts')}</h3>
+            <table class="kbd-table">
+              <tbody>
+                <For each={SHORTCUTS}>
+                  {([key, keys]) => (
+                    <tr>
+                      <td>{t(key)}</td>
+                      <td>
+                        <kbd>{keys}</kbd>
+                      </td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div>
-          <h3>{t('welcome.shortcuts')}</h3>
-          <table className="kbd-table">
-            <tbody>
-              {SHORTCUTS.map(([key, keys]) => (
-                <tr key={key}>
-                  <td>{t(key)}</td>
-                  <td>
-                    <kbd>{keys}</kbd>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </Modal>
+      </Modal>
+    </Show>
   )
 }

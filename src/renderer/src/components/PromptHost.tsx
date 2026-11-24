@@ -1,82 +1,88 @@
-import type { JSX } from 'react'
-import { useEffect, useState } from 'react'
+import { createEffect, createSignal, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { useUiStore } from '../store/ui'
 import { Modal } from './Modal'
 import { useT } from '../core/i18n'
 
-export function PromptHost(): JSX.Element | null {
-  const prompt = useUiStore((s) => s.prompt)
-  const confirm = useUiStore((s) => s.confirm)
-  const closePrompt = useUiStore((s) => s.closePrompt)
-  const closeConfirm = useUiStore((s) => s.closeConfirm)
-  const [value, setValue] = useState('')
+export function PromptHost(): JSX.Element {
+  const prompt = () => useUiStore().prompt
+  const confirm = () => useUiStore().confirm
+  const [value, setValue] = createSignal('')
   const t = useT()
 
-  useEffect(() => {
-    if (prompt) setValue(prompt.defaultValue ?? '')
-  }, [prompt])
+  createEffect(
+    () => prompt(),
+    (current) => {
+      if (current) setValue(current.defaultValue ?? '')
+    },
+  )
 
-  if (prompt) {
-    return (
-      <Modal title={prompt.title} onClose={closePrompt} size="small">
-        {prompt.message && <div className="hint">{prompt.message}</div>}
-        <input
-          autoFocus
-          type="text"
-          value={value}
-          placeholder={prompt.placeholder}
-          aria-label={prompt.title}
-          style={{ width: '100%' }}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              prompt.resolve(value)
-              useUiStore.setState({ prompt: null })
-            }
-          }}
-        />
-        <div className="modal-footer" style={{ marginTop: 12, padding: 0, borderTop: 'none' }}>
-          <button className="icon-btn" onClick={closePrompt}>
-            {t('common.cancel')}
-          </button>
-          <button
-            className="icon-btn"
-            onClick={() => {
-              prompt.resolve(value)
-              useUiStore.setState({ prompt: null })
+  return (
+    <Show
+      when={prompt()}
+      fallback={
+        <Show when={confirm()}>
+          {(request) => (
+            <Modal title={request().title} onClose={() => useUiStore.getState().closeConfirm()} size="small">
+              <div class="modal-body" style={{ padding: 0 }}>
+                {request().message}
+              </div>
+              <div class="modal-footer" style={{ padding: '12px 0 0', 'border-top': 'none' }}>
+                <button class="icon-btn" onClick={() => useUiStore.getState().closeConfirm()}>
+                  {request().cancelLabel ?? t('common.cancel')}
+                </button>
+                <button
+                  class="icon-btn"
+                  onClick={() => {
+                    request().resolve(true)
+                    useUiStore.setState({ confirm: null })
+                  }}
+                >
+                  {request().confirmLabel ?? t('common.ok')}
+                </button>
+              </div>
+            </Modal>
+          )}
+        </Show>
+      }
+    >
+      {(request) => (
+        <Modal title={request().title} onClose={() => useUiStore.getState().closePrompt()} size="small">
+          <Show when={request().message}>
+            <div class="hint">{request().message}</div>
+          </Show>
+          <input
+            autofocus
+            type="text"
+            value={value()}
+            placeholder={request().placeholder}
+            aria-label={request().title}
+            style={{ width: '100%' }}
+            onInput={(event) => setValue(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                request().resolve(value())
+                useUiStore.setState({ prompt: null })
+              }
             }}
-          >
-            {t('common.ok')}
-          </button>
-        </div>
-      </Modal>
-    )
-  }
-
-  if (confirm) {
-    return (
-      <Modal title={confirm.title} onClose={closeConfirm} size="small">
-        <div className="modal-body" style={{ padding: 0 }}>
-          {confirm.message}
-        </div>
-        <div className="modal-footer" style={{ padding: '12px 0 0', borderTop: 'none' }}>
-          <button className="icon-btn" onClick={closeConfirm}>
-            {confirm.cancelLabel ?? t('common.cancel')}
-          </button>
-          <button
-            className="icon-btn"
-            onClick={() => {
-              confirm.resolve(true)
-              useUiStore.setState({ confirm: null })
-            }}
-          >
-            {confirm.confirmLabel ?? t('common.ok')}
-          </button>
-        </div>
-      </Modal>
-    )
-  }
-
-  return null
+          />
+          <div class="modal-footer" style={{ 'margin-top': '12px', padding: 0, 'border-top': 'none' }}>
+            <button class="icon-btn" onClick={() => useUiStore.getState().closePrompt()}>
+              {t('common.cancel')}
+            </button>
+            <button
+              class="icon-btn"
+              onClick={() => {
+                request().resolve(value())
+                useUiStore.setState({ prompt: null })
+              }}
+            >
+              {t('common.ok')}
+            </button>
+          </div>
+        </Modal>
+      )}
+    </Show>
+  )
 }

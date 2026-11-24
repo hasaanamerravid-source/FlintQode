@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { JSX } from 'react'
+import { createEffect, createMemo, createSignal, For, Match, onSettled, Show, Switch } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { diffLines, diffWords } from 'diff'
 
 export interface CompareViewProps {
@@ -160,31 +160,25 @@ function wordParts(left: string, right: string, side: 'left' | 'right'): WordPar
   return out
 }
 
-export function CompareView({
-  left,
-  right,
-  leftName = 'Original',
-  rightName = 'Modified',
-  onClose,
-}: CompareViewProps): JSX.Element {
-  const [swapped, setSwapped] = useState(false)
-  const [mode, setMode] = useState<'split' | 'unified'>('split')
-  const [cursor, setCursor] = useState(-1)
-  const [flash, setFlash] = useState(-1)
+export function CompareView(props: CompareViewProps): JSX.Element {
+  const [swapped, setSwapped] = createSignal(false)
+  const [mode, setMode] = createSignal<'split' | 'unified'>('split')
+  const [cursor, setCursor] = createSignal(-1)
+  const [flash, setFlash] = createSignal(-1)
 
-  const bodyRef = useRef<HTMLDivElement | null>(null)
-  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  let bodyRef: HTMLDivElement | undefined
+  let flashTimer: ReturnType<typeof setTimeout> | null = null
 
-  const leftText = swapped ? right : left
-  const rightText = swapped ? left : right
-  const leftTitle = swapped ? rightName : leftName
-  const rightTitle = swapped ? leftName : rightName
+  const leftText = createMemo(() => (swapped() ? props.right : props.left))
+  const rightText = createMemo(() => (swapped() ? props.left : props.right))
+  const leftTitle = createMemo(() => (swapped() ? (props.rightName ?? 'Modified') : (props.leftName ?? 'Original')))
+  const rightTitle = createMemo(() => (swapped() ? (props.leftName ?? 'Original') : (props.rightName ?? 'Modified')))
 
-  const rows = useMemo(() => buildRows(leftText, rightText), [leftText, rightText])
+  const rows = createMemo(() => buildRows(leftText(), rightText()))
 
-  const unifiedRows = useMemo<UnifiedRow[]>(() => {
+  const unifiedRows = createMemo<UnifiedRow[]>(() => {
     const out: UnifiedRow[] = []
-    rows.forEach((row, index) => {
+    rows().forEach((row, index) => {
       if (row.kind === 'same') {
         out.push({ kind: 'same', text: row.left, no: row.leftNo, source: index })
       } else if (row.kind === 'removed') {
@@ -197,18 +191,19 @@ export function CompareView({
       }
     })
     return out
-  }, [rows])
+  })
 
   /** Indices of the rows that hold a change. */
-  const changes = useMemo(
-    () => rows.map((row, index) => (row.kind === 'same' ? -1 : index)).filter((index) => index >= 0),
-    [rows],
+  const changes = createMemo(() =>
+    rows()
+      .map((row, index) => (row.kind === 'same' ? -1 : index))
+      .filter((index) => index >= 0),
   )
 
-  const summary = useMemo(() => {
+  const summary = createMemo(() => {
     let added = 0
     let removed = 0
-    for (const row of rows) {
+    for (const row of rows()) {
       if (row.kind === 'added') added += 1
       else if (row.kind === 'removed') removed += 1
       else if (row.kind === 'modified') {
@@ -217,12 +212,12 @@ export function CompareView({
       }
     }
     return { added, removed }
-  }, [rows])
+  })
 
   /** Word level parts of the changed lines, computed once per row. */
-  const wordCache = useMemo(() => {
+  const wordCache = createMemo(() => {
     const map = new Map<number, { left: WordPart[]; right: WordPart[] }>()
-    rows.forEach((row, index) => {
+    rows().forEach((row, index) => {
       if (row.kind !== 'modified') return
       map.set(index, {
         left: wordParts(row.left, row.right, 'left'),
@@ -230,66 +225,66 @@ export function CompareView({
       })
     })
     return map
-  }, [rows])
+  })
 
-  useEffect(() => {
-    setCursor(-1)
-    setFlash(-1)
-  }, [rows])
+  createEffect(
+    () => rows(),
+    () => {
+      setCursor(-1)
+      setFlash(-1)
+    },
+  )
 
-  useEffect(() => {
-    return () => {
-      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
-    }
-  }, [])
+  onSettled(() => () => {
+    if (flashTimer) clearTimeout(flashTimer)
+  })
 
   /** Scroll the body so that the given row is centred. */
-  const scrollToRow = useCallback((index: number) => {
-    const container = bodyRef.current
+  const scrollToRow = (index: number): void => {
+    const container = bodyRef
     if (!container) return
     const element = container.querySelector<HTMLElement>(`[data-row="${index}"]`)
     if (!element) return
     const offset = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop
     container.scrollTop = Math.max(0, offset - container.clientHeight / 2 + element.offsetHeight / 2)
-  }, [])
+  }
 
-  const gotoChange = useCallback(
-    (direction: 1 | -1) => {
-      if (!changes.length) return
-      const next = (cursor + direction + changes.length) % changes.length
-      setCursor(next)
-      const index = changes[next]
-      scrollToRow(index)
-      setFlash(index)
-      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
-      flashTimerRef.current = setTimeout(() => setFlash(-1), 1200)
-    },
-    [changes, cursor, scrollToRow],
-  )
+  const gotoChange = (direction: 1 | -1): void => {
+    const list = changes()
+    if (!list.length) return
+    const next = (cursor() + direction + list.length) % list.length
+    setCursor(next)
+    const index = list[next]
+    scrollToRow(index)
+    setFlash(index)
+    if (flashTimer) clearTimeout(flashTimer)
+    flashTimer = setTimeout(() => setFlash(-1), 1200)
+  }
 
   const renderCode = (row: DiffRow, side: 'left' | 'right', index: number): JSX.Element => {
     const text = side === 'left' ? row.left : row.right
-    if (!text) return <span className="cmp-code" />
-    if (row.kind !== 'modified') return <span className="cmp-code">{text}</span>
-    const parts = wordCache.get(index)?.[side] ?? [{ text, changed: false }]
     return (
-      <span className="cmp-code">
-        {parts.map((part, partIndex) =>
-          part.changed ? (
-            <span key={partIndex} className={side === 'left' ? 'diff-word-removed' : 'diff-word-added'}>
-              {part.text}
-            </span>
-          ) : (
-            <span key={partIndex}>{part.text}</span>
-          ),
-        )}
+      <span class="cmp-code">
+        <Show when={text}>
+          <Switch fallback={text}>
+            <Match when={row.kind === 'modified'}>
+              <For each={wordCache().get(index)?.[side] ?? [{ text, changed: false }]}>
+                {(part) => (
+                  <Show when={part.changed} fallback={<span>{part.text}</span>}>
+                    <span class={side === 'left' ? 'diff-word-removed' : 'diff-word-added'}>{part.text}</span>
+                  </Show>
+                )}
+              </For>
+            </Match>
+          </Switch>
+        </Show>
       </span>
     )
   }
 
   /** Class of a row: the kind describes the change of the whole line. */
   const rowClass = (row: DiffRow, index: number): string =>
-    `diff-row diff-${row.kind}${index === flash ? ' diff-flash' : ''}`
+    `diff-row diff-${row.kind}${index === flash() ? ' diff-flash' : ''}`
 
   /**
    * Class of one side of a row. The empty counterpart of an inserted or deleted
@@ -303,88 +298,88 @@ export function CompareView({
   }
 
   return (
-    <div className="compare-view">
+    <div class="compare-view">
       <style>{STYLES}</style>
-      <div className="compare-header">
-        <div className="compare-title">
-          <span className="compare-file" title={leftTitle}>
-            {leftTitle}
+      <div class="compare-header">
+        <div class="compare-title">
+          <span class="compare-file" title={leftTitle()}>
+            {leftTitle()}
           </span>
-          <span className="compare-summary">vs</span>
-          <span className="compare-file" title={rightTitle}>
-            {rightTitle}
+          <span class="compare-summary">vs</span>
+          <span class="compare-file" title={rightTitle()}>
+            {rightTitle()}
           </span>
         </div>
-        <span className="compare-summary">
-          {summary.added} added, {summary.removed} removed
+        <span class="compare-summary">
+          {summary().added} added, {summary().removed} removed
         </span>
-        <span className="compare-spacer" />
-        <div className="compare-group">
-          <button
-            type="button"
-            className={`icon-btn${mode === 'split' ? ' active' : ''}`}
-            onClick={() => setMode('split')}
-          >
+        <span class="compare-spacer" />
+        <div class="compare-group">
+          <button type="button" class={['icon-btn', { active: mode() === 'split' }]} onClick={() => setMode('split')}>
             Split
           </button>
           <button
             type="button"
-            className={`icon-btn${mode === 'unified' ? ' active' : ''}`}
+            class={['icon-btn', { active: mode() === 'unified' }]}
             onClick={() => setMode('unified')}
           >
             Unified
           </button>
         </div>
-        <button type="button" className="icon-btn" onClick={() => gotoChange(-1)} title="Previous difference">
+        <button type="button" class="icon-btn" onClick={() => gotoChange(-1)} title="Previous difference">
           ▲
         </button>
-        <button type="button" className="icon-btn" onClick={() => gotoChange(1)} title="Next difference">
+        <button type="button" class="icon-btn" onClick={() => gotoChange(1)} title="Next difference">
           ▼
         </button>
-        <button type="button" className="compare-btn" onClick={() => setSwapped(!swapped)}>
+        <button type="button" class="compare-btn" onClick={() => setSwapped(!swapped())}>
           Swap sides
         </button>
-        {onClose ? (
-          <button type="button" className="icon-btn" onClick={onClose} title="Close">
+        <Show when={props.onClose}>
+          <button type="button" class="icon-btn" onClick={() => props.onClose?.()} title="Close">
             ✕
           </button>
-        ) : null}
+        </Show>
       </div>
 
-      {rows.length === 0 ? (
-        <div className="compare-empty">Nothing to compare.</div>
-      ) : (
-        <div className={`compare-body${mode === 'unified' ? ' compare-unified' : ''}`} ref={bodyRef}>
-          {mode === 'split'
-            ? rows.map((row, index) => (
-                <div key={index} className={rowClass(row, index)} data-row={index}>
-                  <div className={`cmp-cell ${cellClass(row, 'left')}`}>
-                    <span className="cmp-gutter">{row.leftNo ?? ''}</span>
-                    {renderCode(row, 'left', index)}
+      <Show when={rows().length > 0} fallback={<div class="compare-empty">Nothing to compare.</div>}>
+        <div class={['compare-body', { 'compare-unified': mode() === 'unified' }]} ref={(el) => (bodyRef = el)}>
+          <Switch>
+            <Match when={mode() === 'split'}>
+              <For each={rows()}>
+                {(row, index) => (
+                  <div class={rowClass(row, index())} data-row={index()}>
+                    <div class={['cmp-cell', cellClass(row, 'left')]}>
+                      <span class="cmp-gutter">{row.leftNo ?? ''}</span>
+                      {renderCode(row, 'left', index())}
+                    </div>
+                    <div class={['cmp-cell', cellClass(row, 'right')]}>
+                      <span class="cmp-gutter">{row.rightNo ?? ''}</span>
+                      {renderCode(row, 'right', index())}
+                    </div>
                   </div>
-                  <div className={`cmp-cell ${cellClass(row, 'right')}`}>
-                    <span className="cmp-gutter">{row.rightNo ?? ''}</span>
-                    {renderCode(row, 'right', index)}
+                )}
+              </For>
+            </Match>
+            <Match when={mode() === 'unified'}>
+              <For each={unifiedRows()}>
+                {(row) => (
+                  <div
+                    class={['diff-row', `diff-${row.kind}`, { 'diff-flash': row.source === flash() }]}
+                    data-row={row.source}
+                  >
+                    <div class="cmp-cell">
+                      <span class="cmp-gutter">{row.no ?? ''}</span>
+                      <span class="cmp-marker">{row.kind === 'added' ? '+' : row.kind === 'removed' ? '-' : ' '}</span>
+                      <span class="cmp-code">{row.text}</span>
+                    </div>
                   </div>
-                </div>
-              ))
-            : unifiedRows.map((row, index) => (
-                <div
-                  key={index}
-                  className={`diff-row diff-${row.kind}${row.source === flash ? ' diff-flash' : ''}`}
-                  data-row={row.source}
-                >
-                  <div className="cmp-cell">
-                    <span className="cmp-gutter">{row.no ?? ''}</span>
-                    <span className="cmp-marker">
-                      {row.kind === 'added' ? '+' : row.kind === 'removed' ? '-' : ' '}
-                    </span>
-                    <span className="cmp-code">{row.text}</span>
-                  </div>
-                </div>
-              ))}
+                )}
+              </For>
+            </Match>
+          </Switch>
         </div>
-      )}
+      </Show>
     </div>
   )
 }

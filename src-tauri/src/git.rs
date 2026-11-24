@@ -68,7 +68,11 @@ pub fn git_status(window: WebviewWindow, path: String) -> Result<GitStatus, Stri
     status.branch = branch;
 
     // Show unstaged + staged changes.
-    let status_text = git_run(&root, &["status", "--porcelain=v2", "--untracked-files=all"]).unwrap_or_default();
+    let status_text = git_run(
+        &root,
+        &["status", "--porcelain=v2", "--untracked-files=all"],
+    )
+    .unwrap_or_default();
     for line in status_text.lines() {
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with('#') {
@@ -86,7 +90,10 @@ pub fn git_status(window: WebviewWindow, path: String) -> Result<GitStatus, Stri
         } else {
             header[0..1].to_string()
         };
-        let rest = trimmed.split_once("\\t").map(|(_, rest)| rest).unwrap_or("");
+        let rest = trimmed
+            .split_once("\\t")
+            .map(|(_, rest)| rest)
+            .unwrap_or("");
         let rel_path = rest
             .split_once(" ")
             .map(|(_, path)| path.trim())

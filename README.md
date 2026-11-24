@@ -1,7 +1,7 @@
 # FlintQode
 
 A fast, native desktop editor for code, Markdown and plain text. FlintQode is built
-with **Tauri 2**, a small **Rust** backend and a **React + CodeMirror 6** interface.
+with **Tauri 2**, a small **Rust** backend and a **SolidJS 2 + CodeMirror 6** interface.
 
 | Inspiration | What FlintQode brings |
 | --- | --- |
@@ -16,7 +16,7 @@ Simplified Chinese. See [docs/i18n.md](docs/i18n.md).
 
 | Platform | What is needed |
 | --- | --- |
-| **All** | Node.js 20 or newer, Rust stable (`rustup`) |
+| **All** | Node.js 22.12 or newer, Rust stable (`rustup`) |
 | **Linux** | WebKitGTK 4.1 and GTK 3 development packages |
 | **Windows** | WebView2 (installed by Windows 10/11) and the MSVC build tools |
 | **macOS** | Xcode command line tools |
@@ -84,11 +84,13 @@ src-tauri         Native shell (Rust)
   src/terminal.rs Piped shell with command markers
   src/run.rs      Language runners with streamed output
   src/store.rs    Settings, session, recent files, plugins
-src/renderer      React application
+src/renderer      SolidJS 2 application
   src/bridge.ts   The window.api bridge on top of Tauri invoke/events
   core/           Commands, editor registry, languages, plugins, transforms
-  components/     Shell, tabs, sidebar panels, editors, dialogs
-  store/          Zustand stores
+  components/     Shell, tabs, editors, dialogs and reusable controls
+  workbench/      Activity bar, sidebar views, panels and split editor host
+  state/          Solid signal-backed stores with the command-layer shim
+  styles/         Design system and component styling
 src/shared        Types shared by the webview and the native side, translations
 tests/            Unit tests of the pure logic
 docs/             Architecture, decisions, i18n and testing guides
@@ -96,11 +98,17 @@ docs/             Architecture, decisions, i18n and testing guides
 
 ## How the pieces fit together
 
-The React application was originally written against an Electron preload that
-exposed `window.api`. The Tauri build keeps that contract: `src/renderer/src/bridge.ts`
+The renderer was originally written against an Electron preload that exposed
+`window.api`. The Tauri build keeps that contract: `src/renderer/src/bridge.ts`
 implements the same promise-based surface with `invoke()` and `listen()` and
-installs it as `window.api` before the first component renders. Most of the UI
-therefore does not know which shell it runs in.
+installs it as `window.api` before the first component renders. The SolidJS 2 UI
+therefore does not need to know which shell it runs in.
+
+The renderer uses Solid signals for reactivity and `src/renderer/src/styles/design-system.css`
+as the single visual layer. Its Aurora Slate palette, spacing and elevation are shared by every
+screen; user appearance settings are applied as inline custom properties and take precedence.
+See [docs/solid-port-guide.md](docs/solid-port-guide.md) and
+[docs/adr/0005-solidjs-2-renderer.md](docs/adr/0005-solidjs-2-renderer.md).
 
 Every user-visible action is a **command** with a stable id (`file.save`,
 `format.sortAsc`, `view.toggleTerminal`, …). Commands are registered once in
@@ -183,9 +191,8 @@ an existing profile keeps working.
 
 ## Known limitations
 
-- The integrated terminal is a piped shell, not a full PTY: interactive,
-  full-screen programs (vim, top, anything that calls `isatty()`) are not
-  supported. Use an external terminal for those.
+- The integrated terminal is a PTY with resize support and multiple sessions;
+  macOS builds are unsigned and may need the usual Gatekeeper step.
 - Opening the same editor in several windows shares a single Rust state
   (terminals, language servers, run state and settings). Treat multi-window
   use as experimental.

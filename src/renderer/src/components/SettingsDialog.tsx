@@ -1,8 +1,9 @@
-import type { JSX } from 'react'
-import { useEffect, useState } from 'react'
+import { createEffect, createMemo, createSignal, For, Match, Show, Switch } from 'solid-js'
+import type { JSX } from '@solidjs/web'
+import type { Settings } from '@shared/types'
 import { useAppStore } from '../store/app'
+import { useSettings } from '../state/solid'
 import { DEFAULT_SETTINGS, ENCODING_LABELS, EOL_LABELS } from '../core/defaults'
-import { PROFILES } from '../core/profiles'
 import { themeGroups, resolveTheme } from '../core/themeResolver'
 import { ThemeGallery } from './ThemeGallery'
 import { FileIcon } from './FileIcon'
@@ -32,6 +33,18 @@ import { Modal } from './Modal'
 
 type Section =
   'appearance' | 'typography' | 'icons' | 'toolchain' | 'workspace' | 'editor' | 'files' | 'shortcuts' | 'updates'
+
+const SECTIONS: [Section, MessageKey][] = [
+  ['appearance', 'settings.tab.appearance'],
+  ['typography', 'settings.tab.typography'],
+  ['icons', 'settings.tab.icons'],
+  ['toolchain', 'settings.tab.toolchain'],
+  ['workspace', 'settings.tab.general'],
+  ['editor', 'settings.tab.editor'],
+  ['files', 'settings.tab.files'],
+  ['shortcuts', 'settings.tab.shortcuts'],
+  ['updates', 'settings.tab.updates'],
+]
 
 /** Monospace fonts that are commonly installed, offered as suggestions. */
 const FONT_CHOICES = [
@@ -158,1087 +171,1123 @@ const SHORTCUTS: [MessageKey, string][] = [
   ['cmd.view.fullscreen', 'F11'],
 ]
 
-function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }): JSX.Element {
+interface RowProps {
+  label: string
+  hint?: string
+  children: JSX.Element
+}
+
+function Row(props: RowProps): JSX.Element {
   return (
-    <div className="form-row">
+    <div class="form-row">
       <div>
-        <div>{label}</div>
-        {hint && <div className="hint">{hint}</div>}
+        <div>{props.label}</div>
+        <Show when={props.hint}>{(hint) => <div class="hint">{hint()}</div>}</Show>
       </div>
-      <div className="control">{children}</div>
+      <div class="control">{props.children}</div>
     </div>
   )
 }
 
-export function SettingsDialog(): JSX.Element | null {
-  const open = useAppStore((s) => s.settingsOpen)
-  const setDialog = useAppStore((s) => s.setDialog)
-  const settings = useAppStore((s) => s.settings)
-  const setSettings = useAppStore((s) => s.setSettings)
-  const saveSettings = useAppStore((s) => s.saveSettings)
-  const toast = useAppStore((s) => s.toast)
+export function SettingsDialog(): JSX.Element {
+  const open = createMemo(() => useAppStore().settingsOpen)
+  const settings = useSettings()
   const t = useT()
   const tWith = useTWith()
-  const [section, setSection] = useState<Section>('appearance')
-  const [importText, setImportText] = useState('')
-  const [bindings, setBindings] = useState<Keybindings>({})
-  const [updateStatus, setUpdateStatus] = useState<string>('')
-  const [updateBusy, setUpdateBusy] = useState(false)
+  const [section, setSection] = createSignal<Section>('appearance')
+  const [importText, setImportText] = createSignal('')
+  const [bindings, setBindings] = createSignal<Keybindings>({})
+  const [updateStatus, setUpdateStatus] = createSignal('')
+  const [updateBusy, setUpdateBusy] = createSignal(false)
   const commandsWithShortcuts = getCommands().filter((command) => command.shortcut && !command.hidden)
-  const progress = translationProgress(settings.language)
+  const progress = createMemo(() => translationProgress(settings().language))
 
   // The shortcuts of the user are read when the tab is opened.
-  useEffect(() => {
-    if (section !== 'shortcuts') return
-    void readKeybindings().then(setBindings)
-  }, [section])
+  createEffect(
+    () => section(),
+    (current) => {
+      if (current !== 'shortcuts') return
+      let cancelled = false
+      void readKeybindings().then((loaded) => {
+        if (!cancelled) setBindings(loaded)
+      })
+      return () => {
+        cancelled = true
+      }
+    },
+  )
 
   // Settings are written shortly after any change, so a crash or a window
   // close can never lose an edit. The dialog used to write only on close,
   // which is exactly why typography changes appeared not to persist.
-  useEffect(() => {
-    if (!open) return
-    const timer = window.setTimeout(() => {
-      void saveSettings()
-    }, 350)
-    return () => window.clearTimeout(timer)
-  }, [settings, open, saveSettings])
-
-  if (!open) return null
+  createEffect(
+    () => ({ open: open(), settings: settings() }),
+    ({ open: isOpen }) => {
+      if (!isOpen) return
+      const timer = window.setTimeout(() => {
+        void useAppStore.getState().saveSettings()
+      }, 350)
+      return () => window.clearTimeout(timer)
+    },
+  )
 
   const close = (): void => {
-    setDialog('settings', false)
-    void saveSettings()
+    useAppStore.getState().setDialog('settings', false)
+    void useAppStore.getState().saveSettings()
   }
 
-  const patch = (partial: Partial<typeof settings>): void => {
-    setSettings(partial)
-    void saveSettings()
+  const patch = (partial: Partial<Settings>): void => {
+    useAppStore.getState().setSettings(partial)
+    void useAppStore.getState().saveSettings()
   }
 
-  const patchAppearance = (partial: Partial<typeof settings.appearance>): void => {
-    setSettings({ appearance: { ...settings.appearance, ...partial } })
+  const patchAppearance = (partial: Partial<Settings['appearance']>): void => {
+    useAppStore.getState().setSettings({ appearance: { ...settings().appearance, ...partial } })
   }
 
   return (
-    <Modal
-      title={t('settings.title')}
-      onClose={close}
-      tabs={
-        <div className="settings-tabs" role="tablist" aria-label={t('settings.title')}>
-          {(
-            [
-              ['appearance', 'settings.tab.appearance'],
-              ['typography', 'settings.tab.typography'],
-              ['icons', 'settings.tab.icons'],
-              ['toolchain', 'settings.tab.toolchain'],
-              ['workspace', 'settings.tab.general'],
-              ['editor', 'settings.tab.editor'],
-              ['files', 'settings.tab.files'],
-              ['shortcuts', 'settings.tab.shortcuts'],
-              ['updates', 'settings.tab.updates'],
-            ] as [Section, MessageKey][]
-          ).map(([id, label]) => (
-            <div
-              key={id}
-              role="tab"
-              aria-selected={section === id}
-              className={`settings-tab ${section === id ? 'active' : ''}`}
-              onClick={() => setSection(id)}
-            >
-              {t(label)}
-            </div>
-          ))}
-        </div>
-      }
-      footer={
-        <button className="icon-btn" onClick={close}>
-          {t('common.close')}
-        </button>
-      }
-    >
-      {section === 'appearance' && (
-        <>
-          <Row label={t('settings.theme')} hint={t('settings.themeHint')}>
-            <select value={settings.theme} onChange={(e) => patch({ theme: e.target.value as never })}>
-              <option value="dark">{t('settings.themeDark')}</option>
-              <option value="light">{t('settings.themeLight')}</option>
-              <option value="system">{t('settings.themeSystem')}</option>
-            </select>
-          </Row>
-          <Row label={t('settings.editorBackground')} hint={t('settings.editorBackgroundHint')}>
-            <select
-              value={settings.editorBackground}
-              onChange={(e) => patch({ editorBackground: e.target.value as never })}
-            >
-              <option value="app">{t('settings.editorBackgroundApp')}</option>
-              <option value="theme">{t('settings.editorBackgroundTheme')}</option>
-            </select>
-          </Row>
-          <div className="panel-header" style={{ marginTop: 10 }}>
-            <span>{t('settings.syntaxTheme')}</span>
-            <span>
-              {t('settings.themeCount', {
-                count: themeGroups().reduce((sum, g) => sum + g.themes.length, 0),
-              })}
-            </span>
-          </div>
-          <ThemeGallery
-            value={settings.syntaxTheme}
-            onChange={(id) => {
-              setSettings({ syntaxTheme: id })
-              void saveSettings()
-            }}
-          />
-          <div style={{ margin: '4px 0 14px' }}>
-            <div className="syntax-theme-preview" data-syntax-theme={settings.syntaxTheme}>
-              <span className="tok-keyword">function</span> <span className="tok-function">greet</span>(
-              <span className="tok-type">User</span> <span className="tok-property">name</span>) {'{'}
-              <br />
-              &nbsp;&nbsp;<span className="tok-comment">// say hello</span>
-              <br />
-              &nbsp;&nbsp;<span className="tok-keyword">return</span>{' '}
-              <span className="tok-string">
-                `Hello ${'{'}name{'}'}`
-              </span>
-              <br />
-              {'}'}
-              <br />
-              <span className="tok-number">42</span> <span className="tok-tag">&lt;tag</span>{' '}
-              <span className="tok-string">"value"</span> <span className="tok-tag">/&gt;</span>
-            </div>
-            <div className="hint">
-              {resolveTheme(settings.syntaxTheme).label} — {resolveTheme(settings.syntaxTheme).basedOn}
-            </div>
-          </div>
-          <Row label={t('settings.cornerRadius')} hint={t('settings.cornerRadiusHint')}>
-            <input
-              type="range"
-              min={0}
-              max={18}
-              step={1}
-              value={settings.appearance.cornerRadius}
-              onChange={(e) => patchAppearance({ cornerRadius: Number(e.target.value) })}
-              style={{ minWidth: 220 }}
-            />
-            <span style={{ width: 34, textAlign: 'right' }}>{settings.appearance.cornerRadius} px</span>
-          </Row>
-          <Row label={t('settings.glassTopBar')} hint={t('settings.glassTopBarHint')}>
-            <input
-              type="checkbox"
-              checked={settings.appearance.glassTopBar}
-              onChange={(e) => patchAppearance({ glassTopBar: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.glassBlur')}>
-            <input
-              type="range"
-              min={0}
-              max={30}
-              value={settings.appearance.glassBlur}
-              onChange={(e) => patchAppearance({ glassBlur: Number(e.target.value) })}
-              style={{ minWidth: 220 }}
-            />
-            <span style={{ width: 34, textAlign: 'right' }}>{settings.appearance.glassBlur} px</span>
-          </Row>
-          <Row label={t('settings.glassOpacity')}>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={Math.round(settings.appearance.glassOpacity * 100)}
-              onChange={(e) => patchAppearance({ glassOpacity: Number(e.target.value) / 100 })}
-              style={{ minWidth: 220 }}
-            />
-            <span style={{ width: 34, textAlign: 'right' }}>{Math.round(settings.appearance.glassOpacity * 100)}%</span>
-          </Row>
-          <Row label={t('settings.gradient')} hint={t('settings.gradientHint')}>
-            <input
-              type="checkbox"
-              checked={settings.appearance.gradient}
-              onChange={(e) => patchAppearance({ gradient: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.gradientColours')}>
-            <input
-              type="color"
-              value={settings.appearance.gradientFrom}
-              onChange={(e) => patchAppearance({ gradientFrom: e.target.value })}
-            />
-            <input
-              type="color"
-              value={settings.appearance.gradientTo}
-              onChange={(e) => patchAppearance({ gradientTo: e.target.value })}
-            />
-          </Row>
-          <Row label={t('settings.accentColor')} hint={t('settings.accentColorHint')}>
-            <input
-              type="color"
-              value={settings.appearance.accentColor}
-              onChange={(e) => patchAppearance({ accentColor: e.target.value })}
-            />
-          </Row>
-          <Row label={t('settings.density')}>
-            <select
-              value={settings.appearance.density}
-              onChange={(e) => patchAppearance({ density: e.target.value as never })}
-            >
-              <option value="compact">{t('settings.densityCompact')}</option>
-              <option value="cozy">{t('settings.densityCozy')}</option>
-              <option value="comfortable">{t('settings.densityComfortable')}</option>
-            </select>
-          </Row>
-          <Row label={t('settings.tabStyle')}>
-            <select
-              value={settings.appearance.tabStyle}
-              onChange={(e) => patchAppearance({ tabStyle: e.target.value as never })}
-            >
-              <option value="rounded">{t('settings.tabStyleRounded')}</option>
-              <option value="pill">{t('settings.tabStylePill')}</option>
-              <option value="underline">{t('settings.tabStyleUnderline')}</option>
-            </select>
-          </Row>
-          <Row label={t('settings.softShadows')}>
-            <input
-              type="checkbox"
-              checked={settings.appearance.softShadows}
-              onChange={(e) => patchAppearance({ softShadows: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.animations')}>
-            <input
-              type="checkbox"
-              checked={settings.appearance.animations}
-              onChange={(e) => patchAppearance({ animations: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.lowMemory')} hint={t('settings.lowMemoryHint')}>
-            <input
-              type="checkbox"
-              checked={settings.lowMemory}
-              onChange={(e) => patch({ lowMemory: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.softwareRendering')} hint={t('settings.softwareRenderingHint')}>
-            <input
-              type="checkbox"
-              checked={settings.softwareRendering}
-              onChange={(e) => patch({ softwareRendering: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.showStatusBar')}>
-            <input
-              type="checkbox"
-              checked={settings.showStatusBar}
-              onChange={(e) => {
-                setSettings({ showStatusBar: e.target.checked })
-                useAppStore.setState({ statusBarVisible: e.target.checked })
-                void saveSettings()
-              }}
-            />
-          </Row>
-          <Row label={t('settings.showSidebarOnStart')}>
-            <input
-              type="checkbox"
-              checked={settings.showSidebar}
-              onChange={(e) => {
-                setSettings({ showSidebar: e.target.checked })
-                useAppStore.setState({ sidebarVisible: e.target.checked })
-                void saveSettings()
-              }}
-            />
-          </Row>
-          <div style={{ marginTop: 14 }}>
-            <div className="panel-header">
-              <span>{t('settings.preview')}</span>
-            </div>
-            <div className="appearance-preview">
-              <div className="preview-top">
-                <span className="preview-dot" />
-                <span style={{ fontSize: 11, color: '#fff' }}>FlintQode</span>
-              </div>
-              <div className="preview-body">
-                <div className="preview-panel" />
-                <div className="preview-button">{t('settings.previewButton')}</div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {section === 'typography' && (
-        <>
-          <div className="panel-header">
-            <span>{t('settings.typographyTitle')}</span>
-            <span>{t('settings.typographyHintShort')}</span>
-          </div>
-          <div className="hint" style={{ marginTop: 0, marginBottom: 10 }}>
-            {t('settings.typographyHintLong')}
-          </div>
-          <Row label={t('settings.fontFamily')} hint={t('settings.fontFamilyHint')}>
-            <input
-              type="text"
-              list="flintqode-font-choices"
-              value={settings.fontFamily}
-              placeholder='"Cascadia Code", ui-monospace, monospace'
-              style={{ minWidth: 300 }}
-              onChange={(e) => setSettings({ fontFamily: e.target.value })}
-            />
-            <datalist id="flintqode-font-choices">
-              {FONT_CHOICES.map((font) => (
-                <option key={font} value={font} />
-              ))}
-            </datalist>
-          </Row>
-          <Row label={t('settings.fontSize')} hint={t('settings.fontSizeHint')}>
-            <input
-              type="range"
-              min={8}
-              max={32}
-              step={1}
-              value={settings.fontSize}
-              onChange={(e) => setSettings({ fontSize: Number(e.target.value) })}
-              style={{ minWidth: 200 }}
-            />
-            <input
-              type="number"
-              min={8}
-              max={40}
-              value={settings.fontSize}
-              onChange={(e) => setSettings({ fontSize: Number(e.target.value) })}
-              style={{ width: 68 }}
-            />
-            <span className="hint">px</span>
-          </Row>
-          <Row label={t('settings.fontWeight')} hint={t('settings.fontWeightHint')}>
-            <select value={settings.fontWeight} onChange={(e) => setSettings({ fontWeight: Number(e.target.value) })}>
-              <option value={300}>{t('settings.fontWeightLight')}</option>
-              <option value={400}>{t('settings.fontWeightNormal')}</option>
-              <option value={500}>{t('settings.fontWeightMedium')}</option>
-              <option value={600}>{t('settings.fontWeightSemibold')}</option>
-              <option value={700}>{t('settings.fontWeightBold')}</option>
-            </select>
-          </Row>
-          <Row label={t('settings.fontStyle')} hint={t('settings.fontStyleHint')}>
-            <select
-              value={settings.fontStyle}
-              onChange={(e) => setSettings({ fontStyle: e.target.value as 'normal' | 'italic' })}
-            >
-              <option value="normal">{t('settings.fontStyleNormal')}</option>
-              <option value="italic">{t('settings.fontStyleItalic')}</option>
-            </select>
-          </Row>
-          <Row label={t('settings.lineHeight')} hint={t('settings.lineHeightHint')}>
-            <input
-              type="range"
-              min={1}
-              max={2.4}
-              step={0.05}
-              value={settings.lineHeight}
-              onChange={(e) => setSettings({ lineHeight: Number(e.target.value) })}
-              style={{ minWidth: 200 }}
-            />
-            <span style={{ width: 44, textAlign: 'right' }}>{settings.lineHeight.toFixed(2)}</span>
-          </Row>
-          <Row label={t('settings.letterSpacing')} hint={t('settings.letterSpacingHint')}>
-            <input
-              type="range"
-              min={-1}
-              max={4}
-              step={0.1}
-              value={settings.letterSpacing}
-              onChange={(e) => setSettings({ letterSpacing: Number(e.target.value) })}
-              style={{ minWidth: 200 }}
-            />
-            <span style={{ width: 44, textAlign: 'right' }}>{settings.letterSpacing.toFixed(1)} px</span>
-          </Row>
-          <Row label={t('settings.fontLigatures')} hint={t('settings.fontLigaturesHint')}>
-            <input
-              type="checkbox"
-              checked={settings.fontLigatures}
-              onChange={(e) => setSettings({ fontLigatures: e.target.checked })}
-            />
-          </Row>
-
-          <div className="panel-header" style={{ marginTop: 18 }}>
-            <span>{t('settings.textColours')}</span>
-            <button
-              className="icon-btn"
-              onClick={() =>
-                setSettings({
-                  editorForeground: '',
-                  editorBackgroundColor: '',
-                  editorCaretColor: '',
-                  editorSelectionColor: '',
-                })
-              }
-            >
-              {t('settings.resetColours')}
-            </button>
-          </div>
-          <div className="hint" style={{ marginTop: 0, marginBottom: 10 }}>
-            {t('settings.textColoursHint')}
-          </div>
-          <Row label={t('settings.editorTextColour')} hint={t('settings.colourAutoHint')}>
-            <input
-              type="color"
-              value={settings.editorForeground || '#e6e9ef'}
-              onChange={(e) => setSettings({ editorForeground: e.target.value })}
-            />
-            <button className="icon-btn" onClick={() => setSettings({ editorForeground: '' })}>
-              {t('settings.colourAuto')}
-            </button>
-          </Row>
-          <Row label={t('settings.editorBackgroundColour')} hint={t('settings.colourAutoHint')}>
-            <input
-              type="color"
-              value={settings.editorBackgroundColor || '#ffffff'}
-              onChange={(e) => setSettings({ editorBackgroundColor: e.target.value })}
-            />
-            <button className="icon-btn" onClick={() => setSettings({ editorBackgroundColor: '' })}>
-              {t('settings.colourAuto')}
-            </button>
-          </Row>
-          <Row label={t('settings.editorCaretColour')} hint={t('settings.colourAutoHint')}>
-            <input
-              type="color"
-              value={settings.editorCaretColor || '#2563eb'}
-              onChange={(e) => setSettings({ editorCaretColor: e.target.value })}
-            />
-            <button className="icon-btn" onClick={() => setSettings({ editorCaretColor: '' })}>
-              {t('settings.colourAuto')}
-            </button>
-          </Row>
-          <Row label={t('settings.editorSelectionColour')} hint={t('settings.colourAutoHint')}>
-            <input
-              type="color"
-              value={settings.editorSelectionColor || '#2563eb'}
-              onChange={(e) => setSettings({ editorSelectionColor: e.target.value })}
-            />
-            <button className="icon-btn" onClick={() => setSettings({ editorSelectionColor: '' })}>
-              {t('settings.colourAuto')}
-            </button>
-          </Row>
-
-          <div className="panel-header" style={{ marginTop: 18 }}>
-            <span>{t('settings.typographyPreview')}</span>
-            <span>{t('settings.typographyPreviewHint')}</span>
-          </div>
-          <pre
-            className="typography-preview"
-            style={{
-              fontFamily: settings.fontFamily,
-              fontSize: `${settings.fontSize}px`,
-              fontWeight: settings.fontWeight,
-              fontStyle: settings.fontStyle,
-              lineHeight: settings.lineHeight,
-              letterSpacing: `${settings.letterSpacing}px`,
-              fontVariantLigatures: settings.fontLigatures ? 'common-ligatures contextual' : 'none',
-              color: settings.editorForeground || undefined,
-              background: settings.editorBackgroundColor || undefined,
-            }}
-          >
-            <span className="tok-keyword">function</span> <span className="tok-function">greet</span>(
-            <span className="tok-type">User</span> <span className="tok-property">name</span>) {'{'}
-            {'\n'} {'  '}
-            <span className="tok-comment">// 0123456789 — careful with l/i/1 and O/0</span>
-            {'\n'} {'  '}
-            <span className="tok-keyword">return</span>{' '}
-            <span className="tok-string">
-              `Hello ${'{'}name{'}'}`
-            </span>
-            {'\n'}
-            {'}'}
-          </pre>
-        </>
-      )}
-
-      {section === 'icons' && (
-        <>
-          <div className="panel-header">
-            <span>{t('settings.fileIcons')}</span>
-            <span>{t('settings.themeCount', { count: ICON_THEMES.length })}</span>
-          </div>
-          <div className="icon-gallery">
-            {ICON_THEMES.map((theme) => (
-              <button
-                key={theme.id}
-                className={`icon-card ${settings.iconTheme === theme.id ? 'active' : ''}`}
-                onClick={() => patch({ iconTheme: theme.id })}
-                title={theme.basedOn}
-              >
-                <span style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                  <FileIcon name="Main.java" theme={theme.id} size={15} />
-                  <FileIcon name="app.ts" theme={theme.id} size={15} />
-                  <FileIcon name="notes.md" theme={theme.id} size={15} />
-                  <FileIcon name="data.json" theme={theme.id} size={15} />
-                </span>
-                <span className="name">{theme.label}</span>
-              </button>
-            ))}
-          </div>
-          <div className="hint" style={{ marginTop: 8 }}>
-            {ICON_THEMES.find((t) => t.id === settings.iconTheme)?.basedOn}
-          </div>
-
-          <div className="panel-header" style={{ marginTop: 18 }}>
-            <span>{t('settings.sounds')}</span>
-            <span>{t('settings.themeCount', { count: SOUND_THEMES.length })}</span>
-          </div>
-          <Row label={t('settings.playSounds')}>
-            <input
-              type="checkbox"
-              checked={settings.soundsEnabled}
-              onChange={(e) => patch({ soundsEnabled: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.soundVolume')}>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={Math.round(settings.soundVolume * 100)}
-              onChange={(e) => setSettings({ soundVolume: Number(e.target.value) / 100 })}
-              style={{ minWidth: 220 }}
-            />
-            <span style={{ width: 34, textAlign: 'right' }}>{Math.round(settings.soundVolume * 100)}%</span>
-          </Row>
-          <div className="icon-gallery" style={{ marginTop: 6 }}>
-            {SOUND_THEMES.map((theme) => (
-              <button
-                key={theme.id}
-                className={`icon-card ${settings.soundTheme === theme.id ? 'active' : ''}`}
-                onClick={() => {
-                  setSettings({ soundTheme: theme.id })
-                  void saveSettings()
-                  playSound('save', theme.id, 0.5)
-                }}
-                title={theme.basedOn}
-              >
-                <span className="name">{theme.label}</span>
-                <span
-                  style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--fg-muted)' }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    playSound('complete', theme.id, 0.5)
-                  }}
+    <Show when={open()}>
+      <Modal
+        title={t('settings.title')}
+        onClose={close}
+        tabs={
+          <div class="settings-tabs" role="tablist" aria-label={t('settings.title')}>
+            <For each={SECTIONS}>
+              {([id, label]) => (
+                <div
+                  role="tab"
+                  aria-selected={section() === id ? 'true' : 'false'}
+                  class={['settings-tab', { active: section() === id }]}
+                  onClick={() => setSection(id)}
                 >
-                  {t('settings.testSound')}
+                  {t(label)}
+                </div>
+              )}
+            </For>
+          </div>
+        }
+        footer={
+          <button class="icon-btn" onClick={close}>
+            {t('common.close')}
+          </button>
+        }
+      >
+        <Switch>
+          <Match when={section() === 'appearance'}>
+            <Row label={t('settings.theme')} hint={t('settings.themeHint')}>
+              <select value={settings().theme} onChange={(e) => patch({ theme: e.currentTarget.value as never })}>
+                <option value="dark">{t('settings.themeDark')}</option>
+                <option value="light">{t('settings.themeLight')}</option>
+                <option value="system">{t('settings.themeSystem')}</option>
+              </select>
+            </Row>
+            <Row label={t('settings.editorBackground')} hint={t('settings.editorBackgroundHint')}>
+              <select
+                value={settings().editorBackground}
+                onChange={(e) => patch({ editorBackground: e.currentTarget.value as never })}
+              >
+                <option value="app">{t('settings.editorBackgroundApp')}</option>
+                <option value="theme">{t('settings.editorBackgroundTheme')}</option>
+              </select>
+            </Row>
+            <div class="panel-header" style={{ 'margin-top': '10px' }}>
+              <span>{t('settings.syntaxTheme')}</span>
+              <span>
+                {t('settings.themeCount', {
+                  count: themeGroups().reduce((sum, g) => sum + g.themes.length, 0),
+                })}
+              </span>
+            </div>
+            <ThemeGallery
+              value={settings().syntaxTheme}
+              onChange={(id) => {
+                useAppStore.getState().setSettings({ syntaxTheme: id })
+                void useAppStore.getState().saveSettings()
+              }}
+            />
+            <div style={{ margin: '4px 0 14px' }}>
+              <div class="syntax-theme-preview" data-syntax-theme={settings().syntaxTheme}>
+                <span class="tok-keyword">function</span> <span class="tok-function">greet</span>(
+                <span class="tok-type">User</span> <span class="tok-property">name</span>) {'{'}
+                <br />
+                &nbsp;&nbsp;<span class="tok-comment">// say hello</span>
+                <br />
+                &nbsp;&nbsp;<span class="tok-keyword">return</span>{' '}
+                <span class="tok-string">
+                  `Hello ${'{'}name{'}'}`
                 </span>
-              </button>
-            ))}
-          </div>
-          <div className="hint" style={{ marginTop: 8 }}>
-            {t('settings.soundsHint')}
-          </div>
-        </>
-      )}
+                <br />
+                {'}'}
+                <br />
+                <span class="tok-number">42</span> <span class="tok-tag">&lt;tag</span>{' '}
+                <span class="tok-string">"value"</span> <span class="tok-tag">/&gt;</span>
+              </div>
+              <div class="hint">
+                {resolveTheme(settings().syntaxTheme).label} — {resolveTheme(settings().syntaxTheme).basedOn}
+              </div>
+            </div>
+            <Row label={t('settings.cornerRadius')} hint={t('settings.cornerRadiusHint')}>
+              <input
+                type="range"
+                min={0}
+                max={18}
+                step={1}
+                value={settings().appearance.cornerRadius}
+                onInput={(e) => patchAppearance({ cornerRadius: Number(e.currentTarget.value) })}
+                style={{ 'min-width': '220px' }}
+              />
+              <span style={{ width: '34px', 'text-align': 'right' }}>{settings().appearance.cornerRadius} px</span>
+            </Row>
+            <Row label={t('settings.glassTopBar')} hint={t('settings.glassTopBarHint')}>
+              <input
+                type="checkbox"
+                checked={settings().appearance.glassTopBar}
+                onChange={(e) => patchAppearance({ glassTopBar: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.glassBlur')}>
+              <input
+                type="range"
+                min={0}
+                max={30}
+                value={settings().appearance.glassBlur}
+                onInput={(e) => patchAppearance({ glassBlur: Number(e.currentTarget.value) })}
+                style={{ 'min-width': '220px' }}
+              />
+              <span style={{ width: '34px', 'text-align': 'right' }}>{settings().appearance.glassBlur} px</span>
+            </Row>
+            <Row label={t('settings.glassOpacity')}>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(settings().appearance.glassOpacity * 100)}
+                onInput={(e) => patchAppearance({ glassOpacity: Number(e.currentTarget.value) / 100 })}
+                style={{ 'min-width': '220px' }}
+              />
+              <span style={{ width: '34px', 'text-align': 'right' }}>
+                {Math.round(settings().appearance.glassOpacity * 100)}%
+              </span>
+            </Row>
+            <Row label={t('settings.gradient')} hint={t('settings.gradientHint')}>
+              <input
+                type="checkbox"
+                checked={settings().appearance.gradient}
+                onChange={(e) => patchAppearance({ gradient: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.gradientColours')}>
+              <input
+                type="color"
+                value={settings().appearance.gradientFrom}
+                onInput={(e) => patchAppearance({ gradientFrom: e.currentTarget.value })}
+              />
+              <input
+                type="color"
+                value={settings().appearance.gradientTo}
+                onInput={(e) => patchAppearance({ gradientTo: e.currentTarget.value })}
+              />
+            </Row>
+            <Row label={t('settings.accentColor')} hint={t('settings.accentColorHint')}>
+              <input
+                type="color"
+                value={settings().appearance.accentColor}
+                onInput={(e) => patchAppearance({ accentColor: e.currentTarget.value })}
+              />
+            </Row>
+            <Row label={t('settings.density')}>
+              <select
+                value={settings().appearance.density}
+                onChange={(e) => patchAppearance({ density: e.currentTarget.value as never })}
+              >
+                <option value="compact">{t('settings.densityCompact')}</option>
+                <option value="cozy">{t('settings.densityCozy')}</option>
+                <option value="comfortable">{t('settings.densityComfortable')}</option>
+              </select>
+            </Row>
+            <Row label={t('settings.tabStyle')}>
+              <select
+                value={settings().appearance.tabStyle}
+                onChange={(e) => patchAppearance({ tabStyle: e.currentTarget.value as never })}
+              >
+                <option value="rounded">{t('settings.tabStyleRounded')}</option>
+                <option value="pill">{t('settings.tabStylePill')}</option>
+                <option value="underline">{t('settings.tabStyleUnderline')}</option>
+              </select>
+            </Row>
+            <Row label={t('settings.softShadows')}>
+              <input
+                type="checkbox"
+                checked={settings().appearance.softShadows}
+                onChange={(e) => patchAppearance({ softShadows: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.animations')}>
+              <input
+                type="checkbox"
+                checked={settings().appearance.animations}
+                onChange={(e) => patchAppearance({ animations: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.lowMemory')} hint={t('settings.lowMemoryHint')}>
+              <input
+                type="checkbox"
+                checked={settings().lowMemory}
+                onChange={(e) => patch({ lowMemory: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.softwareRendering')} hint={t('settings.softwareRenderingHint')}>
+              <input
+                type="checkbox"
+                checked={settings().softwareRendering}
+                onChange={(e) => patch({ softwareRendering: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.showStatusBar')}>
+              <input
+                type="checkbox"
+                checked={settings().showStatusBar}
+                onChange={(e) => {
+                  useAppStore.getState().setSettings({ showStatusBar: e.currentTarget.checked })
+                  useAppStore.setState({ statusBarVisible: e.currentTarget.checked })
+                  void useAppStore.getState().saveSettings()
+                }}
+              />
+            </Row>
+            <Row label={t('settings.showSidebarOnStart')}>
+              <input
+                type="checkbox"
+                checked={settings().showSidebar}
+                onChange={(e) => {
+                  useAppStore.getState().setSettings({ showSidebar: e.currentTarget.checked })
+                  useAppStore.setState({ sidebarVisible: e.currentTarget.checked })
+                  void useAppStore.getState().saveSettings()
+                }}
+              />
+            </Row>
+            <div style={{ 'margin-top': '14px' }}>
+              <div class="panel-header">
+                <span>{t('settings.preview')}</span>
+              </div>
+              <div class="appearance-preview">
+                <div class="preview-top">
+                  <span class="preview-dot" />
+                  <span style={{ 'font-size': '11px', color: '#fff' }}>FlintQode</span>
+                </div>
+                <div class="preview-body">
+                  <div class="preview-panel" />
+                  <div class="preview-button">{t('settings.previewButton')}</div>
+                </div>
+              </div>
+            </div>
+          </Match>
 
-      {section === 'toolchain' && (
-        <>
-          <div className="panel-header">
-            <span>{t('settings.toolchainTitle')}</span>
-            <span>{t('settings.toolchainPaths')}</span>
-          </div>
-          <div className="hint" style={{ marginTop: 0, marginBottom: 10 }}>
-            {t('settings.toolchainHintLong')}
-          </div>
-          {TOOLCHAIN_LANGUAGES.map((entry) => (
-            <Row key={entry.id} label={entry.label} hint={TOOLCHAIN_HINTS[entry.id] ?? entry.hint}>
+          <Match when={section() === 'typography'}>
+            <div class="panel-header">
+              <span>{t('settings.typographyTitle')}</span>
+              <span>{t('settings.typographyHintShort')}</span>
+            </div>
+            <div class="hint" style={{ 'margin-top': 0, 'margin-bottom': '10px' }}>
+              {t('settings.typographyHintLong')}
+            </div>
+            <Row label={t('settings.fontFamily')} hint={t('settings.fontFamilyHint')}>
               <input
                 type="text"
-                placeholder={entry.placeholder}
-                value={settings.toolchain[entry.id] ?? ''}
-                style={{ minWidth: 280 }}
-                onChange={(e) => setSettings({ toolchain: { ...settings.toolchain, [entry.id]: e.target.value } })}
+                list="flintqode-font-choices"
+                value={settings().fontFamily}
+                placeholder='"Cascadia Code", ui-monospace, monospace'
+                style={{ 'min-width': '300px' }}
+                onInput={(e) => useAppStore.getState().setSettings({ fontFamily: e.currentTarget.value })}
+              />
+              <datalist id="flintqode-font-choices">
+                <For each={FONT_CHOICES}>{(font) => <option value={font} />}</For>
+              </datalist>
+            </Row>
+            <Row label={t('settings.fontSize')} hint={t('settings.fontSizeHint')}>
+              <input
+                type="range"
+                min={8}
+                max={32}
+                step={1}
+                value={settings().fontSize}
+                onInput={(e) => useAppStore.getState().setSettings({ fontSize: Number(e.currentTarget.value) })}
+                style={{ 'min-width': '200px' }}
+              />
+              <input
+                type="number"
+                min={8}
+                max={40}
+                value={settings().fontSize}
+                onInput={(e) => useAppStore.getState().setSettings({ fontSize: Number(e.currentTarget.value) })}
+                style={{ width: '68px' }}
+              />
+              <span class="hint">px</span>
+            </Row>
+            <Row label={t('settings.fontWeight')} hint={t('settings.fontWeightHint')}>
+              <select
+                value={settings().fontWeight}
+                onChange={(e) => useAppStore.getState().setSettings({ fontWeight: Number(e.currentTarget.value) })}
+              >
+                <option value={300}>{t('settings.fontWeightLight')}</option>
+                <option value={400}>{t('settings.fontWeightNormal')}</option>
+                <option value={500}>{t('settings.fontWeightMedium')}</option>
+                <option value={600}>{t('settings.fontWeightSemibold')}</option>
+                <option value={700}>{t('settings.fontWeightBold')}</option>
+              </select>
+            </Row>
+            <Row label={t('settings.fontStyle')} hint={t('settings.fontStyleHint')}>
+              <select
+                value={settings().fontStyle}
+                onChange={(e) =>
+                  useAppStore.getState().setSettings({ fontStyle: e.currentTarget.value as 'normal' | 'italic' })
+                }
+              >
+                <option value="normal">{t('settings.fontStyleNormal')}</option>
+                <option value="italic">{t('settings.fontStyleItalic')}</option>
+              </select>
+            </Row>
+            <Row label={t('settings.lineHeight')} hint={t('settings.lineHeightHint')}>
+              <input
+                type="range"
+                min={1}
+                max={2.4}
+                step={0.05}
+                value={settings().lineHeight}
+                onInput={(e) => useAppStore.getState().setSettings({ lineHeight: Number(e.currentTarget.value) })}
+                style={{ 'min-width': '200px' }}
+              />
+              <span style={{ width: '44px', 'text-align': 'right' }}>{settings().lineHeight.toFixed(2)}</span>
+            </Row>
+            <Row label={t('settings.letterSpacing')} hint={t('settings.letterSpacingHint')}>
+              <input
+                type="range"
+                min={-1}
+                max={4}
+                step={0.1}
+                value={settings().letterSpacing}
+                onInput={(e) => useAppStore.getState().setSettings({ letterSpacing: Number(e.currentTarget.value) })}
+                style={{ 'min-width': '200px' }}
+              />
+              <span style={{ width: '44px', 'text-align': 'right' }}>{settings().letterSpacing.toFixed(1)} px</span>
+            </Row>
+            <Row label={t('settings.fontLigatures')} hint={t('settings.fontLigaturesHint')}>
+              <input
+                type="checkbox"
+                checked={settings().fontLigatures}
+                onChange={(e) => useAppStore.getState().setSettings({ fontLigatures: e.currentTarget.checked })}
+              />
+            </Row>
+
+            <div class="panel-header" style={{ 'margin-top': '18px' }}>
+              <span>{t('settings.textColours')}</span>
+              <button
+                class="icon-btn"
+                onClick={() =>
+                  useAppStore.getState().setSettings({
+                    editorForeground: '',
+                    editorBackgroundColor: '',
+                    editorCaretColor: '',
+                    editorSelectionColor: '',
+                  })
+                }
+              >
+                {t('settings.resetColours')}
+              </button>
+            </div>
+            <div class="hint" style={{ 'margin-top': 0, 'margin-bottom': '10px' }}>
+              {t('settings.textColoursHint')}
+            </div>
+            <Row label={t('settings.editorTextColour')} hint={t('settings.colourAutoHint')}>
+              <input
+                type="color"
+                value={settings().editorForeground || '#e6e9ef'}
+                onInput={(e) => useAppStore.getState().setSettings({ editorForeground: e.currentTarget.value })}
+              />
+              <button class="icon-btn" onClick={() => useAppStore.getState().setSettings({ editorForeground: '' })}>
+                {t('settings.colourAuto')}
+              </button>
+            </Row>
+            <Row label={t('settings.editorBackgroundColour')} hint={t('settings.colourAutoHint')}>
+              <input
+                type="color"
+                value={settings().editorBackgroundColor || '#ffffff'}
+                onInput={(e) => useAppStore.getState().setSettings({ editorBackgroundColor: e.currentTarget.value })}
               />
               <button
-                className="icon-btn"
+                class="icon-btn"
+                onClick={() => useAppStore.getState().setSettings({ editorBackgroundColor: '' })}
+              >
+                {t('settings.colourAuto')}
+              </button>
+            </Row>
+            <Row label={t('settings.editorCaretColour')} hint={t('settings.colourAutoHint')}>
+              <input
+                type="color"
+                value={settings().editorCaretColor || '#2563eb'}
+                onInput={(e) => useAppStore.getState().setSettings({ editorCaretColor: e.currentTarget.value })}
+              />
+              <button class="icon-btn" onClick={() => useAppStore.getState().setSettings({ editorCaretColor: '' })}>
+                {t('settings.colourAuto')}
+              </button>
+            </Row>
+            <Row label={t('settings.editorSelectionColour')} hint={t('settings.colourAutoHint')}>
+              <input
+                type="color"
+                value={settings().editorSelectionColor || '#2563eb'}
+                onInput={(e) => useAppStore.getState().setSettings({ editorSelectionColor: e.currentTarget.value })}
+              />
+              <button class="icon-btn" onClick={() => useAppStore.getState().setSettings({ editorSelectionColor: '' })}>
+                {t('settings.colourAuto')}
+              </button>
+            </Row>
+
+            <div class="panel-header" style={{ 'margin-top': '18px' }}>
+              <span>{t('settings.typographyPreview')}</span>
+              <span>{t('settings.typographyPreviewHint')}</span>
+            </div>
+            <pre
+              class="typography-preview"
+              style={{
+                'font-family': settings().fontFamily,
+                'font-size': `${settings().fontSize}px`,
+                'font-weight': settings().fontWeight,
+                'font-style': settings().fontStyle,
+                'line-height': settings().lineHeight,
+                'letter-spacing': `${settings().letterSpacing}px`,
+                'font-variant-ligatures': settings().fontLigatures ? 'common-ligatures contextual' : 'none',
+                color: settings().editorForeground || undefined,
+                background: settings().editorBackgroundColor || undefined,
+              }}
+            >
+              <span class="tok-keyword">function</span> <span class="tok-function">greet</span>(
+              <span class="tok-type">User</span> <span class="tok-property">name</span>) {'{'}
+              {'\n'} {'  '}
+              <span class="tok-comment">// 0123456789 — careful with l/i/1 and O/0</span>
+              {'\n'} {'  '}
+              <span class="tok-keyword">return</span>{' '}
+              <span class="tok-string">
+                `Hello ${'{'}name{'}'}`
+              </span>
+              {'\n'}
+              {'}'}
+            </pre>
+          </Match>
+
+          <Match when={section() === 'icons'}>
+            <div class="panel-header">
+              <span>{t('settings.fileIcons')}</span>
+              <span>{t('settings.themeCount', { count: ICON_THEMES.length })}</span>
+            </div>
+            <div class="icon-gallery">
+              <For each={ICON_THEMES}>
+                {(theme) => (
+                  <button
+                    class={['icon-card', { active: settings().iconTheme === theme.id }]}
+                    onClick={() => patch({ iconTheme: theme.id })}
+                    title={theme.basedOn}
+                  >
+                    <span style={{ display: 'flex', gap: '2px', 'align-items': 'center' }}>
+                      <FileIcon name="Main.java" theme={theme.id} size={15} />
+                      <FileIcon name="app.ts" theme={theme.id} size={15} />
+                      <FileIcon name="notes.md" theme={theme.id} size={15} />
+                      <FileIcon name="data.json" theme={theme.id} size={15} />
+                    </span>
+                    <span class="name">{theme.label}</span>
+                  </button>
+                )}
+              </For>
+            </div>
+            <div class="hint" style={{ 'margin-top': '8px' }}>
+              {ICON_THEMES.find((icon) => icon.id === settings().iconTheme)?.basedOn}
+            </div>
+
+            <div class="panel-header" style={{ 'margin-top': '18px' }}>
+              <span>{t('settings.sounds')}</span>
+              <span>{t('settings.themeCount', { count: SOUND_THEMES.length })}</span>
+            </div>
+            <Row label={t('settings.playSounds')}>
+              <input
+                type="checkbox"
+                checked={settings().soundsEnabled}
+                onChange={(e) => patch({ soundsEnabled: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.soundVolume')}>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(settings().soundVolume * 100)}
+                onInput={(e) =>
+                  useAppStore.getState().setSettings({ soundVolume: Number(e.currentTarget.value) / 100 })
+                }
+                style={{ 'min-width': '220px' }}
+              />
+              <span style={{ width: '34px', 'text-align': 'right' }}>{Math.round(settings().soundVolume * 100)}%</span>
+            </Row>
+            <div class="icon-gallery" style={{ 'margin-top': '6px' }}>
+              <For each={SOUND_THEMES}>
+                {(theme) => (
+                  <button
+                    class={['icon-card', { active: settings().soundTheme === theme.id }]}
+                    onClick={() => {
+                      useAppStore.getState().setSettings({ soundTheme: theme.id })
+                      void useAppStore.getState().saveSettings()
+                      playSound('save', theme.id, 0.5)
+                    }}
+                    title={theme.basedOn}
+                  >
+                    <span class="name">{theme.label}</span>
+                    <span
+                      style={{ 'margin-left': 'auto', 'font-size': '10px', color: 'var(--fg-muted)' }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        playSound('complete', theme.id, 0.5)
+                      }}
+                    >
+                      {t('settings.testSound')}
+                    </span>
+                  </button>
+                )}
+              </For>
+            </div>
+            <div class="hint" style={{ 'margin-top': '8px' }}>
+              {t('settings.soundsHint')}
+            </div>
+          </Match>
+
+          <Match when={section() === 'toolchain'}>
+            <div class="panel-header">
+              <span>{t('settings.toolchainTitle')}</span>
+              <span>{t('settings.toolchainPaths')}</span>
+            </div>
+            <div class="hint" style={{ 'margin-top': 0, 'margin-bottom': '10px' }}>
+              {t('settings.toolchainHintLong')}
+            </div>
+            <For each={TOOLCHAIN_LANGUAGES}>
+              {(entry) => (
+                <Row label={entry.label} hint={TOOLCHAIN_HINTS[entry.id] ?? entry.hint}>
+                  <input
+                    type="text"
+                    placeholder={entry.placeholder}
+                    value={settings().toolchain[entry.id] ?? ''}
+                    style={{ 'min-width': '280px' }}
+                    onInput={(e) =>
+                      useAppStore.getState().setSettings({
+                        toolchain: { ...settings().toolchain, [entry.id]: e.currentTarget.value },
+                      })
+                    }
+                  />
+                  <button
+                    class="icon-btn"
+                    title={t('common.browse')}
+                    onClick={async () => {
+                      const result = await window.api.fs.openDialog({
+                        title: t('settings.selectFolder', { name: entry.label }),
+                        directory: true,
+                      })
+                      const folder = result.filePaths[0]
+                      if (!folder) return
+                      const exe = entry.exe?.replace(/^[\\/]+/, '').replace(/\\/g, '/')
+                      const path = exe ? `${folder.replace(/[\\/]+$/, '')}/${exe}` : folder
+                      useAppStore.getState().setSettings({
+                        toolchain: { ...settings().toolchain, [entry.id]: path },
+                      })
+                      void useAppStore.getState().saveSettings()
+                    }}
+                  >
+                    …
+                  </button>
+                </Row>
+              )}
+            </For>
+
+            <div class="panel-header" style={{ 'margin-top': '16px' }}>
+              <span>{t('settings.lspServers')}</span>
+              <span>LSP</span>
+            </div>
+            <div class="hint" style={{ 'margin-top': 0, 'margin-bottom': '10px' }}>
+              {t('settings.lspServersHintLong')}
+            </div>
+            <For each={LSP_LANGUAGES}>
+              {(language) => (
+                <Row label={language}>
+                  <input
+                    type="text"
+                    placeholder={t('settings.defaultValue')}
+                    value={settings().lspServers[language]?.command ?? ''}
+                    style={{ 'min-width': '280px' }}
+                    onInput={(e) =>
+                      useAppStore.getState().setSettings({
+                        lspServers: {
+                          ...settings().lspServers,
+                          [language]: {
+                            command: e.currentTarget.value,
+                            args: settings().lspServers[language]?.args,
+                          },
+                        },
+                      })
+                    }
+                  />
+                </Row>
+              )}
+            </For>
+
+            <div class="panel-header" style={{ 'margin-top': '16px' }}>
+              <span>{t('panel.files')}</span>
+            </div>
+            <Row label={t('settings.projectFolder')} hint={t('settings.projectFolderHint')}>
+              <input
+                type="text"
+                placeholder={t('settings.projectFolderPlaceholder')}
+                value={settings().projectFolder ?? ''}
+                style={{ 'min-width': '280px' }}
+                onInput={(e) => useAppStore.getState().setSettings({ projectFolder: e.currentTarget.value || null })}
+              />
+              <button
+                class="icon-btn"
                 title={t('common.browse')}
                 onClick={async () => {
                   const result = await window.api.fs.openDialog({
-                    title: t('settings.selectFolder', { name: entry.label }),
+                    title: t('settings.selectProjectFolder'),
                     directory: true,
                   })
                   const folder = result.filePaths[0]
                   if (!folder) return
-                  const exe = entry.exe?.replace(/^[\\/]+/, '').replace(/\\/g, '/')
-                  const path = exe ? `${folder.replace(/[\\/]+$/, '')}/${exe}` : folder
-                  setSettings({ toolchain: { ...settings.toolchain, [entry.id]: path } })
-                  void saveSettings()
+                  useAppStore.getState().setSettings({ projectFolder: folder })
+                  void useAppStore.getState().saveSettings()
                 }}
               >
                 …
               </button>
             </Row>
-          ))}
-
-          <div className="panel-header" style={{ marginTop: 16 }}>
-            <span>{t('settings.lspServers')}</span>
-            <span>LSP</span>
-          </div>
-          <div className="hint" style={{ marginTop: 0, marginBottom: 10 }}>
-            {t('settings.lspServersHintLong')}
-          </div>
-          {LSP_LANGUAGES.map((language) => (
-            <Row key={language} label={language}>
-              <input
-                type="text"
-                placeholder={t('settings.defaultValue')}
-                value={settings.lspServers[language]?.command ?? ''}
-                style={{ minWidth: 280 }}
-                onChange={(e) =>
-                  setSettings({
-                    lspServers: {
-                      ...settings.lspServers,
-                      [language]: { command: e.target.value, args: settings.lspServers[language]?.args },
-                    },
+            <Row label={t('settings.configurationFile')} hint={t('settings.configurationFileHint')}>
+              <span class="hint" style={{ 'text-align': 'right' }}>
+                {projectFolder()
+                  ? `${projectFolder()?.replace(/[\\/]+$/, '')}/${PROJECT_CONFIG_NAME}`
+                  : t('settings.noProjectFolder')}
+              </span>
+              <button
+                class="icon-btn"
+                title={t('settings.createProjectConfig')}
+                onClick={async () => {
+                  const folder = projectFolder()
+                  if (!folder) return
+                  const existing = (await readProjectConfig(folder)) ?? {}
+                  await writeProjectConfig(folder, {
+                    toolchain: { ...settings().toolchain, ...(existing.toolchain ?? {}) },
+                    lsp: { ...settings().lspServers, ...(existing.lsp ?? {}) },
+                    terminal: existing.terminal,
+                    run: existing.run,
                   })
+                  patch({ projectFolder: folder })
+                  useAppStore.getState().toast(t('settings.projectConfigWritten'), 'success')
+                }}
+              >
+                {t('common.save')}
+              </button>
+            </Row>
+          </Match>
+
+          <Match when={section() === 'workspace'}>
+            <Row label={t('settings.language')} hint={t('settings.languageHint')}>
+              <select
+                value={settings().language}
+                onChange={(e) => {
+                  const locale = e.currentTarget.value as LocaleId
+                  void setLocale(locale)
+                }}
+              >
+                <For each={LOCALES}>
+                  {(locale) => (
+                    <option value={locale.id}>
+                      {locale.nativeName} — {locale.englishName}
+                    </option>
+                  )}
+                </For>
+              </select>
+            </Row>
+            <Row
+              label={t('settings.translationStatus')}
+              hint={t('settings.translationProgress', {
+                percent: progress().percent,
+                done: progress().done,
+                total: progress().total,
+              })}
+            >
+              <span class="hint" style={{ 'text-align': 'right' }}>
+                {progress().percent}%
+              </span>
+            </Row>
+            <Row label={t('settings.workspace')} hint={t('settings.workspaceHint')}>
+              <span class="hint" style={{ 'max-width': '320px', 'text-align': 'right' }}>
+                {t('settings.workspaceCoding')}
+              </span>
+            </Row>
+            <Row label={t('settings.mainMenu')} hint={t('settings.mainMenuHint')}>
+              <select
+                value={settings().mainMenuStyle}
+                onChange={(e) => patch({ mainMenuStyle: e.currentTarget.value as never })}
+              >
+                <option value="hamburger">{t('settings.menuHamburger')}</option>
+                <option value="native">{t('settings.menuNative')}</option>
+                <option value="both">{t('settings.menuBoth')}</option>
+              </select>
+            </Row>
+            <div class="hint">
+              The native Windows menu bar stays reachable with the <kbd>Alt</kbd> key, exactly like other open-source
+              editors. Every command is also available in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+
+              <kbd>P</kbd>).
+            </div>
+          </Match>
+
+          <Match when={section() === 'editor'}>
+            <Row label={t('settings.lineWrapping')}>
+              <input
+                type="checkbox"
+                checked={settings().lineWrapping}
+                onChange={(e) => useAppStore.getState().setSettings({ lineWrapping: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.showLineNumbers')}>
+              <input
+                type="checkbox"
+                checked={settings().showLineNumbers}
+                onChange={(e) => useAppStore.getState().setSettings({ showLineNumbers: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.direction')}>
+              <select
+                value={settings().direction}
+                onChange={(e) =>
+                  useAppStore.getState().setSettings({ direction: e.currentTarget.value as 'ltr' | 'rtl' })
+                }
+              >
+                <option value="ltr">LTR</option>
+                <option value="rtl">RTL (Right-to-left)</option>
+              </select>
+            </Row>
+            <Row label={t('settings.gitGutter')} hint={t('settings.gitGutterHint')}>
+              <input
+                type="checkbox"
+                checked={settings().gitGutter}
+                onChange={(e) => useAppStore.getState().setSettings({ gitGutter: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.overwriteMode')}>
+              <input
+                type="checkbox"
+                checked={settings().overwriteMode}
+                onChange={(e) => useAppStore.getState().setSettings({ overwriteMode: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.scrollPastEnd')}>
+              <input
+                type="checkbox"
+                checked={settings().scrollPastEnd}
+                onChange={(e) => useAppStore.getState().setSettings({ scrollPastEnd: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.autosaveInterval')} hint={t('settings.autosaveIntervalHint')}>
+              <input
+                type="number"
+                min={0}
+                max={120}
+                step={1}
+                value={settings().autosaveInterval}
+                onInput={(e) =>
+                  useAppStore.getState().setSettings({
+                    autosaveInterval: Math.max(0, Number(e.currentTarget.value) || 0),
+                  })
+                }
+                style={{ width: '90px' }}
+              />
+              <span class="hint">min</span>
+            </Row>
+            <Row label={t('settings.showInvisibles')}>
+              <input
+                type="checkbox"
+                checked={settings().showInvisibles}
+                onChange={(e) => useAppStore.getState().setSettings({ showInvisibles: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.showMinimap')}>
+              <input
+                type="checkbox"
+                checked={settings().showMinimap}
+                onChange={(e) => useAppStore.getState().setSettings({ showMinimap: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.showIndentGuides')}>
+              <input
+                type="checkbox"
+                checked={settings().showIndentGuides}
+                onChange={(e) => useAppStore.getState().setSettings({ showIndentGuides: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.highlightActiveLine')}>
+              <input
+                type="checkbox"
+                checked={settings().highlightActiveLine}
+                onChange={(e) => useAppStore.getState().setSettings({ highlightActiveLine: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.matchBrackets')}>
+              <input
+                type="checkbox"
+                checked={settings().matchBrackets}
+                onChange={(e) => useAppStore.getState().setSettings({ matchBrackets: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.autoCloseBrackets')}>
+              <input
+                type="checkbox"
+                checked={settings().autoCloseBrackets}
+                onChange={(e) => useAppStore.getState().setSettings({ autoCloseBrackets: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.autoIndent')}>
+              <input
+                type="checkbox"
+                checked={settings().autoIndent}
+                onChange={(e) => useAppStore.getState().setSettings({ autoIndent: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.trimTrailingWhitespace')}>
+              <input
+                type="checkbox"
+                checked={settings().trimTrailingWhitespace}
+                onChange={(e) =>
+                  useAppStore.getState().setSettings({ trimTrailingWhitespace: e.currentTarget.checked })
                 }
               />
             </Row>
-          ))}
-
-          <div className="panel-header" style={{ marginTop: 16 }}>
-            <span>{t('panel.files')}</span>
-          </div>
-          <Row label={t('settings.projectFolder')} hint={t('settings.projectFolderHint')}>
-            <input
-              type="text"
-              placeholder={t('settings.projectFolderPlaceholder')}
-              value={settings.projectFolder ?? ''}
-              style={{ minWidth: 280 }}
-              onChange={(e) => setSettings({ projectFolder: e.target.value || null })}
-            />
-            <button
-              className="icon-btn"
-              title={t('common.browse')}
-              onClick={async () => {
-                const result = await window.api.fs.openDialog({
-                  title: t('settings.selectProjectFolder'),
-                  directory: true,
-                })
-                const folder = result.filePaths[0]
-                if (!folder) return
-                setSettings({ projectFolder: folder })
-                void saveSettings()
-              }}
-            >
-              …
-            </button>
-          </Row>
-          <Row label={t('settings.configurationFile')} hint={t('settings.configurationFileHint')}>
-            <span className="hint" style={{ textAlign: 'right' }}>
-              {projectFolder()
-                ? `${projectFolder()?.replace(/[\\/]+$/, '')}/${PROJECT_CONFIG_NAME}`
-                : t('settings.noProjectFolder')}
-            </span>
-            <button
-              className="icon-btn"
-              title={t('settings.createProjectConfig')}
-              onClick={async () => {
-                const folder = projectFolder()
-                if (!folder) return
-                const existing = (await readProjectConfig(folder)) ?? {}
-                await writeProjectConfig(folder, {
-                  toolchain: { ...settings.toolchain, ...(existing.toolchain ?? {}) },
-                  lsp: { ...settings.lspServers, ...(existing.lsp ?? {}) },
-                  terminal: existing.terminal,
-                  run: existing.run,
-                })
-                patch({ projectFolder: folder })
-                toast(t('settings.projectConfigWritten'), 'success')
-              }}
-            >
-              {t('common.save')}
-            </button>
-          </Row>
-        </>
-      )}
-
-      {section === 'workspace' && (
-        <>
-          <Row label={t('settings.language')} hint={t('settings.languageHint')}>
-            <select
-              value={settings.language}
-              onChange={(e) => {
-                const locale = e.target.value as LocaleId
-                void setLocale(locale)
-              }}
-            >
-              {LOCALES.map((locale) => (
-                <option key={locale.id} value={locale.id}>
-                  {locale.nativeName} — {locale.englishName}
-                </option>
-              ))}
-            </select>
-          </Row>
-          <Row
-            label={t('settings.translationStatus')}
-            hint={t('settings.translationProgress', {
-              percent: progress.percent,
-              done: progress.done,
-              total: progress.total,
-            })}
-          >
-            <span className="hint" style={{ textAlign: 'right' }}>
-              {progress.percent}%
-            </span>
-          </Row>
-          <Row label={t('settings.workspace')} hint={t('settings.workspaceHint')}>
-            <span className="hint" style={{ maxWidth: 320, textAlign: 'right' }}>
-              {t('settings.workspaceCoding')}
-            </span>
-          </Row>
-          <Row label={t('settings.mainMenu')} hint={t('settings.mainMenuHint')}>
-            <select value={settings.mainMenuStyle} onChange={(e) => patch({ mainMenuStyle: e.target.value as never })}>
-              <option value="hamburger">{t('settings.menuHamburger')}</option>
-              <option value="native">{t('settings.menuNative')}</option>
-              <option value="both">{t('settings.menuBoth')}</option>
-            </select>
-          </Row>
-          <div className="hint">
-            The native Windows menu bar stays reachable with the <kbd>Alt</kbd> key, exactly like other open-source
-            editors. Every command is also available in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+
-            <kbd>P</kbd>).
-          </div>
-        </>
-      )}
-
-      {section === 'editor' && (
-        <>
-          <Row label={t('settings.lineWrapping')}>
-            <input
-              type="checkbox"
-              checked={settings.lineWrapping}
-              onChange={(e) => setSettings({ lineWrapping: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.showLineNumbers')}>
-            <input
-              type="checkbox"
-              checked={settings.showLineNumbers}
-              onChange={(e) => setSettings({ showLineNumbers: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.direction')}>
-            <select
-              value={settings.direction}
-              onChange={(e) => setSettings({ direction: e.target.value as 'ltr' | 'rtl' })}
-            >
-              <option value="ltr">LTR</option>
-              <option value="rtl">RTL (Right-to-left)</option>
-            </select>
-          </Row>
-          <Row label={t('settings.gitGutter')} hint={t('settings.gitGutterHint')}>
-            <input
-              type="checkbox"
-              checked={settings.gitGutter}
-              onChange={(e) => setSettings({ gitGutter: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.overwriteMode')}>
-            <input
-              type="checkbox"
-              checked={settings.overwriteMode}
-              onChange={(e) => setSettings({ overwriteMode: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.scrollPastEnd')}>
-            <input
-              type="checkbox"
-              checked={settings.scrollPastEnd}
-              onChange={(e) => setSettings({ scrollPastEnd: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.autosaveInterval')} hint={t('settings.autosaveIntervalHint')}>
-            <input
-              type="number"
-              min={0}
-              max={120}
-              step={1}
-              value={settings.autosaveInterval}
-              onChange={(e) => setSettings({ autosaveInterval: Math.max(0, Number(e.target.value) || 0) })}
-              style={{ width: 90 }}
-            />
-            <span className="hint">min</span>
-          </Row>
-          <Row label={t('settings.showInvisibles')}>
-            <input
-              type="checkbox"
-              checked={settings.showInvisibles}
-              onChange={(e) => setSettings({ showInvisibles: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.showMinimap')}>
-            <input
-              type="checkbox"
-              checked={settings.showMinimap}
-              onChange={(e) => setSettings({ showMinimap: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.showIndentGuides')}>
-            <input
-              type="checkbox"
-              checked={settings.showIndentGuides}
-              onChange={(e) => setSettings({ showIndentGuides: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.highlightActiveLine')}>
-            <input
-              type="checkbox"
-              checked={settings.highlightActiveLine}
-              onChange={(e) => setSettings({ highlightActiveLine: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.matchBrackets')}>
-            <input
-              type="checkbox"
-              checked={settings.matchBrackets}
-              onChange={(e) => setSettings({ matchBrackets: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.autoCloseBrackets')}>
-            <input
-              type="checkbox"
-              checked={settings.autoCloseBrackets}
-              onChange={(e) => setSettings({ autoCloseBrackets: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.autoIndent')}>
-            <input
-              type="checkbox"
-              checked={settings.autoIndent}
-              onChange={(e) => setSettings({ autoIndent: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.trimTrailingWhitespace')}>
-            <input
-              type="checkbox"
-              checked={settings.trimTrailingWhitespace}
-              onChange={(e) => setSettings({ trimTrailingWhitespace: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.tabSize')}>
-            <input
-              type="number"
-              min={1}
-              max={16}
-              value={settings.tabSize}
-              onChange={(e) => setSettings({ tabSize: Number(e.target.value) })}
-            />
-          </Row>
-          <Row label={t('settings.insertSpaces')}>
-            <input
-              type="checkbox"
-              checked={settings.insertSpaces}
-              onChange={(e) => setSettings({ insertSpaces: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.spellcheck')}>
-            <input
-              type="checkbox"
-              checked={settings.spellcheck}
-              onChange={(e) => setSettings({ spellcheck: e.target.checked })}
-            />
-          </Row>
-        </>
-      )}
-
-      {section === 'files' && (
-        <>
-          <Row label={t('settings.defaultEncoding')}>
-            <select value={settings.defaultEncoding} onChange={(e) => setSettings({ defaultEncoding: e.target.value })}>
-              {Object.entries(ENCODING_LABELS)
-                .filter(([key]) => key !== 'binary')
-                .map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-            </select>
-          </Row>
-          <Row label={t('settings.defaultEol')}>
-            <select value={settings.defaultEol} onChange={(e) => setSettings({ defaultEol: e.target.value as never })}>
-              {Object.entries(EOL_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </Row>
-          <Row label={t('settings.restoreSession')}>
-            <input
-              type="checkbox"
-              checked={settings.restoreSession}
-              onChange={(e) => setSettings({ restoreSession: e.target.checked })}
-            />
-          </Row>
-          <Row label={t('settings.autosave')}>
-            <input
-              type="number"
-              min={0}
-              max={600}
-              value={settings.autosaveInterval}
-              onChange={(e) => setSettings({ autosaveInterval: Number(e.target.value) })}
-            />
-          </Row>
-          <Row label={t('settings.defaultLanguage')}>
-            <span className="hint" style={{ maxWidth: 320, textAlign: 'right' }}>
-              {t('settings.defaultLanguageHint')}
-            </span>
-          </Row>
-          <div className="form-row">
-            <div>
-              <div>{t('settings.resetAll')}</div>
-              <div className="hint">{t('settings.resetAllHint')}</div>
-            </div>
-            <div className="control">
-              <button
-                className="icon-btn"
-                onClick={() => {
-                  setSettings({ ...DEFAULT_SETTINGS })
-                  void saveSettings()
-                }}
-              >
-                {t('common.reset')}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {section === 'shortcuts' && (
-        <>
-          <div className="hint" style={{ marginTop: 0, marginBottom: 10 }}>
-            {t('settings.keybindingsHintLong')} <code>{keybindingsPath()}</code>
-          </div>
-          <div className="form-row">
-            <div>
-              <div>{t('settings.keybindingImportTitle')}</div>
-              <div className="hint">{t('settings.keybindingImportHint2')}</div>
-            </div>
-            <div className="control" style={{ display: 'flex', gap: '6px' }}>
+            <Row label={t('settings.tabSize')}>
               <input
-                type="text"
-                placeholder='[ { "key": "ctrl+s", "command": "..." } ]'
-                value={importText}
-                style={{ minWidth: 280 }}
-                onChange={(e) => setImportText(e.target.value)}
+                type="number"
+                min={1}
+                max={16}
+                value={settings().tabSize}
+                onInput={(e) => useAppStore.getState().setSettings({ tabSize: Number(e.currentTarget.value) })}
               />
+            </Row>
+            <Row label={t('settings.insertSpaces')}>
+              <input
+                type="checkbox"
+                checked={settings().insertSpaces}
+                onChange={(e) => useAppStore.getState().setSettings({ insertSpaces: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.spellcheck')}>
+              <input
+                type="checkbox"
+                checked={settings().spellcheck}
+                onChange={(e) => useAppStore.getState().setSettings({ spellcheck: e.currentTarget.checked })}
+              />
+            </Row>
+          </Match>
+
+          <Match when={section() === 'files'}>
+            <Row label={t('settings.defaultEncoding')}>
+              <select
+                value={settings().defaultEncoding}
+                onChange={(e) => useAppStore.getState().setSettings({ defaultEncoding: e.currentTarget.value })}
+              >
+                <For each={Object.entries(ENCODING_LABELS).filter(([key]) => key !== 'binary')}>
+                  {([key, label]) => <option value={key}>{label}</option>}
+                </For>
+              </select>
+            </Row>
+            <Row label={t('settings.defaultEol')}>
+              <select
+                value={settings().defaultEol}
+                onChange={(e) => useAppStore.getState().setSettings({ defaultEol: e.currentTarget.value as never })}
+              >
+                <For each={Object.entries(EOL_LABELS)}>{([key, label]) => <option value={key}>{label}</option>}</For>
+              </select>
+            </Row>
+            <Row label={t('settings.restoreSession')}>
+              <input
+                type="checkbox"
+                checked={settings().restoreSession}
+                onChange={(e) => useAppStore.getState().setSettings({ restoreSession: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.autosave')}>
+              <input
+                type="number"
+                min={0}
+                max={600}
+                value={settings().autosaveInterval}
+                onInput={(e) => useAppStore.getState().setSettings({ autosaveInterval: Number(e.currentTarget.value) })}
+              />
+            </Row>
+            <Row label={t('settings.defaultLanguage')}>
+              <span class="hint" style={{ 'max-width': '320px', 'text-align': 'right' }}>
+                {t('settings.defaultLanguageHint')}
+              </span>
+            </Row>
+            <div class="form-row">
+              <div>
+                <div>{t('settings.resetAll')}</div>
+                <div class="hint">{t('settings.resetAllHint')}</div>
+              </div>
+              <div class="control">
+                <button
+                  class="icon-btn"
+                  onClick={() => {
+                    useAppStore.getState().setSettings({ ...DEFAULT_SETTINGS })
+                    void useAppStore.getState().saveSettings()
+                  }}
+                >
+                  {t('common.reset')}
+                </button>
+              </div>
+            </div>
+          </Match>
+
+          <Match when={section() === 'shortcuts'}>
+            <div class="hint" style={{ 'margin-top': 0, 'margin-bottom': '10px' }}>
+              {t('settings.keybindingsHintLong')} <code>{keybindingsPath()}</code>
+            </div>
+            <div class="form-row">
+              <div>
+                <div>{t('settings.keybindingImportTitle')}</div>
+                <div class="hint">{t('settings.keybindingImportHint2')}</div>
+              </div>
+              <div class="control" style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type="text"
+                  placeholder='[ { "key": "ctrl+s", "command": "..." } ]'
+                  value={importText()}
+                  style={{ 'min-width': '280px' }}
+                  onInput={(e) => setImportText(e.currentTarget.value)}
+                />
+                <button
+                  class="icon-btn"
+                  title={t('common.import')}
+                  onClick={() => {
+                    const imported = fromVSCode(importText())
+                    const names = Object.keys(imported)
+                    if (!names.length) {
+                      useAppStore.getState().toast(t('settings.keybindingImportFailed'), 'error')
+                      return
+                    }
+                    void readKeybindings().then(async (current) => {
+                      const next = { ...current, ...imported }
+                      await writeKeybindings(next)
+                      setKeybindings(next)
+                      useAppStore.getState().toast(t('settings.keybindingImported', { count: names.length }), 'success')
+                    })
+                  }}
+                >
+                  {t('common.import')}
+                </button>
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <div>{t('settings.keybindings')}</div>
+                <div class="hint">{t('settings.keybindingsChangeHint')}</div>
+              </div>
+              <div class="control" style={{ 'min-width': '280px', 'max-height': '260px', overflow: 'auto' }}>
+                <For each={commandsWithShortcuts}>
+                  {(command) => (
+                    <div class="keybinding-row">
+                      <span class="name" title={command.id}>
+                        {tWith(commandKey(command.id), command.title)}
+                      </span>
+                      <input
+                        type="text"
+                        class="keybinding-input"
+                        value={bindings()[command.id] ?? command.shortcut ?? ''}
+                        onInput={(e) => {
+                          const next = { ...bindings() }
+                          if (e.currentTarget.value.trim()) next[command.id] = e.currentTarget.value.trim()
+                          else delete next[command.id]
+                          setBindings(next)
+                          setKeybindings(next)
+                          void writeKeybindings(next)
+                        }}
+                      />
+                    </div>
+                  )}
+                </For>
+              </div>
+            </div>
+            <table class="kbd-table">
+              <tbody>
+                <For each={SHORTCUTS}>
+                  {([name, keys]) => (
+                    <tr>
+                      <td>{t(name)}</td>
+                      <td>
+                        <kbd>{keys}</kbd>
+                      </td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+          </Match>
+
+          <Match when={section() === 'updates'}>
+            <div style={{ display: 'flex', 'flex-direction': 'column', gap: '10px' }}>
+              <div class="hint">{t('settings.updatesHint')}</div>
               <button
-                className="icon-btn"
-                title={t('common.import')}
-                onClick={() => {
-                  const imported = fromVSCode(importText)
-                  const names = Object.keys(imported)
-                  if (!names.length) {
-                    toast(t('settings.keybindingImportFailed'), 'error')
-                    return
+                class="panel-button"
+                disabled={updateBusy()}
+                onClick={async () => {
+                  setUpdateBusy(true)
+                  setUpdateStatus(t('settings.updatesChecking'))
+                  try {
+                    const info = await (
+                      window.api as unknown as {
+                        app?: {
+                          checkUpdate?: (
+                            v: string,
+                          ) => Promise<{ version: string; url: string; assetName: string } | null>
+                        }
+                      }
+                    ).app?.checkUpdate?.((await window.api.info()).version)
+                    if (!info) {
+                      setUpdateStatus(t('settings.updatesUpToDate'))
+                    } else {
+                      setUpdateStatus(t('settings.updatesAvailable', { version: info.version }))
+                      const ok = window.confirm(t('settings.updatesDownloadPrompt', { version: info.version }))
+                      if (ok) {
+                        const dest = `/tmp/opencode/flintqode-update.deb`
+                        await (
+                          window.api as unknown as {
+                            app?: { downloadUpdate?: (u: string, d: string) => Promise<string> }
+                          }
+                        ).app?.downloadUpdate?.(info.url, dest)
+                        setUpdateStatus(t('settings.updatesDownloaded'))
+                        const install = window.confirm(t('settings.updatesInstallPrompt'))
+                        if (install) {
+                          await (
+                            window.api as unknown as { app?: { installUpdate?: (p: string) => Promise<string> } }
+                          ).app?.installUpdate?.(dest)
+                          setUpdateStatus(t('settings.updatesInstalled'))
+                        }
+                      }
+                    }
+                  } catch (error) {
+                    setUpdateStatus(String(error))
+                  } finally {
+                    setUpdateBusy(false)
                   }
-                  void readKeybindings().then(async (current) => {
-                    const next = { ...current, ...imported }
-                    await writeKeybindings(next)
-                    setKeybindings(next)
-                    toast(t('settings.keybindingImported', { count: names.length }), 'success')
-                  })
                 }}
               >
-                {t('common.import')}
+                <Show when={updateBusy()} fallback={t('settings.checkForUpdates')}>
+                  {t('settings.updatesChecking')}
+                </Show>
               </button>
+              <Show when={updateStatus()}>{(status) => <div class="hint">{status()}</div>}</Show>
             </div>
-          </div>
-          <div className="form-row">
-            <div>
-              <div>{t('settings.keybindings')}</div>
-              <div className="hint">{t('settings.keybindingsChangeHint')}</div>
-            </div>
-            <div className="control" style={{ minWidth: 280, maxHeight: 260, overflow: 'auto' }}>
-              {commandsWithShortcuts.map((command) => (
-                <div key={command.id} className="keybinding-row">
-                  <span className="name" title={command.id}>
-                    {tWith(commandKey(command.id), command.title)}
-                  </span>
-                  <input
-                    type="text"
-                    className="keybinding-input"
-                    value={bindings[command.id] ?? command.shortcut ?? ''}
-                    onChange={(e) => {
-                      const next = { ...bindings }
-                      if (e.target.value.trim()) next[command.id] = e.target.value.trim()
-                      else delete next[command.id]
-                      setBindings(next)
-                      setKeybindings(next)
-                      void writeKeybindings(next)
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-          <table className="kbd-table">
-            <tbody>
-              {SHORTCUTS.map(([name, keys]) => (
-                <tr key={name}>
-                  <td>{t(name)}</td>
-                  <td>
-                    <kbd>{keys}</kbd>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
-      {section === 'updates' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div className="hint">{t('settings.updatesHint')}</div>
-          <button
-            className="panel-button"
-            disabled={updateBusy}
-            onClick={async () => {
-              setUpdateBusy(true)
-              setUpdateStatus(t('settings.updatesChecking'))
-              try {
-                const info = await (
-                  window.api as unknown as {
-                    app?: {
-                      checkUpdate?: (v: string) => Promise<{ version: string; url: string; assetName: string } | null>
-                    }
-                  }
-                ).app?.checkUpdate?.((await window.api.info()).version)
-                if (!info) {
-                  setUpdateStatus(t('settings.updatesUpToDate'))
-                } else {
-                  setUpdateStatus(t('settings.updatesAvailable', { version: info.version }))
-                  const ok = window.confirm(t('settings.updatesDownloadPrompt', { version: info.version }))
-                  if (ok) {
-                    const dest = `/tmp/opencode/flintqode-update.deb`
-                    await (
-                      window.api as unknown as { app?: { downloadUpdate?: (u: string, d: string) => Promise<string> } }
-                    ).app?.downloadUpdate?.(info.url, dest)
-                    setUpdateStatus(t('settings.updatesDownloaded'))
-                    const install = window.confirm(t('settings.updatesInstallPrompt'))
-                    if (install) {
-                      await (
-                        window.api as unknown as { app?: { installUpdate?: (p: string) => Promise<string> } }
-                      ).app?.installUpdate?.(dest)
-                      setUpdateStatus(t('settings.updatesInstalled'))
-                    }
-                  }
-                }
-              } catch (error) {
-                setUpdateStatus(String(error))
-              } finally {
-                setUpdateBusy(false)
-              }
-            }}
-          >
-            {updateBusy ? t('settings.updatesChecking') : t('settings.checkForUpdates')}
-          </button>
-          {updateStatus && <div className="hint">{updateStatus}</div>}
-        </div>
-      )}
-    </Modal>
+          </Match>
+        </Switch>
+      </Modal>
+    </Show>
   )
 }

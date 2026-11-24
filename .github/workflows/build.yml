@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.12.0
           cache: npm
 
       - name: Install Linux dependencies
@@ -80,7 +80,17 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'FlintQode v__VERSION__'
-          releaseBody: 'See the changelog for details.'
+          releaseBody: |
+            FlintQode v1.4.5 — the SolidJS 2 edition.
+
+            Highlights:
+            - Complete SolidJS 2 renderer with fine-grained signals and Vite 8.
+            - Aurora Slate design system across the shell, editor, panels and dialogs.
+            - PTY terminal, Git integration, multi-root workspace and LSP tools.
+            - Fresh website screenshots and updated documentation.
+
+            Installers: Linux (.deb, .AppImage, .rpm), Windows (.exe, .msi) and macOS (.dmg).
+            See CHANGELOG.md for the full release notes.
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { createEffect, createSignal, type Accessor } from 'solid-js'
 import { useAppStore } from '../store/app'
 
 /** The per project configuration, stored as plain JSON in the project folder. */
@@ -35,14 +35,17 @@ function joinPath(folder: string, name: string): string {
   return `${folder.replace(/[\\/]+$/, '')}/${name}`
 }
 
+type AppSnapshot = ReturnType<typeof useAppStore.getState>
+
+function folderFromState(state: AppSnapshot): string | null {
+  if (state.settings.projectFolder) return state.settings.projectFolder
+  const tab = state.tabs.find((t) => t.id === state.activeTabId)
+  return tab?.path ? folderOfPath(tab.path) : null
+}
+
 /** The folder a project configuration belongs to. */
 export function projectFolder(): string | null {
-  const state = useAppStore.getState()
-  const settings = state.settings
-  if (settings.projectFolder) return settings.projectFolder
-  const tab = state.tabs.find((t) => t.id === state.activeTabId)
-  if (tab?.path) return folderOfPath(tab.path)
-  return null
+  return folderFromState(useAppStore.getState())
 }
 
 /** Read the project configuration of a folder (null when there is none). */
@@ -99,36 +102,43 @@ export function resolveServers(
   return out
 }
 
-/** Loads the project configuration of the current project folder. */
-export function useProjectConfig(): ProjectConfig | null {
-  const [config, setConfig] = useState<ProjectConfig | null>(null)
-  const folder = projectFolder()
-  const activePath = useAppStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.path ?? '')
-
-  useEffect(() => {
-    let cancelled = false
-    if (!folder) {
-      setConfig(null)
-      cache = null
-      return
-    }
-    void readProjectConfig(folder).then((loaded) => {
-      if (cancelled) return
-      cache = { folder, config: loaded }
-      setConfig(loaded)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [folder, activePath])
-
-  return config
-}
-
 /** The configuration that was loaded last (the run service uses it). */
 let cache: { folder: string; config: ProjectConfig | null } | null = null
 
 /** The project configuration that is known right now. */
 export function cachedProjectConfig(): ProjectConfig | null {
   return cache?.config ?? null
+}
+
+/** Reactive accessor for the project configuration of the current folder. */
+export function useProjectConfig(): Accessor<ProjectConfig | null> {
+  const [config, setConfig] = createSignal<ProjectConfig | null>(cache?.config ?? null)
+
+  createEffect(
+    () => {
+      const state = useAppStore()
+      return {
+        folder: folderFromState(state),
+        activePath: state.tabs.find((t) => t.id === state.activeTabId)?.path ?? '',
+      }
+    },
+    ({ folder }) => {
+      let cancelled = false
+      if (!folder) {
+        setConfig(null)
+        cache = null
+        return
+      }
+      void readProjectConfig(folder).then((loaded) => {
+        if (cancelled) return
+        cache = { folder, config: loaded }
+        setConfig(loaded)
+      })
+      return () => {
+        cancelled = true
+      }
+    },
+  )
+
+  return config
 }

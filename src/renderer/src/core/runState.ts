@@ -1,168 +1,107 @@
 /**
- * Run state: the output of the process that was started for a file.
+ * Run state.
  *
- * The main process owns the child process, the renderer only asks it to start
- * or stop a run and listens for the streamed output.
- *
- * Expected preload shape (the preload owner adds this binding):
- *
- *   run: {
- *     start(filePath: string, language: string): Promise<boolean>
- *     stop(): Promise<boolean>
- *     onOutput(cb: (event: RunEvent) => void): () => void
- *   }
- *
- * The binding does not exist in every build, so every call is guarded and the
- * module stays usable (and importable) without a browser window.
+ * The native shell starts and stops the child process; this store listens for
+ * `run:output` and keeps the output log. It also implements the high-level
+ * "run the active file" command, including the Gradle projects that are run
+ * through the terminal instead of a plain interpreter.
  */
 
-import { create } from 'zustand'
+import type { RunEvent } from '@shared/api'
+import { create } from '@/state/compat'
 import { useAppStore } from '../store/app'
 import { cachedProjectConfig, resolveTool } from './projectConfig'
-
-/**
- * The interpreters of the toolchain settings and of the project configuration.
- * The project file wins over the global settings.
- */
-export function currentToolchain(): Record<string, string> {
-  const settings = useAppStore.getState().settings
-  const project = cachedProjectConfig()
-  const out: Record<string, string> = {}
-  for (const key of Object.keys(settings.toolchain ?? {})) {
-    const value = resolveTool(key, project, settings.toolchain ?? {})
-    if (value) out[key] = value
-  }
-  // The project may configure a tool that the global settings do not know.
-  for (const [key, value] of Object.entries(project?.toolchain ?? {})) {
-    if (value && !out[key]) out[key] = value
-  }
-  return out
-}
-
-/** The events the main process sends for a run. */
-export interface RunEvent {
-  type: 'start' | 'stdout' | 'stderr' | 'exit' | 'error'
-  text?: string
-  code?: number
-}
+import { useTerminalStore } from './terminalState'
 
 export interface RunLine {
   type: 'stdout' | 'stderr' | 'system'
   text: string
 }
 
-export interface RunState {
+interface RunStore {
   running: boolean
   filePath: string | null
   language: string | null
   lines: RunLine[]
   exitCode: number | null
   startedAt: number | null
-  /** Start a run (uses window.api.run). */
-  start: (filePath: string, language: string) => void
-  /** Stop the running process. */
-  stop: () => void
-  /** Clear the output. */
+  start: (filePath: string, language: string) => Promise<void>
+  stop: () => Promise<void>
   clear: () => void
 }
 
-/** The oldest lines are dropped when the log grows too long. */
-export const MAX_RUN_LINES = 2000
-
-/** The part of a line that has not been terminated yet (one buffer per stream). */
+const MAX_LINES = 1200
 const buffers: Record<'stdout' | 'stderr', string> = { stdout: '', stderr: '' }
 
-/** The bridge to the main process (it may be missing in an old build). */
-interface RunBridge {
-  start?: (filePath: string, language: string, toolchain?: Record<string, string>) => Promise<unknown> | unknown
-  stop?: () => Promise<unknown> | unknown
-  onOutput?: (cb: (event: RunEvent) => void) => (() => void) | void
-}
-
-/** The bridge, if the preload exposes it. */
-function runBridge(): RunBridge | undefined {
-  if (typeof window === 'undefined') return undefined
-  try {
-    const api = window.api as unknown as { run?: RunBridge } | undefined
-    return api?.run
-  } catch {
-    return undefined
+/** Toolchain overrides: the project file wins over the global settings. */
+export function currentToolchain(): Record<string, string> {
+  const settings = useAppStore.getState().settings
+  const project = cachedProjectConfig()
+  const tools: Record<string, string> = {}
+  for (const key of Object.keys(settings.toolchain ?? {})) {
+    const value = resolveTool(key, project, settings.toolchain ?? {})
+    if (value) tools[key] = value
   }
+  for (const [key, value] of Object.entries(project?.toolchain ?? {})) {
+    if (value && !tools[key]) tools[key] = value
+  }
+  return tools
 }
 
-/** Split a chunk of output into lines and append them to the log. */
 function appendLines(current: RunLine[], type: 'stdout' | 'stderr', chunk: string): RunLine[] {
   const parts = (buffers[type] + chunk).split('\n')
   buffers[type] = parts.pop() ?? ''
-  const fresh: RunLine[] = parts.map((text) => ({
-    type,
-    text: text.endsWith('\r') ? text.slice(0, -1) : text,
-  }))
-  if (fresh.length === 0) return current
-  const lines = current.concat(fresh)
-  return lines.length > MAX_RUN_LINES ? lines.slice(lines.length - MAX_RUN_LINES) : lines
+  const fresh = parts.map((text) => ({ type, text: text.replace(/\r$/, '') }))
+  if (!fresh.length) return current
+  const next = current.concat(fresh)
+  return next.length > MAX_LINES ? next.slice(next.length - MAX_LINES) : next
 }
 
-/** A system line is always appended at the end. */
-function appendSystem(lines: RunLine[], text: string): RunLine[] {
-  const next = lines.concat([{ type: 'system', text }])
-  return next.length > MAX_RUN_LINES ? next.slice(next.length - MAX_RUN_LINES) : next
+function appendSystem(current: RunLine[], text: string): RunLine[] {
+  const next = current.concat([{ type: 'system' as const, text }])
+  return next.length > MAX_LINES ? next.slice(next.length - MAX_LINES) : next
 }
 
-/** Handle one event of the main process. */
 function handleEvent(event: RunEvent): void {
-  if (!event || typeof event.type !== 'string') return
   switch (event.type) {
     case 'start':
-      useRunStore.setState((s) => ({
+      useRunStore.setState((state) => ({
         running: true,
-        startedAt: s.startedAt ?? Date.now(),
-        lines: appendSystem(s.lines, event.text ? `$ ${event.text}` : 'Process started'),
+        startedAt: Date.now(),
+        lines: appendSystem(state.lines, `$ ${event.text ?? 'process'}`),
       }))
       break
     case 'stdout':
-      useRunStore.setState((s) => ({ lines: appendLines(s.lines, 'stdout', event.text ?? '') }))
+      useRunStore.setState((state) => ({ lines: appendLines(state.lines, 'stdout', event.text ?? '') }))
       break
     case 'stderr':
-      useRunStore.setState((s) => ({ lines: appendLines(s.lines, 'stderr', event.text ?? '') }))
+      useRunStore.setState((state) => ({ lines: appendLines(state.lines, 'stderr', event.text ?? '') }))
       break
     case 'error':
-      useRunStore.setState((s) => ({
+      useRunStore.setState((state) => ({
         running: false,
-        lines: appendSystem(s.lines, event.text ?? 'The run failed.'),
+        lines: appendSystem(state.lines, event.text ?? 'The run failed.'),
       }))
       break
-    case 'exit':
-      useRunStore.setState((s) => ({
+    case 'exit': {
+      const code = event.code
+      useRunStore.setState((state) => ({
         running: false,
-        exitCode: event.code ?? null,
-        lines: appendSystem(
-          s.lines,
-          event.code === null || event.code === undefined ? 'Process stopped.' : `Exited with code ${event.code}`,
-        ),
+        exitCode: code ?? null,
+        lines: appendSystem(state.lines, code === undefined ? 'Process stopped.' : `Exited with code ${code}`),
       }))
       break
-    default:
-      break
+    }
   }
 }
 
-let dispose: (() => void) | null = null
-
-/** Listen to the output events of the main process (only once). */
-function subscribe(): void {
-  if (dispose) return
-  const onOutput = runBridge()?.onOutput
-  if (typeof onOutput !== 'function') return
-  try {
-    const stop = onOutput(handleEvent)
-    dispose = typeof stop === 'function' ? stop : () => undefined
-  } catch {
-    dispose = null
-  }
+let unsubscribe: (() => void) | undefined
+function ensureSubscribed(): void {
+  if (unsubscribe || typeof window === 'undefined' || !window.api?.run?.onOutput) return
+  unsubscribe = window.api.run.onOutput(handleEvent)
 }
 
-export const useRunStore = create<RunState>((set) => ({
+export const useRunStore = create<RunStore>((set) => ({
   running: false,
   filePath: null,
   language: null,
@@ -170,57 +109,25 @@ export const useRunStore = create<RunState>((set) => ({
   exitCode: null,
   startedAt: null,
 
-  start: (filePath, language) => {
+  start: async (filePath, language) => {
+    ensureSubscribed()
     buffers.stdout = ''
     buffers.stderr = ''
-    set({
-      running: true,
-      filePath,
-      language,
-      lines: [],
-      exitCode: null,
-      startedAt: Date.now(),
-    })
-    subscribe()
-    const bridge = runBridge()
-    if (typeof bridge?.start !== 'function') {
-      set((s) => ({
-        running: false,
-        lines: appendSystem(s.lines, 'The run bridge is not available in this build.'),
-      }))
-      return
-    }
+    set({ running: true, filePath, language, lines: [], exitCode: null, startedAt: Date.now() })
     try {
-      void Promise.resolve(bridge.start(filePath, language, currentToolchain()))
-        .then((started) => {
-          if (started === false) {
-            set((s) => (s.running ? { ...s, running: false } : s))
-          }
-        })
-        .catch((error: unknown) => {
-          const message = error instanceof Error ? error.message : String(error)
-          set((s) => ({
-            running: false,
-            lines: appendSystem(s.lines, `Could not start the process: ${message}`),
-          }))
-        })
+      const started = await window.api.run.start(filePath, language, currentToolchain())
+      if (!started) set((state) => (state.running ? { running: false } : state))
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      set((s) => ({
-        running: false,
-        lines: appendSystem(s.lines, `Could not start the process: ${message}`),
-      }))
+      set((state) => ({ running: false, lines: appendSystem(state.lines, `Could not start: ${message}`) }))
     }
   },
 
-  stop: () => {
-    const bridge = runBridge()
-    if (typeof bridge?.stop === 'function') {
-      try {
-        void Promise.resolve(bridge.stop()).catch(() => undefined)
-      } catch {
-        /* the process is stopped anyway */
-      }
+  stop: async () => {
+    try {
+      await window.api.run.stop()
+    } catch {
+      /* the process is gone already */
     }
     set({ running: false })
   },
@@ -232,42 +139,14 @@ export const useRunStore = create<RunState>((set) => ({
   },
 }))
 
-// The subscription starts as soon as the module is loaded, so that the output
-// of a run that was started elsewhere still shows up. Importing the module
-// without a browser (tests, scripts) must not throw.
-if (typeof window !== 'undefined') {
-  subscribe()
-}
-
-/** A snapshot of the run state, for the command layer. */
-export interface RunSnapshot {
-  running: boolean
-  filePath: string | null
-  language: string | null
-  lines: RunLine[]
-  exitCode: number | null
-  startedAt: number | null
-}
-
-/** The current run state without a React hook. */
-export function runState(): RunSnapshot {
-  const state = useRunStore.getState()
-  return {
-    running: state.running,
-    filePath: state.filePath,
-    language: state.language,
-    lines: state.lines,
-    exitCode: state.exitCode,
-    startedAt: state.startedAt,
-  }
-}
-
-/** Start a run for a file (used by the command layer). */
 export function startRun(filePath: string, language: string): void {
-  useRunStore.getState().start(filePath, language)
+  void useRunStore.getState().start(filePath, language)
 }
 
-/** Files that belong to a Gradle build. */
+export function stopRun(): void {
+  void useRunStore.getState().stop()
+}
+
 const GRADLE_FILES = new Set([
   'gradlew',
   'gradlew.bat',
@@ -279,101 +158,70 @@ const GRADLE_FILES = new Set([
   'gradle.properties',
 ])
 
-/** Quote a path for the shell that the terminal is running. */
 function shellQuote(value: string): string {
-  if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(value)) return value
-  return `'${value.replace(/'/g, `'\\''`)}'`
+  return /^[A-Za-z0-9_@%+=:,./-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`
 }
 
-/** Walk up from a file to the folder that holds the Gradle build. */
-async function gradleProjectRoot(start: string): Promise<string | null> {
-  const parts = start.split(/[\\/]/).filter(Boolean)
-  for (let index = parts.length; index > 0; index -= 1) {
-    // Keep the leading slash of POSIX paths.
-    const candidate = (start.startsWith('/') ? '/' : '') + parts.slice(0, index).join('/')
-    const separator = candidate.includes('\\') ? '\\' : '/'
-    try {
-      for (const marker of [
-        'build.gradle',
-        'build.gradle.kts',
-        'settings.gradle',
-        'settings.gradle.kts',
-        'gradlew',
-        'gradlew.bat',
-      ]) {
-        if (await window.api.fs.exists(`${candidate}${separator}${marker}`)) return candidate
-      }
-    } catch {
-      /* the folder is not readable; keep walking up */
+/** Find the root of the Gradle build that contains `file`. */
+async function gradleRoot(file: string): Promise<string | null> {
+  let dir = file.replace(/[\\/][^\\/]*$/, '')
+  while (dir && dir !== '.' && dir !== '/') {
+    for (const marker of ['build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'gradlew']) {
+      if (await window.api.fs.exists(`${dir}/${marker}`)) return dir
     }
+    const parent = dir.replace(/[\\/][^\\/]*$/, '')
+    if (parent === dir) break
+    dir = parent
   }
   return null
 }
 
-/**
- * Save the active editor if needed and run it.
- *
- * Running the stale file on disk is the classic "run does nothing" bug: the
- * user edits a file, presses Run and sees the output of the previous version.
- * Like VS Code, we save first and only start when the save succeeded.
- */
+/** Save the active buffer and run it. */
 export async function runActiveFile(): Promise<boolean> {
   const state = useAppStore.getState()
-  const id = state.activeTabId
-  if (!id) {
+  const tab = state.tabs.find((entry) => entry.id === state.activeTabId)
+  if (!tab) {
     state.toast('There is no file to run.', 'error')
     return false
   }
-  const tab = state.tabs.find((entry) => entry.id === id)
-  if (!tab) return false
 
-  // Gradle projects: a wrapper script (or a build file) is not a program, so
-  // executing it directly fails - especially `gradlew.bat` on Linux. Run the
-  // project's Gradle task in the terminal instead.
-  const filePath = tab.path ?? ''
-  const fileName = filePath.split(/[\\/]/).pop()?.toLowerCase() ?? ''
-  const isGradleFile = Boolean(filePath) && (GRADLE_FILES.has(fileName) || tab.language.startsWith('gradle'))
-  if (isGradleFile) {
-    const folder = filePath.replace(/[\\/][^\\/]*$/, '')
-    const projectRoot = await gradleProjectRoot(folder)
-    if (projectRoot) {
-      const isWindows = typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
-      // Fabric projects have a `runClient` task; plain Gradle builds do not.
+  const file = tab.path ?? ''
+  const name = file.split(/[\\/]/).pop()?.toLowerCase() ?? ''
+  if (file && (GRADLE_FILES.has(name) || tab.language.startsWith('gradle'))) {
+    const root = await gradleRoot(file)
+    if (root) {
       let fabric = false
       try {
         fabric =
-          (await window.api.fs.exists(`${projectRoot}/fabric.mod.json`)) ||
-          (await window.api.fs.exists(`${projectRoot}/src/main/resources/fabric.mod.json`))
+          (await window.api.fs.exists(`${root}/fabric.mod.json`)) ||
+          (await window.api.fs.exists(`${root}/src/main/resources/fabric.mod.json`))
       } catch {
-        /* assume a plain Gradle build */
+        /* a plain Gradle build */
       }
       const task = fabric ? 'runClient' : 'build'
-      const command = isWindows
-        ? `cd /d "${projectRoot.replace(/"/g, '""')}" && gradlew.bat ${task}`
-        : `cd ${shellQuote(projectRoot)} && (chmod +x gradlew 2>/dev/null || true) && ./gradlew ${task}`
+      const windows = /Windows/i.test(navigator.userAgent)
+      const command = windows
+        ? `cd /d "${root.replace(/"/g, '""')}" && gradlew.bat ${task}`
+        : `cd ${shellQuote(root)} && (chmod +x gradlew 2>/dev/null || true) && ./gradlew ${task}`
 
-      useAppStore.getState().setBottomTab('terminal')
-      useAppStore.getState().setBottomPanelVisible(true)
-
-      const { useTerminalStore } = await import('./terminalState')
-      if (useTerminalStore.getState().sessions.length === 0) {
-        await useTerminalStore.getState().start(projectRoot)
-      }
-      const activeId = useTerminalStore.getState().activeId
-      if (!activeId) {
+      state.setBottomTab('terminal')
+      state.setBottomPanelVisible(true)
+      const terminal = useTerminalStore.getState()
+      const session = terminal.getActive() ?? (await terminal.create(root))
+      if (!session) {
         state.toast('Could not start the terminal.', 'error')
         return false
       }
-      useTerminalStore.getState().write(activeId, command)
+      await terminal.write(session.id, command)
       return true
     }
   }
 
   if (!tab.path || tab.dirty) {
-    const saved = await state.saveTab(id)
+    const saved = await state.saveTab(tab.id)
     if (!saved) return false
   }
-  const fresh = useAppStore.getState().tabs.find((entry) => entry.id === id)
+  const fresh = useAppStore.getState().tabs.find((entry) => entry.id === tab.id)
   if (!fresh?.path) {
     state.toast('Save the file before running it', 'error')
     return false
@@ -382,9 +230,4 @@ export async function runActiveFile(): Promise<boolean> {
   useAppStore.getState().setBottomPanelVisible(true)
   startRun(fresh.path, fresh.language)
   return true
-}
-
-/** Stop the running process (used by the command layer). */
-export function stopRun(): void {
-  useRunStore.getState().stop()
 }

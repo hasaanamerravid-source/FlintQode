@@ -38,17 +38,17 @@
       <div class="section-head">
         <span class="kicker">Release notes</span>
         <h2>What's new in FlintQode 1.4.5</h2>
-        <p>Released 2026-11-22 · build 62.</p>
+        <p>Released 2026-11-24 · build 76.</p>
       </div>
       <div class="whats-new">
         <h3>Highlights</h3>
         <ul>
+          <li><strong>SolidJS 2 renderer.</strong> The whole interface is now compiled Solid 2 with fine-grained signals and Vite 8.</li>
+          <li><strong>Aurora Slate design.</strong> A single design system refreshes the shell, menus, tabs, panels, editor, dialogs and status bar in dark and light themes.</li>
           <li>Full editor typography and colour customisation, applied live and saved automatically.</li>
           <li>Real PTY terminal with tabs, resize and interactive programs.</li>
           <li>Git integration: branch in the status bar, diff gutter markers, blame, commit, stage.</li>
-          <li>Multi-root workspace: open several folders in one window.</li>
-          <li>LSP tools: signature help, hover docs, rename, code actions, workspace symbols.</li>
-          <li>Crash recovery and autosave keep unsaved buffers alive across restarts.</li>
+          <li>Multi-root workspace, LSP tools, crash recovery, autosave and Markdown preview.</li>
         </ul>
         <h3>Fixes</h3>
         <ul>
@@ -56,12 +56,13 @@
           <li>Atomic writes, canonicalised paths, quoted Windows paths, reported shell errors.</li>
           <li>Markdown preview never falls back to unsanitised HTML; window.open uses noopener.</li>
           <li>Three-button Save / Discard / Cancel dialog for unsaved tabs.</li>
-          <li>Watchers emit the subscribed path; window maximize follows the resize event.</li>
+          <li>Solid 2 lifecycle edge cases in menus, tabs, split editors and the status bar are resolved.</li>
         </ul>
-        <h3>Website</h3>
+        <h3>Website and installers</h3>
         <ul>
-          <li>Version-aware download links, macOS installer, SEO, sitemap, favicon, noscript.</li>
-          <li>Premium typography, animated background, and a Built-with page.</li>
+          <li>Fresh screenshots captured from the new interface; every page now describes SolidJS 2.</li>
+          <li>Version-aware download links, corrected macOS installer URL and full OS installer coverage for Linux, Windows and macOS.</li>
+          <li>CI builds with Node 22.12 to match the renderer toolchain.</li>
         </ul>
         <p style="margin-top:var(--space-4);">
           <a href="downloads.html" class="btn btn-primary" data-download="primary">Download 1.4.5</a>
@@ -82,7 +83,7 @@
         <a href="faqs.html">FAQs</a>
         <a href="https://github.com/hasaanamerravid-source/FlintQode" target="_blank" rel="noopener">GitHub</a>
       </div>
-      <p class="footer-note">MIT Licensed · Built with Tauri 2, React and CodeMirror 6.</p>
+      <p class="footer-note">MIT Licensed · Built with Tauri 2, SolidJS 2 and CodeMirror 6.</p>
     </div>
   </footer>
   <script src="assets/js/site.js" defer></script>

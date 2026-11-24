@@ -1,6 +1,6 @@
 # FlintQode architecture
 
-FlintQode is a native desktop text editor built with **Tauri 2**, **Rust**, **React** and
+FlintQode is a native desktop text editor built with **Tauri 2**, **Rust**, **SolidJS 2** and
 **CodeMirror 6**. It edits plain text, source code and Markdown notes in one window, and it
 talks to language servers, a shell and the file system through a narrow, typed bridge. This
 document describes how the pieces are arranged, what owns what, and which invariants the code
@@ -21,8 +21,8 @@ The application has two layers: the **webview** owns everything that touches the
     │                                    │                                   │
 ┌───▼─────────────────────┐   ┌──────────▼───────────┐   ┌───────────────────▼──┐
 │  bridge                 │   │  renderer (webview)  │   │  child processes      │
-│  src/renderer/src/      │   │  React + CodeMirror  │   │    language servers   │
-│  bridge.ts              │──▶│  Zustand stores      │   │    piped shell        │
+│  src/renderer/src/      │   │  Solid 2 + CodeMirror│   │    language servers   │
+│  bridge.ts              │──▶│  signal stores       │   │    PTY shell          │
 │  window.api             │   │  command registry    │   │    run process        │
 └─────────────────────────┘   └──────────────────────┘   └───────────────────────┘
 ```
@@ -32,8 +32,8 @@ The application has two layers: the **webview** owns everything that touches the
 | Layer | Job | Where it lives |
 | --- | --- | --- |
 | Native | Creates the windows, registers every command, owns the settings/session/recent files, spawns and supervises the child processes, writes the crash log | `src-tauri/src/lib.rs`, `src-tauri/src/*.rs` |
-| Bridge | Implements the promise-based `window.api` surface on top of `invoke()` and `listen()`, so the React code does not know it runs in Tauri | `src/renderer/src/bridge.ts` |
-| Renderer | The user interface: React shell, tabs, panels, CodeMirror editors, the command registry, the Zustand stores, the plugin runtime | `src/renderer/src/**` |
+| Bridge | Implements the promise-based `window.api` surface on top of `invoke()` and `listen()`, so the renderer does not know it runs in Tauri | `src/renderer/src/bridge.ts` |
+| Renderer | The user interface: SolidJS 2 shell, tabs, panels, CodeMirror editors, the command registry, signal-backed stores, the plugin runtime | `src/renderer/src/**` |
 | Child: language server | One process per language group (`gopls`, `clangd`, `typescript-language-server`, …). Started, initialised and killed by the native process | spawned in `src-tauri/src/lsp.rs` |
 | Child: terminal shell | A persistent, piped shell (PowerShell, `cmd.exe` or bash) whose output is streamed to the panel | spawned in `src-tauri/src/terminal.rs` |
 | Child: run process | The program that runs the active file, plus an optional compile step in front of it | spawned in `src-tauri/src/run.rs` |
@@ -73,11 +73,10 @@ the same narrow surface the Electron preload used to expose:
 * receive menu commands and file-open requests (`api.onCommand`, `api.onOpenFiles`).
 
 The bridge resolves the Tauri window lazily and turns the asynchronous `listen()` calls into
-the synchronous unsubscribe functions the React components expect. Window drag regions are
-marked with `data-tauri-drag-region` in `TitleBar.tsx`; the window controls call
-`getCurrentWindow()`.
+synchronous unsubscribe functions. Window drag regions are marked with `data-tauri-drag-region`
+in `TitleBar.tsx`; the window controls call `getCurrentWindow()`.
 
-Renderer failures are caught by the React error boundary and reported through
+Renderer failures are caught by the Solid error boundary and reported through
 `api.reportError`, which appends to `logs/flintqode.log` in the application-data folder.
 
 ## The command system
@@ -189,6 +188,8 @@ else in `code` mode.
 ## State
 
 Three stores hold the application state; the feature-specific stores live next to their feature.
+They are built on Solid signals through `src/renderer/src/state/compat.ts`, which preserves the
+`getState` / `setState` / `subscribe` shape used by the framework-agnostic command layer.
 
 | Store | File | Owns |
 | --- | --- | --- |
@@ -205,9 +206,9 @@ reads the file, detects the mode and the language, registers a watcher and adds 
 recent list; `saveTab` flushes the editor buffer into the store, converts the line endings,
 writes through `api.fs.writeFile` and clears the dirty flag.
 
-The status store is written from two places: the CodeMirror update listener (cursor, selection
-and counts) and an effect in `App.tsx` that copies the encoding, the line ending, the language,
-the mode and the dirty flag of the active tab.
+The status store keeps only live editor measurements (cursor, selection and counts) and window
+flags. The encoding, line ending, language, mode and dirty flag come directly from the active tab
+in `StatusBar.tsx`; they are deliberately not mirrored into the status store.
 
 ### Why the session is persisted
 
@@ -436,7 +437,7 @@ console and does not stop the application.
 ## The internationalisation
 
 The translation runtime lives in `src/shared/i18n/index.ts` and has no framework dependency, so
-it can be used outside React as well.
+it can be used outside the renderer as well.
 
 * **The catalogue.** `src/shared/i18n/en.ts` is the source of truth. The other locales are JSON
   files in `src/shared/i18n/locales/`. A catalogue is typed as
@@ -515,7 +516,7 @@ profile uses LTO, one codegen unit, `opt-level = "s"` and symbol stripping.
 | A new editor command that needs the CodeMirror API | `src/renderer/src/core/builtinCommands.ts`; use `getView(activeTabId)` when the handle contract is not enough |
 | A new pure text operation | `src/renderer/src/core/transforms.ts` (no DOM, no CodeMirror, no file system) |
 | A new syntax rule or theme | `src/renderer/src/core/languageModes.ts`, `syntaxThemes.ts` or `themePack.ts` |
-| A new panel | `src/renderer/src/components/panels/`, registered in `src/renderer/src/components/Sidebar.tsx` and in the `SidePanel` type of `src/renderer/src/store/app.ts` |
+| A new panel | `src/renderer/src/workbench/views/`, registered in `src/renderer/src/workbench/ActivityBar.tsx`, rendered by `src/renderer/src/workbench/Sidebar.tsx` and typed in `src/renderer/src/store/app.ts` |
 | A new string in the interface | `src/shared/i18n/en.ts`, then `node scripts/i18n.mjs template <locale>` for the other languages |
 | A new setting | The `Settings` interface in `src/shared/types.ts`, a default in `src/renderer/src/core/defaults.ts`, the control in `src/renderer/src/components/SettingsDialog.tsx` and the effect that reads it |
 | A new persistent file | A command in `src-tauri/src/store.rs` that writes into the application-data folder |

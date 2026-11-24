@@ -1,20 +1,19 @@
 /**
  * The glue between the editor and the language servers.
  *
- * The main process runs the servers (`src/main/ipc/lsp.ts`), the renderer keeps
- * their state (`src/renderer/src/core/lspState.ts`). This module keeps both in
- * sync with the open files and turns the answers of a server into jumps inside
- * the editor.
+ * The native backend runs the servers (`src-tauri/src/lsp.rs`); the renderer keeps
+ * their state (`core/lspState.ts`). This module keeps both in sync with the
+ * open files and turns the answers of a server into jumps inside the editor.
  */
 
-import { useEffect, useRef } from 'react'
+import { createEffect, onSettled } from 'solid-js'
 import type { EditorView } from '@codemirror/view'
 import { useAppStore } from '../store/app'
 import { getView } from './views'
 import { useLspStore, type LspProblem } from './lspState'
 import type { Problem } from './diagnostics'
 
-/** Turn a path into a `file:` uri (the same shape the main process uses). */
+/** Turn a path into a `file:` uri (the same shape the backend uses). */
 export function fileUri(filePath: string): string {
   if (!filePath) return ''
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(filePath)) return filePath
@@ -75,48 +74,67 @@ export function asProblems(list: LspProblem[]): Problem[] {
  */
 export const MAX_LSP_BYTES = 1_000_000
 
+interface SyncSource {
+  activeTabId: string | null
+  path: string
+  language: string
+  content: string
+  large: boolean
+}
+
 /**
  * Keeps the language servers in sync with the open files: a file that is
  * opened is sent to its server, a change is sent as a change and a file that is
  * closed is taken away from the server.
  */
 export function useLspSync(): void {
-  const activeTabId = useAppStore((s) => s.activeTabId)
-  const path = useAppStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.path ?? '')
-  const language = useAppStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.language ?? 'text')
-  const content = useAppStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.content ?? '')
-  const large = useAppStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.largeFile ?? false)
-  const previous = useRef<{ uri: string; language: string } | null>(null)
+  let previous: { uri: string; language: string } | null = null
 
-  useEffect(() => {
-    if (!path) return
-    const uri = fileUri(path)
-    const store = useLspStore.getState()
-    // The file that was open before is taken away from its server.
-    if (previous.current && previous.current.uri !== uri) {
-      store.close(previous.current.language, previous.current.uri)
-    }
-    // A huge file is not sent to a server: the copy would freeze the editor.
-    if (large || content.length > MAX_LSP_BYTES) {
-      previous.current = { uri, language }
-      return
-    }
-    store.open(language, uri, content)
-    previous.current = { uri, language }
-    // The change is sent a moment after the last keystroke: the servers are
-    // much slower than the user types.
-    const timer = window.setTimeout(() => {
-      useLspStore.getState().change(language, uri, content)
-    }, 600)
-    return () => window.clearTimeout(timer)
-  }, [activeTabId, path, language, content, large])
+  createEffect(
+    () => {
+      const state = useAppStore()
+      const tab = state.tabs.find((t) => t.id === state.activeTabId)
+      return {
+        activeTabId: state.activeTabId,
+        path: tab?.path ?? '',
+        language: tab?.language ?? 'text',
+        content: tab?.content ?? '',
+        large: tab?.largeFile ?? false,
+      } satisfies SyncSource
+    },
+    (source) => {
+      let timer: number | undefined
+      if (!source.path) return
 
-  useEffect(() => {
-    const last = previous
-    return () => {
-      if (last.current) useLspStore.getState().close(last.current.language, last.current.uri)
-    }
-  }, [])
+      const uri = fileUri(source.path)
+      // The file that was open before is taken away from its server.
+      if (previous && previous.uri !== uri) {
+        void useLspStore.getState().close(previous.language, previous.uri)
+      }
+      // A huge file is not sent to a server: the copy would freeze the editor.
+      if (source.large || source.content.length > MAX_LSP_BYTES) {
+        previous = { uri, language: source.language }
+        return
+      }
+
+      void useLspStore.getState().open(source.language, uri, source.content)
+      previous = { uri, language: source.language }
+      // The change is sent a moment after the last keystroke: the servers are
+      // much slower than the user types.
+      timer = window.setTimeout(() => {
+        void useLspStore.getState().change(source.language, uri, source.content)
+      }, 600)
+
+      return () => {
+        if (timer !== undefined) window.clearTimeout(timer)
+      }
+    },
+  )
+
+  onSettled(() => () => {
+    if (previous) void useLspStore.getState().close(previous.language, previous.uri)
+    previous = null
+  })
 }
 
 /** The position of the cursor in the active editor (LSP uses 0 based lines). */

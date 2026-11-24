@@ -348,7 +348,7 @@ export function createApi(): FlintQodeApi {
       stop: (sessionId: string) => call<boolean>('terminal_stop', { sessionId }),
       close: (sessionId: string) => call<boolean>('terminal_close', { sessionId }),
       list: () => call<TerminalListItem[]>('terminal_list'),
-      active: () => call<string>('terminal_active'),
+      active: (sessionId?: string) => call<string>('terminal_active', { sessionId: sessionId ?? null }),
       resize: (sessionId: string, cols: number, rows: number) =>
         call<boolean>('terminal_resize', { sessionId, cols, rows }),
       onOutput: (cb: (event: TerminalEvent) => void) => subscribe<TerminalEvent>('terminal:output', cb),

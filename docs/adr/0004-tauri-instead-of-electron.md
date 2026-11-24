@@ -20,7 +20,7 @@ own is not what the product is.
 FlintQode 2 uses **Tauri 2**:
 
 * the native layer is Rust (`src-tauri/src/*.rs`);
-* the interface stays React + CodeMirror and is built by Vite;
+* the interface is built with SolidJS 2 + CodeMirror 6 and bundled by Vite 8;
 * the system webview is used (WebView2 on Windows, WebKitGTK on Linux, WKWebView on macOS);
 * the dialogs and the clipboard come from the official Tauri plugins;
 * the window is still undecorated and drawn by the application (see ADR 1).
@@ -28,8 +28,8 @@ FlintQode 2 uses **Tauri 2**:
 The existing renderer was written against a promise-based `window.api` contract. Instead of
 rewriting every component, `src/renderer/src/bridge.ts` implements that contract on top of
 `invoke()` and `listen()` and installs it as `window.api` in `main.tsx`. The typed contract
-lives in `src/shared/api.ts`. The renderer therefore kept its commands, stores, editors and
-tests, and the migration stayed reviewable.
+lives in `src/shared/api.ts`. The renderer kept its commands, editor handles and native-facing
+tests; the 1.4.5 rewrite moved the interface to SolidJS 2 without changing that boundary.
 
 The native menu bar was dropped in the same step. The in-app hamburger menu and the command
 palette already covered every action, and a native menu would have been a second, per-platform

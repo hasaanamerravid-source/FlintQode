@@ -1,13 +1,16 @@
-//! Integrated terminal (PTY).
+//! Integrated terminal.
 //!
-//! Every tab gets its own pseudo-terminal. The renderer keeps one session per
-//! tab and can switch between them.
+//! A small PTY layer: it owns pseudo-terminals and moves raw bytes between the
+//! webview and the shell. There is no command marker, no echo fabrication and
+//! no ANSI parsing on the native side — the renderer uses xterm.js, which
+//! understands the PTY stream itself.
 
 use std::collections::HashMap;
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::io::{ErrorKind, Read, Write};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex as StdMutex};
+use std::time::Duration;
 
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
 use serde::{Deserialize, Serialize};
@@ -16,23 +19,22 @@ use tokio::sync::Mutex;
 
 use crate::process::{find_executable, home_dir};
 
+const EVENT: &str = "terminal:output";
+const READ_SIZE: usize = 16 * 1024;
+
+/// State managed by Tauri. One entry per terminal tab.
 #[derive(Default)]
 pub struct TerminalState {
-    pub inner: Mutex<HashMap<String, TerminalSession>>,
-    pub active: Mutex<String>,
-    pub token: AtomicU64,
+    sessions: Mutex<HashMap<String, Session>>,
+    active: Mutex<String>,
+    next_id: AtomicU64,
 }
 
-struct TerminalSession {
+struct Session {
     master: Box<dyn MasterPty + Send>,
-    writer: Box<dyn Write + Send>,
-    child: Box<dyn Child + Send>,
-    marker: String,
-    /// "bash", "cmd" or "powershell" (how the marker command is written).
-    kind: String,
-    /// Commands that were just written; the shell echoes them back and the
-    /// reader removes that copy so the log shows each command only once.
-    echoes: Arc<StdMutex<Vec<String>>>,
+    writer: Arc<StdMutex<Box<dyn Write + Send>>>,
+    child: Arc<StdMutex<Box<dyn Child + Send>>>,
+    exited: Arc<AtomicBool>,
     cwd: String,
     shell: String,
     label: String,
@@ -53,8 +55,6 @@ pub struct TerminalStartResult {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TerminalWriteRequest {
-    // Accept both spellings: the renderer used to send `session_id`, and
-    // older builds still do. The canonical serde name is `sessionId`.
     #[serde(alias = "session_id")]
     pub session_id: String,
     pub text: String,
@@ -71,9 +71,9 @@ pub struct TerminalListItem {
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct TerminalEvent {
+struct PtyEvent {
     #[serde(rename = "type")]
-    kind: String,
+    kind: &'static str,
     #[serde(rename = "sessionId")]
     session_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -82,161 +82,123 @@ struct TerminalEvent {
     code: Option<i32>,
 }
 
-#[derive(Clone)]
-struct ShellSpec {
-    cmd: String,
-    args: Vec<String>,
-    kind_name: String,
-}
-
-fn pick_shell() -> ShellSpec {
-    #[cfg(windows)]
-    {
-        if let Some(program) = find_executable("powershell").or_else(|| find_executable("pwsh")) {
-            return ShellSpec {
-                cmd: program.to_string_lossy().to_string(),
-                args: vec!["-NoLogo".to_string(), "-NoProfile".to_string()],
-                kind_name: "powershell".to_string(),
-            };
-        }
-        ShellSpec {
-            cmd: "cmd.exe".to_string(),
-            args: vec!["/Q".to_string()],
-            kind_name: "cmd".to_string(),
-        }
+fn emit_data(app: &AppHandle, session_id: &str, text: String) {
+    if text.is_empty() {
+        return;
     }
-
-    #[cfg(not(windows))]
-    {
-        let bash = find_executable("bash");
-        ShellSpec {
-            cmd: bash
-                .as_ref()
-                .map(|path| path.to_string_lossy().to_string())
-                .unwrap_or_else(|| "/bin/sh".to_string()),
-            args: if bash.is_some() {
-                vec!["--norc".to_string(), "--noprofile".to_string()]
-            } else {
-                Vec::new()
-            },
-            kind_name: "bash".to_string(),
-        }
-    }
-}
-
-fn emit(app: &AppHandle, kind: &str, session_id: &str, text: Option<String>, code: Option<i32>) {
     let _ = app.emit(
-        "terminal:output",
-        TerminalEvent {
-            kind: kind.to_string(),
+        EVENT,
+        PtyEvent {
+            kind: "data",
             session_id: session_id.to_string(),
-            text,
+            text: Some(text),
+            code: None,
+        },
+    );
+}
+
+fn emit_exit_once(app: &AppHandle, session_id: &str, exited: &AtomicBool, code: Option<i32>) {
+    if exited.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let _ = app.emit(
+        EVENT,
+        PtyEvent {
+            kind: "exit",
+            session_id: session_id.to_string(),
+            text: None,
             code,
         },
     );
 }
 
-fn marker_for(kind_name: &str, token: u64) -> String {
-    format!("__FLINTQODE_DONE_{}_{}_{}__", kind_name, std::process::id(), token)
-}
-
-/// The command that prints the completion marker.
-///
-/// The marker is assembled from two pieces so the line the terminal echoes
-/// back (the command itself) does not contain the marker and cannot be
-/// mistaken for the end of the command.
-fn marker_command(kind_name: &str, marker: &str) -> String {
-    let suffix = marker.trim_start_matches("__FLINTQODE");
-    if kind_name.contains("powershell") || kind_name.contains("pwsh") {
-        format!("Write-Output ('__FLINTQODE' + '{suffix}')")
-    } else if kind_name == "cmd" {
-        format!("echo __FLINTQODE^{suffix}")
-    } else {
-        format!("printf '__FLINTQODE%s\\n' '{suffix}'")
-    }
-}
-
-/// Length of the longest suffix of `text` that could be the beginning of
-/// `marker`. The reader keeps those bytes buffered so a marker split across
-/// two reads is still recognised (and never printed).
-fn partial_marker_len(text: &str, marker: &str) -> usize {
-    let bytes = text.as_bytes();
-    let marker = marker.as_bytes();
-    if marker.is_empty() {
-        return 0;
-    }
-    let max = bytes.len().min(marker.len() - 1);
-    for len in (0..=max).rev() {
-        if bytes[bytes.len() - len..] == marker[..len] {
-            return len;
+/// The shell to run inside a new PTY: (program, arguments, display name).
+fn shell_command() -> (String, Vec<String>, String) {
+    #[cfg(windows)]
+    {
+        if let Some(program) = find_executable("powershell").or_else(|| find_executable("pwsh")) {
+            return (
+                program.to_string_lossy().into_owned(),
+                vec!["-NoLogo".to_string(), "-NoProfile".to_string()],
+                "powershell".to_string(),
+            );
         }
+        (
+            "cmd.exe".to_string(),
+            vec!["/Q".to_string()],
+            "cmd".to_string(),
+        )
     }
-    0
-}
 
-/// Remove the shell's echo of a command from the output buffer.
-///
-/// Terminals echo what is typed, and the panel already prints the command as
-/// an input line, so the echo is dropped. The buffer is untouched when the
-/// echo has not arrived yet; a large buffer means the shell does not echo, in
-/// which case the pending entry is discarded instead of stalling the output.
-fn strip_echoes(buffer: &mut String, echoes: &StdMutex<Vec<String>>) {
-    let Ok(mut pending) = echoes.lock() else {
-        return;
-    };
-    while !pending.is_empty() {
-        let command = pending[0].trim_end_matches(['\r', '\n']).to_string();
-        if command.is_empty() {
-            pending.remove(0);
-            continue;
-        }
-        let Some(pos) = buffer.find(&command) else {
-            if buffer.len() > 4096 {
-                // No echo: this shell (or a full screen program) does not
-                // print what is written. Forget the entry and stream on.
-                pending.remove(0);
-                continue;
+    #[cfg(not(windows))]
+    {
+        if let Some(shell) = std::env::var_os("SHELL").map(PathBuf::from) {
+            if shell.is_file() {
+                return (
+                    shell.to_string_lossy().into_owned(),
+                    Vec::new(),
+                    "shell".to_string(),
+                );
             }
-            break;
-        };
-        let after = pos + command.len();
-        let rest = &buffer[after..];
-        let mut skip = 0usize;
-        if rest.starts_with('\r') {
-            skip += 1;
         }
-        if rest[skip..].starts_with('\n') {
-            skip += 1;
+        if let Some(bash) = find_executable("bash") {
+            return (
+                bash.to_string_lossy().into_owned(),
+                vec!["--norc".to_string(), "--noprofile".to_string()],
+                "bash".to_string(),
+            );
         }
-        if skip == 0 {
-            // The echoed line has not been completed yet.
-            if buffer.len() > 4096 {
-                pending.remove(0);
-                continue;
-            }
-            break;
-        }
-        buffer.replace_range(pos..after + skip, "");
-        pending.remove(0);
+        ("/bin/sh".to_string(), Vec::new(), "sh".to_string())
     }
 }
 
-/// Spawn a new PTY and return the session id and shell info.
-async fn spawn_session(
-    app: &AppHandle,
-    state: &State<'_, TerminalState>,
-    cwd: Option<String>,
-    label: Option<String>,
-) -> Result<TerminalStartResult, String> {
+fn working_directory(cwd: Option<String>) -> PathBuf {
+    cwd.and_then(|value| {
+        let path = PathBuf::from(value);
+        path.is_dir().then_some(path)
+    })
+    .unwrap_or_else(|| {
+        std::env::current_dir()
+            .ok()
+            .filter(|path| path.is_dir())
+            .unwrap_or_else(home_dir)
+    })
+}
+
+/// Decode PTY bytes without breaking a multi-byte character split across two
+/// reads. At most 8 trailing bytes are held back.
+fn decode(tail: &mut Vec<u8>, bytes: &[u8]) -> String {
+    tail.extend_from_slice(bytes);
+    match std::str::from_utf8(tail) {
+        Ok(text) => {
+            let result = text.to_string();
+            tail.clear();
+            result
+        }
+        Err(error) => {
+            let valid = error.valid_up_to();
+            let mut result = String::from_utf8_lossy(&tail[..valid]).into_owned();
+            tail.drain(..valid);
+            if tail.len() > 8 {
+                result.push_str(&String::from_utf8_lossy(tail));
+                tail.clear();
+            }
+            result
+        }
+    }
+}
+
+struct Opened {
+    session: Session,
+    reader: Box<dyn Read + Send>,
+}
+
+fn open_session(cwd: Option<String>, label: Option<String>) -> Result<Opened, String> {
     let directory = working_directory(cwd);
-    let spec = pick_shell();
-    let token = state.token.fetch_add(1, Ordering::SeqCst) + 1;
-    let session_id = format!("term-{token}");
-    let marker = marker_for(&spec.kind_name, token);
-    let marker_line = marker_command(&spec.kind_name, &marker);
+    let (program, args, kind) = shell_command();
 
-    let pty_system = native_pty_system();
-    let pair = pty_system
+    let pty = native_pty_system();
+    let pair = pty
         .openpty(PtySize {
             rows: 24,
             cols: 80,
@@ -245,116 +207,127 @@ async fn spawn_session(
         })
         .map_err(|error| error.to_string())?;
 
-    let mut command = CommandBuilder::new(&spec.cmd);
-    for arg in &spec.args {
+    let mut command = CommandBuilder::new(&program);
+    for arg in &args {
         command.arg(arg);
     }
     command.cwd(&directory);
-    // A predictable terminal description: without TERM many programs fall
-    // back to plain output or refuse to draw their interface at all.
     command.env("TERM", "xterm-256color");
     command.env("COLORTERM", "truecolor");
-    // The panel draws its own prompt and input line, so the shell prompt is
-    // redundant (and would otherwise be chopped into partial lines).
-    command.env("PS1", "");
 
     let child = pair
         .slave
         .spawn_command(command)
         .map_err(|error| error.to_string())?;
-    let mut reader = pair.master.try_clone_reader().map_err(|error| error.to_string())?;
-    let writer = pair.master.take_writer().map_err(|error| error.to_string())?;
+    drop(pair.slave);
+    let reader = pair
+        .master
+        .try_clone_reader()
+        .map_err(|error| error.to_string())?;
+    let writer = pair
+        .master
+        .take_writer()
+        .map_err(|error| error.to_string())?;
 
-    let echoes = Arc::new(StdMutex::new(Vec::new()));
-    let echoes_clone = Arc::clone(&echoes);
+    Ok(Opened {
+        session: Session {
+            master: pair.master,
+            writer: Arc::new(StdMutex::new(writer)),
+            child: Arc::new(StdMutex::new(child)),
+            exited: Arc::new(AtomicBool::new(false)),
+            cwd: directory.to_string_lossy().into_owned(),
+            shell: program,
+            label: label.unwrap_or(kind),
+        },
+        reader,
+    })
+}
 
-    let session = TerminalSession {
-        master: pair.master,
-        writer,
-        child,
-        marker: marker.clone(),
-        kind: spec.kind_name.clone(),
-        echoes: Arc::clone(&echoes),
-        cwd: directory.to_string_lossy().to_string(),
-        shell: spec.cmd.clone(),
-        label: label.unwrap_or_else(|| spec.kind_name.clone()),
-    };
-
-    let app_clone = app.clone();
-    let marker_clone = marker;
-    let echo_line = marker_line.clone();
-    let session_id_clone = session_id.clone();
+/// Stream a PTY to the webview until the shell closes.
+fn watch(
+    app: AppHandle,
+    mut reader: Box<dyn Read + Send>,
+    child: Arc<StdMutex<Box<dyn Child + Send>>>,
+    exited: Arc<AtomicBool>,
+    id: String,
+) {
+    let read_app = app.clone();
+    let read_id = id.clone();
+    let read_exited = Arc::clone(&exited);
+    let read_child = Arc::clone(&child);
     std::thread::spawn(move || {
-        let mut buffer = String::new();
-        let mut chunk = [0u8; 8192];
-        let echoed_crlf = format!("{echo_line}\r\n");
-        let echoed_lf = format!("{echo_line}\n");
+        let mut bytes = [0u8; READ_SIZE];
+        let mut pending = Vec::new();
         loop {
-            match reader.read(&mut chunk) {
+            match reader.read(&mut bytes) {
                 Ok(0) => break,
-                Ok(count) => {
-                    buffer.push_str(&String::from_utf8_lossy(&chunk[..count]));
-                    // The terminal echoes the marker command back. Drop it so
-                    // it never shows up in the log.
-                    if buffer.contains(echo_line.as_str()) {
-                        buffer = buffer.replace(&echoed_crlf, "").replace(&echoed_lf, "");
-                    }
-                    // Drop the echo of every command that was just written.
-                    strip_echoes(&mut buffer, &echoes_clone);
-                    // Strip every complete marker. Its presence means the
-                    // command that was written has finished, so an empty
-                    // stdout event tells the renderer to clear the spinner.
-                    while let Some(pos) = buffer.find(marker_clone.as_str()) {
-                        let before = buffer[..pos].to_string();
-                        let mut after = pos + marker_clone.len();
-                        let rest = &buffer[after..];
-                        if rest.starts_with("\r\n") {
-                            after += 2;
-                        } else if rest.starts_with('\n') {
-                            after += 1;
-                        }
-                        if !before.is_empty() {
-                            emit(&app_clone, "stdout", &session_id_clone, Some(before), None);
-                        }
-                        emit(&app_clone, "stdout", &session_id_clone, Some(String::new()), None);
-                        buffer = buffer[after..].to_string();
-                    }
-                    // Emit everything except a possible partial marker at
-                    // the end; prompts and partial lines are forwarded as-is
-                    // so the terminal feels live (and interactive programs
-                    // such as vim keep working).
-                    let keep = partial_marker_len(&buffer, marker_clone.as_str());
-                    if buffer.len() > keep {
-                        let ready = buffer[..buffer.len() - keep].to_string();
-                        buffer = buffer[buffer.len() - keep..].to_string();
-                        if !ready.is_empty() {
-                            emit(&app_clone, "stdout", &session_id_clone, Some(ready), None);
-                        }
-                    }
-                }
+                Ok(count) => emit_data(&read_app, &read_id, decode(&mut pending, &bytes[..count])),
+                Err(error) if error.kind() == ErrorKind::Interrupted => continue,
                 Err(_) => break,
             }
         }
-        if !buffer.is_empty() {
-            emit(&app_clone, "stdout", &session_id_clone, Some(buffer), None);
+        if !pending.is_empty() {
+            emit_data(
+                &read_app,
+                &read_id,
+                String::from_utf8_lossy(&pending).into_owned(),
+            );
         }
-        emit(&app_clone, "exit", &session_id_clone, None, None);
+        let code = read_child
+            .lock()
+            .ok()
+            .and_then(|mut guard| guard.try_wait().ok().flatten())
+            .map(|status| status.exit_code() as i32);
+        emit_exit_once(&read_app, &read_id, &read_exited, code);
     });
 
-    let id = session_id.clone();
+    // Polling as well makes sure the webview always receives an `exit` event,
+    // even when the PTY reader blocks or the shell closes unexpectedly.
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_millis(100));
+        let status = child
+            .lock()
+            .ok()
+            .and_then(|mut guard| guard.try_wait().ok().flatten());
+        if let Some(status) = status {
+            emit_exit_once(&app, &id, &exited, Some(status.exit_code() as i32));
+            break;
+        }
+        if exited.load(Ordering::SeqCst) {
+            break;
+        }
+    });
+}
+
+async fn create_session(
+    app: &AppHandle,
+    state: &State<'_, TerminalState>,
+    cwd: Option<String>,
+    label: Option<String>,
+) -> Result<TerminalStartResult, String> {
+    let id = format!("term-{}", state.next_id.fetch_add(1, Ordering::SeqCst) + 1);
+    let opened = open_session(cwd, label)?;
     let result = TerminalStartResult {
-        id,
+        id: id.clone(),
         ok: true,
-        cwd: session.cwd.clone(),
-        shell: session.shell.clone(),
-        label: session.label.clone(),
+        cwd: opened.session.cwd.clone(),
+        shell: opened.session.shell.clone(),
+        label: opened.session.label.clone(),
         error: None,
     };
-
-    let mut guard = state.inner.lock().await;
-    guard.insert(session_id.clone(), session);
-    let mut active = state.active.lock().await;
-    *active = session_id.clone();
+    watch(
+        app.clone(),
+        opened.reader,
+        Arc::clone(&opened.session.child),
+        Arc::clone(&opened.session.exited),
+        id.clone(),
+    );
+    state
+        .sessions
+        .lock()
+        .await
+        .insert(id.clone(), opened.session);
+    *state.active.lock().await = id;
     Ok(result)
 }
 
@@ -365,23 +338,24 @@ pub async fn terminal_new(
     cwd: Option<String>,
     label: Option<String>,
 ) -> Result<TerminalStartResult, String> {
-    spawn_session(&app, &state, cwd, label).await
+    create_session(&app, &state, cwd, label).await
 }
 
 #[tauri::command]
-pub async fn terminal_close(state: State<'_, TerminalState>, session_id: String) -> Result<bool, String> {
-    let mut guard = state.inner.lock().await;
-    if let Some(mut session) = guard.remove(&session_id) {
-        let _ = session.child.kill();
-        let _ = session.master.take_writer().map(|mut writer| writer.write_all(b"exit\r\n").is_ok());
-    }
-    Ok(true)
+pub async fn terminal_start(
+    app: AppHandle,
+    state: State<'_, TerminalState>,
+    cwd: Option<String>,
+) -> Result<TerminalStartResult, String> {
+    create_session(&app, &state, cwd, None).await
 }
 
 #[tauri::command]
-pub async fn terminal_list(state: State<'_, TerminalState>) -> Result<Vec<TerminalListItem>, String> {
-    let guard = state.inner.lock().await;
-    Ok(guard
+pub async fn terminal_list(
+    state: State<'_, TerminalState>,
+) -> Result<Vec<TerminalListItem>, String> {
+    let sessions = state.sessions.lock().await;
+    let mut items: Vec<TerminalListItem> = sessions
         .iter()
         .map(|(id, session)| TerminalListItem {
             id: id.clone(),
@@ -389,17 +363,24 @@ pub async fn terminal_list(state: State<'_, TerminalState>) -> Result<Vec<Termin
             cwd: session.cwd.clone(),
             shell: session.shell.clone(),
         })
-        .collect())
+        .collect();
+    items.sort_by(|a, b| a.id.cmp(&b.id));
+    Ok(items)
 }
 
-/// Legacy start: spawns a new session (keeps existing callers working).
 #[tauri::command]
-pub async fn terminal_start(
-    app: AppHandle,
+pub async fn terminal_active(
     state: State<'_, TerminalState>,
-    cwd: Option<String>,
-) -> Result<TerminalStartResult, String> {
-    spawn_session(&app, &state, cwd, None).await
+    session_id: Option<String>,
+) -> Result<String, String> {
+    if let Some(id) = session_id {
+        if state.sessions.lock().await.contains_key(&id) {
+            *state.active.lock().await = id.clone();
+            return Ok(id);
+        }
+        return Err("Unknown terminal session".into());
+    }
+    Ok(state.active.lock().await.clone())
 }
 
 #[tauri::command]
@@ -407,61 +388,41 @@ pub async fn terminal_write(
     state: State<'_, TerminalState>,
     request: TerminalWriteRequest,
 ) -> Result<bool, String> {
-    let mut guard = state.inner.lock().await;
-    let Some(session) = guard.get_mut(&request.session_id) else {
-        return Ok(false);
-    };
-    let mut payload = request.text.replace("\r\n", "\n").replace('\n', "\r\n");
-    if !payload.ends_with("\r\n") {
-        payload.push_str("\r\n");
+    {
+        let sessions = state.sessions.lock().await;
+        let Some(session) = sessions.get(&request.session_id) else {
+            return Ok(false);
+        };
+        let mut writer = session
+            .writer
+            .lock()
+            .map_err(|_| "Terminal is busy".to_string())?;
+        writer
+            .write_all(request.text.as_bytes())
+            .and_then(|_| writer.flush())
+            .map_err(|error| error.to_string())?;
     }
-    let marker_line = format!("{}\r\n", marker_command(&session.kind, &session.marker));
-    // Remember what was written so the reader can drop the shell's echo.
-    if let Ok(mut pending) = session.echoes.lock() {
-        for line in request.text.lines() {
-            pending.push(line.to_string());
-        }
-    }
-    session
-        .writer
-        .write_all(payload.as_bytes())
-        .map_err(|error| error.to_string())?;
-    session
-        .writer
-        .write_all(marker_line.as_bytes())
-        .map_err(|error| error.to_string())?;
-    session.writer.flush().map_err(|error| error.to_string())?;
+    *state.active.lock().await = request.session_id;
     Ok(true)
 }
 
 #[tauri::command]
 pub async fn terminal_interrupt(
-    app: AppHandle,
     state: State<'_, TerminalState>,
     session_id: String,
 ) -> Result<bool, String> {
-    let mut guard = state.inner.lock().await;
-    let Some(session) = guard.get_mut(&session_id) else {
+    let sessions = state.sessions.lock().await;
+    let Some(session) = sessions.get(&session_id) else {
         return Ok(false);
     };
-    let _ = session.writer.write_all(b"\x03");
-    let _ = session.writer.flush();
-    emit(&app, "stdout", &session_id, Some(String::new()), None);
-    Ok(true)
-}
-
-#[tauri::command]
-pub async fn terminal_stop(
-    app: AppHandle,
-    state: State<'_, TerminalState>,
-    session_id: String,
-) -> Result<bool, String> {
-    let mut guard = state.inner.lock().await;
-    if let Some(mut session) = guard.remove(&session_id) {
-        let _ = session.child.kill();
-        let _ = session.writer.write_all(b"exit\r\n");
-        emit(&app, "exit", &session_id, None, None);
-    }
+    let mut writer = session
+        .writer
+        .lock()
+        .map_err(|_| "Terminal is busy".to_string())?;
+    writer
+        .write_all(&[0x03])
+        .and_then(|_| writer.flush())
+        .map_err(|error| error.to_string())?;
     Ok(true)
 }
 
@@ -472,36 +433,52 @@ pub async fn terminal_resize(
     cols: u32,
     rows: u32,
 ) -> Result<bool, String> {
-    let guard = state.inner.lock().await;
-    if let Some(session) = guard.get(&session_id) {
-        session
-            .master
-            .resize(PtySize {
-                rows: rows as u16,
-                cols: cols as u16,
-                pixel_width: 0,
-                pixel_height: 0,
-            })
-            .map_err(|error| error.to_string())?;
-        return Ok(true);
-    }
-    Ok(false)
+    let sessions = state.sessions.lock().await;
+    let Some(session) = sessions.get(&session_id) else {
+        return Ok(false);
+    };
+    session
+        .master
+        .resize(PtySize {
+            rows: rows.max(1) as u16,
+            cols: cols.max(1) as u16,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .map_err(|error| error.to_string())?;
+    Ok(true)
 }
 
 #[tauri::command]
-pub async fn terminal_active(state: State<'_, TerminalState>) -> Result<String, String> {
-    let active = state.active.lock().await;
-    Ok(active.clone())
+pub async fn terminal_stop(
+    app: AppHandle,
+    state: State<'_, TerminalState>,
+    session_id: String,
+) -> Result<bool, String> {
+    let mut sessions = state.sessions.lock().await;
+    let Some(session) = sessions.remove(&session_id) else {
+        return Ok(false);
+    };
+    if let Ok(mut writer) = session.writer.lock() {
+        let _ = writer.write_all(b"exit\r\n");
+        let _ = writer.flush();
+    }
+    if let Ok(mut child) = session.child.lock() {
+        let _ = child.kill();
+    }
+    emit_exit_once(&app, &session_id, &session.exited, None);
+    let mut active = state.active.lock().await;
+    if *active == session_id {
+        *active = sessions.keys().next().cloned().unwrap_or_default();
+    }
+    Ok(true)
 }
 
-#[allow(dead_code)]
-pub fn working_directory(cwd: Option<String>) -> PathBuf {
-    cwd.map(PathBuf::from)
-        .filter(|path| path.is_dir())
-        .unwrap_or_else(home_dir)
-}
-
-#[allow(dead_code)]
-fn is_directory(path: &str) -> bool {
-    Path::new(path).is_dir()
+#[tauri::command]
+pub async fn terminal_close(
+    app: AppHandle,
+    state: State<'_, TerminalState>,
+    session_id: String,
+) -> Result<bool, String> {
+    terminal_stop(app, state, session_id).await
 }

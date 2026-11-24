@@ -5,7 +5,7 @@
  * big folder never blocks the editor.
  */
 
-import { create } from 'zustand'
+import { create } from '@/state/compat'
 
 /** One hit of the search. */
 export interface ProjectMatch {

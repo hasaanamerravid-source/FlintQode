@@ -1,5 +1,4 @@
-import React from 'react'
-import { createRoot } from 'react-dom/client'
+import { render } from '@solidjs/web'
 import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useAppStore } from './store/app'
@@ -9,9 +8,11 @@ import { getEditor } from './core/editors'
 import { installApi } from './bridge'
 import './styles/app.css'
 import './styles/appearance.css'
+import './styles/workbench.css'
 import './core/syntaxThemes.css'
+import './styles/design-system.css'
 
-// The React app was written for an Electron preload; install the Tauri
+// The renderer was written for an Electron preload; install the Tauri
 // equivalent before the first component asks for it.
 installApi()
 
@@ -35,10 +36,11 @@ if (!container) throw new Error('Root container missing')
 // the rename.
 ;(window as unknown as { opennotes: unknown }).opennotes = (window as unknown as { flintqode: unknown }).flintqode
 
-createRoot(container).render(
-  <React.StrictMode>
+render(
+  () => (
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
-  </React.StrictMode>,
+  ),
+  container,
 )

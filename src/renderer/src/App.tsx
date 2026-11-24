@@ -1,18 +1,15 @@
-import type { JSX } from 'react'
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { createEffect, createSignal, lazy, Loading, onSettled, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { useAppStore } from './store/app'
-import { useStatusStore } from './store/status'
 import { TitleBar } from './components/TitleBar'
 import { StatusBar } from './components/StatusBar'
-import { Sidebar } from './components/Sidebar'
-import { ActivityBar } from './components/ActivityBar'
-import { BottomPanel } from './components/BottomPanel'
-import { useProblems, useLspConfiguration } from './core/useProblems'
-import { getEditor } from './core/editors'
-import { jumpToProblem } from './core/lspCommands'
+import { Sidebar } from './workbench/Sidebar'
+import { ActivityBar } from './workbench/ActivityBar'
+import { Dock } from './workbench/Dock'
+import { useLspConfiguration } from './core/useProblems'
 import { useLspSync } from './core/lspIntegration'
-import { projectFolder } from './core/projectConfig'
 import {
+  loadKeybindings,
   matchesShortcut,
   readKeybindingsSync,
   setKeybindings,
@@ -32,18 +29,12 @@ import { activateEnabledPlugins } from './core/plugins'
 import { applyAppearance } from './core/appearance'
 import { applyDocumentLocale, useT } from './core/i18n'
 import { Modal } from './components/Modal'
+import { appActions, statusActions, useActiveTabId, useSettings, useTabs } from './state/solid'
 
 /* Loaded on demand — they are only needed when the user opens them. */
 const LazyCompareView = lazy(() => import('./components/panels/CompareView').then((m) => ({ default: m.CompareView })))
 const LazyCharacterMap = lazy(() =>
   import('./components/panels/CharacterMap').then((m) => ({ default: m.CharacterMap })),
-)
-const LazyProblemsPanel = lazy(() =>
-  import('./components/panels/ProblemsPanel').then((m) => ({ default: m.ProblemsPanel })),
-)
-const LazyRunPanel = lazy(() => import('./components/panels/RunPanel').then((m) => ({ default: m.RunPanel })))
-const LazyTerminalPanel = lazy(() =>
-  import('./components/panels/TerminalPanel').then((m) => ({ default: m.TerminalPanel })),
 )
 
 /*
@@ -54,61 +45,39 @@ const LazyTerminalPanel = lazy(() =>
 registerBuiltinCommands()
 
 export default function App(): JSX.Element {
-  const ready = useAppStore((s) => s.ready)
-  const init = useAppStore((s) => s.init)
-  const settings = useAppStore((s) => s.settings)
-  const tabs = useAppStore((s) => s.tabs)
-  const activeTabId = useAppStore((s) => s.activeTabId)
-  const workspaceRoot = useAppStore((s) => s.workspaceRoot)
-  const paletteOpen = useAppStore((s) => s.paletteOpen)
-  const paletteMode = useAppStore((s) => s.paletteMode)
-  const setPalette = useAppStore((s) => s.setPalette)
-  const sidebarVisible = useAppStore((s) => s.sidebarVisible)
-  const statusBarVisible = useAppStore((s) => s.statusBarVisible)
-  const distractionFree = useAppStore((s) => s.distractionFree)
-  const compareOpen = useAppStore((s) => s.compareOpen)
-  const compareData = useAppStore((s) => s.compareData)
-  const charMapOpen = useAppStore((s) => s.charMapOpen)
-  const setDialog = useAppStore((s) => s.setDialog)
-  const externalChange = useAppStore((s) => s.externalChange)
-  const resolveExternalChange = useAppStore((s) => s.resolveExternalChange)
-  const pendingClose = useAppStore((s) => s.pendingClose)
-  const resolvePendingClose = useAppStore((s) => s.resolvePendingClose)
-  const setActiveTab = useAppStore((s) => s.setActiveTab)
-  const toast = useAppStore((s) => s.toast)
-  const [dragging, setDragging] = useState(false)
-  const bottomTab = useAppStore((s) => s.bottomTab)
-  const bottomPanelVisible = useAppStore((s) => s.bottomPanelVisible)
-  const setBottomTab = useAppStore((s) => s.setBottomTab)
-  const setBottomPanelVisible = useAppStore((s) => s.setBottomPanelVisible)
-  const problems = useProblems()
+  const ready = () => useAppStore().ready
+  const settings = useSettings()
+  const tabs = useTabs()
+  const activeTabId = useActiveTabId()
+  const paletteOpen = () => useAppStore().paletteOpen
+  const paletteMode = () => useAppStore().paletteMode
+  const sidebarVisible = () => useAppStore().sidebarVisible
+  const statusBarVisible = () => useAppStore().statusBarVisible
+  const distractionFree = () => useAppStore().distractionFree
+  const compareOpen = () => useAppStore().compareOpen
+  const compareData = () => useAppStore().compareData
+  const charMapOpen = () => useAppStore().charMapOpen
+  const externalChange = () => useAppStore().externalChange
+  const pendingClose = () => useAppStore().pendingClose
+  const bottomPanelVisible = () => useAppStore().bottomPanelVisible
+  const [dragging, setDragging] = createSignal(false)
   const t = useT()
   useLspSync()
   useLspConfiguration()
 
-  // A shell starts as soon as the terminal tab is opened.
-  useEffect(() => {
-    if (bottomTab !== 'terminal') return
-    void import('./core/terminalState').then(({ useTerminalStore }) => {
-      const terminal = useTerminalStore.getState()
-      const active = terminal.getActive()
-      if (!active) void terminal.start(workspaceRoot ?? projectFolder() ?? undefined)
-    })
-  }, [bottomTab, workspaceRoot])
-  const statusSet = useStatusStore((s) => s.set)
-  const statusReset = useStatusStore((s) => s.reset)
-  const initRef = useRef(false)
+  const status = statusActions()
   const keybindings = useKeybindings()
 
   /* ---------------------------- bootstrap --------------------------- */
-  useEffect(() => {
-    if (initRef.current) return
-    initRef.current = true
-    void init().then(() => {
-      const s = useAppStore.getState()
-      void activateEnabledPlugins(s.settings.plugins)
-    })
+  onSettled(() => {
+    void appActions()
+      .init()
+      .then(() => {
+        const s = useAppStore.getState()
+        void activateEnabledPlugins(s.settings.plugins)
+      })
     // The folder of the settings holds the keybindings file.
+    void loadKeybindings()
     void window.api.info().then((info) => {
       setUserDataFolder(info.userData)
     })
@@ -119,99 +88,114 @@ export default function App(): JSX.Element {
       .catch(() => undefined)
     const stop = window.api.onMenuAccelerators(setMenuAccelerators)
     return stop
-  }, [init])
+  })
 
   // The shortcuts of the user are kept in the keyboard handler.
-  useEffect(() => {
-    setKeybindings(keybindings)
-  }, [keybindings])
+  createEffect(keybindings, setKeybindings)
 
   // A plugin shows a message with `ctx.toast(...)`.
-  useEffect(() => {
+  onSettled(() => {
     const onToast = (event: Event): void => {
       const detail = (event as CustomEvent<{ message?: string; kind?: 'info' | 'error' | 'success' }>).detail
       if (!detail?.message) return
-      toast(detail.message, detail.kind ?? 'info')
+      appActions().toast(detail.message, detail.kind ?? 'info')
     }
     window.addEventListener('flintqode:toast', onToast)
     return () => window.removeEventListener('flintqode:toast', onToast)
-  }, [toast])
+  })
 
   /* ------------------------------ theme ----------------------------- */
-  useEffect(() => {
-    const root = document.documentElement
-    const apply = (): void => {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      const theme = settings.theme === 'system' ? (prefersDark ? 'dark' : 'light') : settings.theme
-      root.setAttribute('data-theme', theme)
-      root.setAttribute('data-direction', settings.direction)
-      window.api.win.setTheme(theme === 'dark' ? '#1e1e28' : '#f6f8fa')
-    }
-    apply()
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
-    media.addEventListener('change', apply)
-    return () => media.removeEventListener('change', apply)
-  }, [settings.theme, settings.direction])
+  createEffect(
+    () => ({ theme: settings().theme, direction: settings().direction }),
+    ({ theme, direction }) => {
+      const root = document.documentElement
+      const apply = (): void => {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        const resolved = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme
+        root.setAttribute('data-theme', resolved)
+        root.setAttribute('data-direction', direction)
+        window.api.win.setTheme(resolved === 'dark' ? '#1e1e28' : '#f6f8fa')
+      }
+      apply()
+      const media = window.matchMedia('(prefers-color-scheme: dark)')
+      media.addEventListener('change', apply)
+      return () => media.removeEventListener('change', apply)
+    },
+  )
 
   /* ----------------------------- language --------------------------- */
   // The document knows which language it is in, so that the screen reader and
   // the browser pick the right spelling rules and the right direction.
-  useEffect(() => {
-    applyDocumentLocale(settings.language)
-  }, [settings.language])
+  createEffect(
+    () => settings().language,
+    (language) => applyDocumentLocale(language),
+  )
 
   /* ---------------------------- appearance --------------------------- */
-  useEffect(() => {
-    applyAppearance(settings)
-  }, [settings.appearance, settings.syntaxTheme])
+  createEffect(
+    () => settings(),
+    (current) => applyAppearance(current),
+  )
 
   /* --------------------------- menu visibility ----------------------- */
-  useEffect(() => {
-    // The native Windows menu bar is always reachable with Alt, like in other
-    // Windows editors; it only stays visible when the user asks for it.
-    const visible = settings.mainMenuStyle === 'native' || settings.mainMenuStyle === 'both'
-    void window.api.win.setMenuBar(visible)
-  }, [settings.mainMenuStyle])
+  createEffect(
+    () => settings().mainMenuStyle,
+    (style) => {
+      // The native Windows menu bar is always reachable with Alt, like in other
+      // Windows editors; it only stays visible when the user asks for it.
+      const visible = style === 'native' || style === 'both'
+      void window.api.win.setMenuBar(visible)
+    },
+  )
 
   /* --------------------------- window state --------------------------- */
-  useEffect(() => {
+  onSettled(() => {
     return window.api.win.onMaximizeChange((maximized) => {
-      statusSet({ maximized })
+      status.set({ maximized })
     })
-  }, [statusSet])
+  })
 
   /* --------------------------- native menu --------------------------- */
-  useEffect(() => {
-    void window.api.menu.setProfile(settings.profile)
-  }, [settings.profile])
+  createEffect(
+    () => settings().profile,
+    (profile) => {
+      void window.api.menu.setProfile(profile)
+    },
+  )
 
   /* --------------------------- window title ------------------------- */
-  useEffect(() => {
-    const tab = tabs.find((t) => t.id === activeTabId)
-    const name = tab ? `${tab.dirty ? '● ' : ''}${tab.name}` : 'FlintQode'
-    window.api.win.setTitle(`${name} — FlintQode`)
-  }, [tabs, activeTabId])
+  createEffect(
+    () => {
+      const tab = tabs().find((item) => item.id === activeTabId())
+      return tab ? `${tab.dirty ? '● ' : ''}${tab.name}` : 'FlintQode'
+    },
+    (name) => {
+      window.api.win.setTitle(`${name} — FlintQode`)
+    },
+  )
 
   /* ------------------------ native menu commands -------------------- */
-  useEffect(() => {
+  onSettled(() => {
     return window.api.onCommand((id, payload) => {
       void runCommand(id, payload)
     })
-  }, [])
+  })
 
-  const recentFiles = useAppStore((s) => s.settings.recentFiles)
-  useEffect(() => {
-    void window.api.menu.setRecent(recentFiles)
-  }, [recentFiles])
+  createEffect(
+    () => settings().recentFiles,
+    (recentFiles) => {
+      void window.api.menu.setRecent(recentFiles)
+    },
+  )
 
-  useEffect(() => {
+  onSettled(() => {
     return window.api.onOpenFiles((paths) => {
       void useAppStore.getState().openPaths(paths)
     })
-  }, [])
+  })
 
   /* --------------------------- keyboard ----------------------------- */
-  useEffect(() => {
+  onSettled(() => {
     const onKey = (e: KeyboardEvent): void => {
       const ctrl = e.ctrlKey || e.metaKey
       const s = useAppStore.getState()
@@ -253,7 +237,7 @@ export default function App(): JSX.Element {
         e.preventDefault()
         const list = s.tabs
         if (list.length < 2) return
-        const index = list.findIndex((t) => t.id === s.activeTabId)
+        const index = list.findIndex((item) => item.id === s.activeTabId)
         const next = e.key === 'ArrowRight' ? (index + 1) % list.length : (index - 1 + list.length) % list.length
         s.setActiveTab(list[next].id)
         return
@@ -265,7 +249,7 @@ export default function App(): JSX.Element {
         e.preventDefault()
         const list = s.tabs
         if (list.length < 2) return
-        const index = list.findIndex((t) => t.id === s.activeTabId)
+        const index = list.findIndex((item) => item.id === s.activeTabId)
         const next = e.shiftKey ? (index - 1 + list.length) % list.length : (index + 1) % list.length
         s.setActiveTab(list[next].id)
         return
@@ -280,10 +264,10 @@ export default function App(): JSX.Element {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  })
 
   /* --------------------------- drag & drop --------------------------- */
-  useEffect(() => {
+  onSettled(() => {
     // Tauri intercepts native drops before the DOM sees them and gives us
     // real paths instead of File objects.
     const stopNative = window.api.onDropPaths((paths) => {
@@ -313,10 +297,10 @@ export default function App(): JSX.Element {
       window.removeEventListener('dragleave', onDragLeave)
       window.removeEventListener('drop', onDrop)
     }
-  }, [])
+  })
 
   /* ------------------------- session + autosave ---------------------- */
-  useEffect(() => {
+  onSettled(() => {
     const persist = (): void => {
       void useAppStore.getState().persistSession()
       // The crash trail keeps unsaved buffers across a crash or exit.
@@ -332,176 +316,163 @@ export default function App(): JSX.Element {
       window.removeEventListener('beforeunload', persist)
       persist()
     }
-  }, [])
+  })
 
-  useEffect(() => {
-    const interval = settings.autosaveInterval
-    if (!interval) return
-    const timer = window.setInterval(() => {
-      void useAppStore.getState().saveAll()
-    }, interval * 60_000)
-    return () => window.clearInterval(timer)
-  }, [settings.autosaveInterval])
+  createEffect(
+    () => settings().autosaveInterval,
+    (interval) => {
+      if (!interval) return
+      const timer = window.setInterval(() => {
+        void useAppStore.getState().saveAll()
+      }, interval * 60_000)
+      return () => window.clearInterval(timer)
+    },
+  )
 
   /* ------------------------------- zoom ------------------------------ */
-  useEffect(() => {
+  onSettled(() => {
     const timer = window.setInterval(() => {
       void window.api.win
         .getZoom()
         .then((zoom) => {
-          if (typeof zoom === 'number') statusSet({ zoom })
+          if (typeof zoom === 'number') status.set({ zoom })
         })
         .catch(() => undefined)
     }, 2000)
     return () => window.clearInterval(timer)
-  }, [statusSet])
+  })
 
   /* ------------------------- status bar sync ------------------------- */
-  useEffect(() => {
-    const tab = tabs.find((t) => t.id === activeTabId)
-    statusSet({
-      encoding: tab?.encoding ?? 'utf8',
-      eol: tab?.eol ?? '\n',
-      language: tab?.language ?? 'text',
-      mode: tab?.mode ?? 'code',
-      dirty: tab?.dirty ?? false,
-    })
-  }, [tabs, activeTabId, statusSet])
-
-  useEffect(() => {
-    if (!tabs.length) statusReset()
-  }, [tabs.length, statusReset])
-
-  const active = tabs.find((t) => t.id === activeTabId)
+  // The status bar reads encoding/EOL/language directly from the active tab.
+  // Mirroring them into the status store only made every tab write relay into
+  // a second version signal, so StatusBar rendered once with stale values.
 
   return (
-    <div className={`app ${distractionFree ? 'distraction-free' : ''} ${dragging ? 'dragging' : ''}`}>
+    <div class={['app', { 'distraction-free': distractionFree(), dragging: dragging() }]}>
       <TitleBar />
-      <div className="app-body">
-        {!distractionFree && <ActivityBar />}
-        {sidebarVisible && !distractionFree && <Sidebar />}
-        <main className="app-main">
-          {compareOpen && compareData ? (
-            <Suspense fallback={<div className="empty-state">Loading…</div>}>
-              <LazyCompareView
-                left={compareData.left}
-                right={compareData.right}
-                leftName={compareData.leftName}
-                rightName={compareData.rightName}
-                onClose={() => setDialog('compare', false)}
-              />
-            </Suspense>
-          ) : (
-            <EditorPane />
-          )}
+      <div class="app-body">
+        <Show when={!distractionFree()}>
+          <ActivityBar />
+        </Show>
+        <Show when={sidebarVisible() && !distractionFree()}>
+          <Sidebar />
+        </Show>
+        <main class="app-main">
+          <Show when={compareOpen() && compareData()} fallback={<EditorPane />}>
+            {(data) => (
+              <Loading fallback={<div class="empty-state">Loading…</div>}>
+                <LazyCompareView
+                  left={data().left}
+                  right={data().right}
+                  leftName={data().leftName}
+                  rightName={data().rightName}
+                  onClose={() => useAppStore.getState().setDialog('compare', false)}
+                />
+              </Loading>
+            )}
+          </Show>
         </main>
       </div>
-      {!distractionFree && bottomPanelVisible && (
-        <BottomPanel
-          tabs={[
-            { id: 'problems', label: 'Problems', icon: 'problems', count: problems.length },
-            { id: 'run', label: 'Run', icon: 'terminal' },
-            { id: 'terminal', label: 'Terminal', icon: 'terminal' },
-          ]}
-          active={bottomTab}
-          onSelect={setBottomTab}
-          onClose={() => setBottomPanelVisible(false)}
-        >
-          <Suspense fallback={<div className="empty-state">Loading…</div>}>
-            {bottomTab === 'problems' ? (
-              <LazyProblemsPanel
-                problems={problems}
-                onSelect={(problem) => {
-                  void jumpToProblem(problem)
-                }}
-              />
-            ) : bottomTab === 'terminal' ? (
-              <LazyTerminalPanel cwd={workspaceRoot ?? projectFolder() ?? undefined} />
-            ) : (
-              <LazyRunPanel
-                onRun={() => void runCommand('tools.run')}
-                onStop={() => void runCommand('tools.stopRun')}
-              />
-            )}
-          </Suspense>
-        </BottomPanel>
-      )}
-      {statusBarVisible && !distractionFree && <StatusBar />}
+      <Show when={!distractionFree() && bottomPanelVisible()}>
+        <Dock />
+      </Show>
+      <Show when={statusBarVisible() && !distractionFree()}>
+        <StatusBar />
+      </Show>
 
-      <CommandPalette open={paletteOpen} mode={paletteMode} onClose={() => setPalette(false)} />
+      <CommandPalette
+        open={paletteOpen()}
+        mode={paletteMode()}
+        onClose={() => useAppStore.getState().setPalette(false)}
+      />
       <SettingsDialog />
       <AboutDialog />
       <WelcomeDialog />
       <PromptHost />
       <Toasts />
 
-      {externalChange && (
-        <Modal
-          title={t('dialog.externalChange.title')}
-          onClose={() => resolveExternalChange('keep')}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => resolveExternalChange('keep')}>
-                {t('dialog.externalChange.keep')}
-              </button>
-              <button className="btn btn-primary" onClick={() => resolveExternalChange('reload')}>
-                {t('dialog.externalChange.reload')}
-              </button>
-              <button className="btn btn-ghost" onClick={() => resolveExternalChange('compare')}>
-                {t('dialog.externalChange.compare')}
-              </button>
-            </>
-          }
-        >
-          <p className="hint">{t('dialog.externalChange.message', { name: externalChange.name })}</p>
-        </Modal>
-      )}
+      <Show when={externalChange()}>
+        {(change) => (
+          <Modal
+            title={t('dialog.externalChange.title')}
+            onClose={() => void useAppStore.getState().resolveExternalChange('keep')}
+            footer={
+              <>
+                <button class="btn btn-ghost" onClick={() => void useAppStore.getState().resolveExternalChange('keep')}>
+                  {t('dialog.externalChange.keep')}
+                </button>
+                <button
+                  class="btn btn-primary"
+                  onClick={() => void useAppStore.getState().resolveExternalChange('reload')}
+                >
+                  {t('dialog.externalChange.reload')}
+                </button>
+                <button
+                  class="btn btn-ghost"
+                  onClick={() => void useAppStore.getState().resolveExternalChange('compare')}
+                >
+                  {t('dialog.externalChange.compare')}
+                </button>
+              </>
+            }
+          >
+            <p class="hint">{t('dialog.externalChange.message', { name: change().name })}</p>
+          </Modal>
+        )}
+      </Show>
 
-      {pendingClose && (
-        <Modal
-          title={t('dialog.confirm.unsaved.title')}
-          size="small"
-          onClose={() => void resolvePendingClose('cancel')}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => void resolvePendingClose('cancel')}>
-                {t('common.cancel')}
-              </button>
-              <button className="btn btn-ghost" onClick={() => void resolvePendingClose('discard')}>
-                {t('dialog.confirm.unsaved.discard')}
-              </button>
-              <button className="btn btn-primary" onClick={() => void resolvePendingClose('save')}>
-                {t('common.save')}
-              </button>
-            </>
-          }
-        >
-          <p>{t('dialog.confirm.unsaved.message', { name: pendingClose.name })}</p>
-          <p className="hint">{t('dialog.confirm.unsaved.hint')}</p>
-        </Modal>
-      )}
+      <Show when={pendingClose()}>
+        {(request) => (
+          <Modal
+            title={t('dialog.confirm.unsaved.title')}
+            size="small"
+            onClose={() => void useAppStore.getState().resolvePendingClose('cancel')}
+            footer={
+              <>
+                <button class="btn btn-ghost" onClick={() => void useAppStore.getState().resolvePendingClose('cancel')}>
+                  {t('common.cancel')}
+                </button>
+                <button
+                  class="btn btn-ghost"
+                  onClick={() => void useAppStore.getState().resolvePendingClose('discard')}
+                >
+                  {t('dialog.confirm.unsaved.discard')}
+                </button>
+                <button class="btn btn-primary" onClick={() => void useAppStore.getState().resolvePendingClose('save')}>
+                  {t('common.save')}
+                </button>
+              </>
+            }
+          >
+            <p>{t('dialog.confirm.unsaved.message', { name: request().name })}</p>
+            <p class="hint">{t('dialog.confirm.unsaved.hint')}</p>
+          </Modal>
+        )}
+      </Show>
 
-      {charMapOpen && (
-        <Modal title={t('dialog.charMap.title')} onClose={() => setDialog('charMap', false)}>
-          <Suspense fallback={<div className="empty-state">{t('common.loading')}</div>}>
+      <Show when={charMapOpen()}>
+        <Modal title={t('dialog.charMap.title')} onClose={() => useAppStore.getState().setDialog('charMap', false)}>
+          <Loading fallback={<div class="empty-state">{t('common.loading')}</div>}>
             <LazyCharacterMap
               onInsert={(char) => {
                 void runCommand('edit.insertText', char)
               }}
-              onClose={() => setDialog('charMap', false)}
+              onClose={() => useAppStore.getState().setDialog('charMap', false)}
             />
-          </Suspense>
+          </Loading>
         </Modal>
-      )}
+      </Show>
 
-      {dragging && <div className="drag-overlay">{t('title.dropFiles')}</div>}
-      {!ready && (
-        <div className="modal-backdrop">
-          <div className="modal small" role="dialog" aria-modal="true" aria-label={t('app.name')}>
-            <div className="modal-body">{t('common.loading')}</div>
+      <Show when={dragging()}>
+        <div class="drag-overlay">{t('title.dropFiles')}</div>
+      </Show>
+      <Show when={!ready()}>
+        <div class="modal-backdrop">
+          <div class="modal small" role="dialog" aria-modal="true" aria-label={t('app.name')}>
+            <div class="modal-body">{t('common.loading')}</div>
           </div>
         </div>
-      )}
+      </Show>
     </div>
   )
 }

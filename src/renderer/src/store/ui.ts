@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { create } from '@/state/compat'
 
 export interface PromptRequest {
   title: string

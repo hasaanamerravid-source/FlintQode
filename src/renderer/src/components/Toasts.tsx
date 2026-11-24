@@ -1,17 +1,17 @@
-import type { JSX } from 'react'
+import { For } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { useAppStore } from '../store/app'
 
 export function Toasts(): JSX.Element {
-  const toasts = useAppStore((s) => s.toasts)
-  const dismiss = useAppStore((s) => s.dismissToast)
-
   return (
-    <div className="toast-stack">
-      {toasts.map((toast) => (
-        <div key={toast.id} className={`toast ${toast.kind}`} onClick={() => dismiss(toast.id)}>
-          {toast.message}
-        </div>
-      ))}
+    <div class="toast-stack">
+      <For each={useAppStore().toasts}>
+        {(toast) => (
+          <div class={['toast', toast.kind]} onClick={() => useAppStore.getState().dismissToast(toast.id)}>
+            {toast.message}
+          </div>
+        )}
+      </For>
     </div>
   )
 }

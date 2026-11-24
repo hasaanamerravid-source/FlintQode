@@ -24,7 +24,7 @@
  * module stays usable (and importable) without a browser window.
  */
 
-import { create } from 'zustand'
+import { create } from '@/state/compat'
 
 /** What a language server is doing right now. */
 export type LspServerState = 'starting' | 'ready' | 'error' | 'stopped'

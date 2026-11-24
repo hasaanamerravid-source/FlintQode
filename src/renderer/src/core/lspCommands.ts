@@ -6,7 +6,7 @@
  * turn them into a jump inside the editor.
  */
 
-import { create } from 'zustand'
+import { create } from '@/state/compat'
 import { useAppStore } from '../store/app'
 import { useUiStore } from '../store/ui'
 import { getEditor } from './editors'

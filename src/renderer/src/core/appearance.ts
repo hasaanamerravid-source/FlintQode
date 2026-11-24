@@ -38,18 +38,18 @@ export function luminance(hex: string): number {
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
-  cornerRadius: 8,
-  glassTopBar: false,
-  glassBlur: 12,
-  glassOpacity: 0.94,
-  gradient: false,
-  gradientFrom: '#eef2ff',
-  gradientTo: '#f8fafc',
-  accentColor: '#2563eb',
+  cornerRadius: 10,
+  glassTopBar: true,
+  glassBlur: 16,
+  glassOpacity: 0.9,
+  gradient: true,
+  gradientFrom: '#123b46',
+  gradientTo: '#18233a',
+  accentColor: '#68e0c8',
   density: 'cozy',
   tabStyle: 'underline',
   showToolbarIcons: true,
-  softShadows: false,
+  softShadows: true,
   animations: true,
 }
 

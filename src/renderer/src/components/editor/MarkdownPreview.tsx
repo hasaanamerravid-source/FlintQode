@@ -1,11 +1,11 @@
-import type { JSX } from 'react'
+import type { JSX } from '@solidjs/web'
 /**
  * Markdown preview.
  *
  * The markdown is rendered with `marked` and sanitised with DOMPurify.
  */
 
-import { useEffect, useMemo, useRef } from 'react'
+import { createMemo, onSettled } from 'solid-js'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 
@@ -45,32 +45,33 @@ export function renderMarkdown(source: string): string {
 }
 
 /** Read-only markdown preview with clickable links. */
-export function MarkdownPreview({ source, onOpenLink, className }: MarkdownPreviewProps): JSX.Element {
-  const html = useMemo(() => renderMarkdown(source), [source])
-  const hostRef = useRef<HTMLDivElement | null>(null)
+export function MarkdownPreview(props: MarkdownPreviewProps): JSX.Element {
+  const html = createMemo(() => renderMarkdown(props.source))
+  let host!: HTMLDivElement
 
-  useEffect(() => {
-    const host = hostRef.current
-    if (!host) return
+  onSettled(() => {
     const handleClick = (event: MouseEvent): void => {
       const target = event.target as HTMLElement | null
       const anchor = target?.closest('a') as HTMLAnchorElement | null
       if (!anchor) return
       event.preventDefault()
       const href = anchor.getAttribute('href')
-      if (href) onOpenLink?.(href)
+      // Read the prop when the click happens: Solid props are live getters, so
+      // a changed handler is used without re-subscribing the listener.
+      if (href) props.onOpenLink?.(href)
     }
     host.addEventListener('click', handleClick)
     return () => host.removeEventListener('click', handleClick)
-  }, [onOpenLink])
+  })
 
-  const classes = className ? `markdown-preview ${className}` : 'markdown-preview'
   return (
     <div
-      ref={hostRef}
-      className={classes}
+      ref={(el) => {
+        host = el
+      }}
+      class={['markdown-preview', props.className]}
       // The HTML is sanitised by DOMPurify inside renderMarkdown.
-      dangerouslySetInnerHTML={{ __html: html }}
+      innerHTML={html()}
     />
   )
 }

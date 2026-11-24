@@ -1,18 +1,20 @@
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import solid from '@solidjs/vite-plugin'
 
 /**
  * The renderer is a plain Vite app. Tauri serves it from `devUrl` during
  * development and from `frontendDist` in the packaged application.
  */
+const rendererDir = resolve(import.meta.dirname, 'src/renderer')
+
 export default defineConfig({
-  root: resolve(import.meta.dirname, 'src/renderer'),
+  root: rendererDir,
   clearScreen: false,
-  plugins: [react()],
+  plugins: [solid()],
   resolve: {
     alias: {
-      '@': resolve(import.meta.dirname, 'src/renderer/src'),
+      '@': resolve(rendererDir, 'src'),
       '@shared': resolve(import.meta.dirname, 'src/shared'),
     },
   },
@@ -25,28 +27,23 @@ export default defineConfig({
   build: {
     outDir: resolve(import.meta.dirname, 'dist'),
     emptyOutDir: true,
-    target: 'es2021',
+    target: 'es2022',
     minify: 'oxc',
     sourcemap: false,
     chunkSizeWarningLimit: 4096,
-    // Keep the initial bundle small: the editor engine, the language packs and
-    // the icon data are large and are only needed by the part of the app that
-    // is actually on screen.
     rolldownOptions: {
       output: {
-        manualChunks: (id: string) => {
-          if (id.includes('node_modules')) {
-            if (id.includes('@codemirror') || id.includes('@lezer') || id.includes('/codemirror/')) {
-              return 'codemirror'
-            }
-            if (id.includes('@tauri-apps')) return 'tauri'
-            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('zustand') || id.includes('scheduler')) {
-              return 'vendor'
-            }
-            if (id.includes('marked') || id.includes('dompurify')) return 'markdown'
-            return 'vendor'
+        manualChunks(id: string) {
+          if (!/[\\/]node_modules[\\/]/.test(id)) return undefined
+          if (/[\\/]@tauri-apps[\\/]/.test(id)) return 'tauri'
+          if (
+            /[\\/]@codemirror[\\/](state|view|language|commands|autocomplete|search|lint)[\\/]/.test(
+              id,
+            )
+          ) {
+            return 'codemirror-core'
           }
-          if (id.includes('/core/iconShapes') || id.includes('/core/icons/')) return 'icons'
+          if (/[\\/](?:marked|dompurify)[\\/]/.test(id)) return 'markdown'
           return undefined
         },
       },

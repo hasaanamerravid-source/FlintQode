@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { create } from '@/state/compat'
 
 export interface StatusState {
   line: number
@@ -37,7 +37,7 @@ const initial = {
   encoding: 'utf8',
   eol: '\n',
   dirty: false,
-  zoom: 100,
+  zoom: 1,
   maximized: false,
   gitBranch: '',
   gitDirty: false,

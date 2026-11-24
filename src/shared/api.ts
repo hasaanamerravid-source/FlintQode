@@ -26,18 +26,12 @@ export interface RunEvent {
   code?: number
 }
 
-/** One event of the integrated shell. */
+/** Raw PTY output for one integrated-shell session. */
 export interface TerminalEvent {
-  type: 'stdout' | 'stderr' | 'exit' | 'error'
+  type: 'data' | 'exit'
   sessionId: string
   text?: string
   code?: number
-}
-
-/** One line of the integrated shell log. */
-export interface TerminalLine {
-  type: 'input' | 'stdout' | 'stderr' | 'system'
-  text: string
 }
 
 /** One file with changes, as reported by `git.status`. */
@@ -237,7 +231,7 @@ export interface FlintQodeApi {
     stop(sessionId: string): Promise<boolean>
     close(sessionId: string): Promise<boolean>
     list(): Promise<TerminalListItem[]>
-    active(): Promise<string>
+    active(sessionId?: string): Promise<string>
     resize(sessionId: string, cols: number, rows: number): Promise<boolean>
     onOutput(cb: (event: TerminalEvent) => void): () => void
   }

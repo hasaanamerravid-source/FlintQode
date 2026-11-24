@@ -5,9 +5,26 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0] - 2026-11-22
+## [1.4.5] - 2026-11-24
 
 ### Added
+- Complete SolidJS 2 renderer: fine-grained signals, compiled JSX, Vite 8 and a smaller runtime.
+- Aurora Slate design system with a polished dark and light interface, refreshed dialogs, menus, panels and command palette.
+- New website screenshots captured from the SolidJS 2 interface, and documentation updated for the final stack.
+- ADR 0005 records the SolidJS 2 decision and the preserved native contract.
+
+### Changed
+- Node.js 22.12 or newer is required to build from source; CI now uses Node 22.12.
+- The renderer uses `@solidjs/web` for JSX types and rendering, while `bridge.ts` and the Rust backend remain unchanged.
+- The status bar reads active-tab metadata directly; editor measurements stay in the status store.
+
+### Fixed
+- Eliminated Solid 2 effect/write diagnostics in the menu, editor and status bar.
+- Corrected the v1.4.5 release notes, download links and OS installer messaging across the website.
+
+### Editor, installer and interface work in 1.4.5
+
+#### Added
 - Full editor typography and colour customisation: font family, size, weight, style, line height, letter spacing, ligatures and text, background, caret and selection colours. The changes are live and saved automatically.
 - A real three-button Save / Discard / Cancel dialog for unsaved tabs.
 - Crash-safe atomic writes for every file, including project-wide replace.
@@ -15,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - macOS installer in the CI matrix and on the download page.
 - MIT licence throughout the project and website.
 
-### Changed
+#### Changed
 - The project is now FlintQode (previously OpenNotes). Existing settings, sessions, macros and `.opennotes.json` project files are migrated automatically.
 - Running a file now saves the buffer first, adopts the language of the saved name and reports backend errors in the Run panel.
 - `F5` runs the current file; Insert Date/Time moved to `Ctrl+Alt+D`; `Shift+F5` stops the run.
@@ -23,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Window maximize and restore now follow the native resize event instead of a 500 ms poll.
 - The Rust watcher emits the path the renderer subscribed with, so external changes are detected reliably.
 
-### Fixed
+#### Fixed
 - `fs_read_file` returns an error instead of a silent empty payload.
 - `fs_write_file` and `fs_write_text_file` use atomic temp-file-then-rename writes.
 - `fs_rename` and `fs_copy_file` canonicalize their paths.
@@ -83,7 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the file system, project search, the language server host, the terminal
   shell, the runners, the settings/session/recent store and the plugins.
 - `src/renderer/src/bridge.ts` — implements the old `window.api` contract on
-  top of `invoke()` and `listen()`, so the React code does not know which
+  top of `invoke()` and `listen()`, so the renderer does not know which
   shell it runs in.
 - `src/shared/api.ts` — the typed `window.api` contract, shared by the
   bridge and the renderer.

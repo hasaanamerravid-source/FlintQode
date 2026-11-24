@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { createEffect, createMemo, createSignal, onSettled, type Accessor } from 'solid-js'
 import { useAppStore } from '../store/app'
 import { getView } from './views'
 import { applyProblems, collectProblems, type Problem } from './diagnostics'
@@ -37,6 +37,14 @@ export function currentProblems(): Problem[] {
   return latestProblems
 }
 
+interface CheckSource {
+  activeTabId: string | null
+  content: string
+  language: string
+  large: boolean
+  path: string
+}
+
 /**
  * Collects the problems of the active file and marks them in the editor.
  * The check runs a moment after the last change so typing stays smooth.
@@ -44,86 +52,108 @@ export function currentProblems(): Problem[] {
  * The problems of the language servers are merged in: they are the ones that
  * know the types, the unused imports and the wrong calls.
  */
-export function useProblems(): Problem[] {
-  const activeTabId = useAppStore((s) => s.activeTabId)
-  const content = useAppStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.content ?? '')
-  const language = useAppStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.language ?? 'text')
-  const large = useAppStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.largeFile ?? false)
-  const path = useAppStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.path ?? '')
-  const lspProblems = useLspProblems(path)
-  const referenceProblems = useReferenceStore((s) => s.problems)
-  const [problems, setProblems] = useState<Problem[]>(latestProblems)
+export function useProblems(): Accessor<Problem[]> {
+  const [problems, setProblems] = createSignal<Problem[]>(latestProblems)
 
-  useEffect(() => {
-    const listener = (found: Problem[]): void => setProblems(found)
+  onSettled(() => {
+    const listener = (found: Problem[]): void => {
+      setProblems(found)
+    }
     listeners.add(listener)
     return () => {
       listeners.delete(listener)
     }
-  }, [])
+  })
 
-  useEffect(() => {
-    if (large) {
-      publish([])
-      return
-    }
-    const timer = window.setTimeout(() => {
-      const key = `${activeTabId}:${language}:${content.length}`
-      // Another place already checked the same document.
-      if (key === lastKey) return
-      lastKey = key
-      const view = getView(activeTabId)
-      if (!view) {
+  createEffect(
+    () => {
+      const state = useAppStore()
+      const tab = state.tabs.find((t) => t.id === state.activeTabId)
+      return {
+        activeTabId: state.activeTabId,
+        content: tab?.content ?? '',
+        language: tab?.language ?? 'text',
+        large: tab?.largeFile ?? false,
+        path: tab?.path ?? '',
+      } satisfies CheckSource
+    },
+    (source) => {
+      let timer: number | undefined
+      if (source.large) {
         publish([])
         return
       }
-      const found = collectProblems(view, language)
-      publish(found)
-      applyProblems(view, found)
-    }, 350)
-    return () => window.clearTimeout(timer)
-  }, [activeTabId, content, language, large])
+      timer = window.setTimeout(() => {
+        const key = `${source.activeTabId}:${source.language}:${source.content.length}`
+        // Another place already checked the same document.
+        if (key === lastKey) return
+        lastKey = key
+        const view = getView(source.activeTabId)
+        if (!view) {
+          publish([])
+          return
+        }
+        const found = collectProblems(view, source.language)
+        publish(found)
+        applyProblems(view, found)
+      }, 350)
+      return () => {
+        if (timer !== undefined) window.clearTimeout(timer)
+      }
+    },
+  )
 
-  // The problems of the language server are shown next to the syntax errors.
-  const all = [...problems, ...lspProblems]
-  return referenceProblems.length ? [...all, ...referenceProblems] : all
-}
+  // The problems of the language servers are shown next to the syntax errors.
+  const lspProblems = createMemo(() => {
+    const lsp = useLspStore()
+    void lsp.problems
+    const path = useAppStore().tabs.find((t) => t.id === useAppStore().activeTabId)?.path ?? ''
+    return asProblems(lspProblemsForPath(path))
+  })
+  const referenceProblems = createMemo(() => useReferenceStore().problems)
 
-/** The problems that the language servers published for a file. */
-function useLspProblems(path: string): Problem[] {
-  const problems = useLspStore((s) => s.problems)
-  return useMemo(() => asProblems(lspProblemsForPath(path)), [problems, path])
+  return createMemo(() => {
+    const all = [...problems(), ...lspProblems()]
+    const references = referenceProblems()
+    return references.length ? [...all, ...references] : all
+  })
 }
 
 /**
  * The language servers of the project: the plain text file of the project
- * wins over the global settings. The main process is told about them, so that
- * it starts the right program.
+ * wins over the global settings. The backend is told about them, so that it
+ * starts the right program.
  *
  * The folder of the project is the one from the settings; when it is empty
  * the folder of the open file is used, so that a project with a
  * `.flintqode.json` works without any configuration.
  */
 export function useLspConfiguration(): void {
-  const configured = useAppStore((s) => s.settings.projectFolder)
-  const globals = useAppStore((s) => s.settings.lspServers)
-  const activePath = useAppStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.path ?? '')
-
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      const folder = configured ?? projectFolder()
-      const project = folder ? await readProjectConfig(folder) : null
-      if (cancelled) return
-      const servers = resolveServers(project, globals ?? {})
-      try {
-        await window.api.lsp?.configure?.({ servers, rootPath: folder ?? null })
-      } catch {
-        /* the language servers are optional */
+  createEffect(
+    () => {
+      const state = useAppStore()
+      return {
+        configured: state.settings.projectFolder,
+        globals: state.settings.lspServers,
+        activePath: state.tabs.find((t) => t.id === state.activeTabId)?.path ?? '',
       }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [configured, globals, activePath])
+    },
+    ({ configured, globals, activePath }) => {
+      let cancelled = false
+      void (async () => {
+        const folder = configured ?? projectFolder()
+        const project = folder ? await readProjectConfig(folder) : null
+        if (cancelled) return
+        const servers = resolveServers(project, globals ?? {})
+        try {
+          await window.api.lsp?.configure?.({ servers, rootPath: folder ?? null })
+        } catch {
+          /* the language servers are optional */
+        }
+      })()
+      return () => {
+        cancelled = true
+      }
+    },
+  )
 }

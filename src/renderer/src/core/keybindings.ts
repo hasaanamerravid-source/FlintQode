@@ -19,7 +19,7 @@
  * editor with the blue logo) is translated with {@link fromVSCode}.
  */
 
-import { useEffect, useState } from 'react'
+import { createEffect, createSignal, type Accessor } from 'solid-js'
 import { useAppStore } from '../store/app'
 import { cachedProjectConfig } from './projectConfig'
 
@@ -242,32 +242,40 @@ export async function writeKeybindings(bindings: Keybindings): Promise<void> {
 }
 
 /** The keybindings that are in use right now. */
-let currentBindings: Keybindings = {}
+const [bindings, setBindingsSignal] = createSignal<Keybindings>({})
 
 /** Remember the bindings (the keyboard handler needs them right away). */
-export function setKeybindings(bindings: Keybindings): void {
-  currentBindings = bindings
+export function setKeybindings(next: Keybindings): void {
+  setBindingsSignal(next)
 }
 
 /** The bindings that are in use right now (without waiting for the file). */
 export function readKeybindingsSync(): Keybindings {
-  return currentBindings
+  return bindings()
 }
 
-/** The keybindings that are in use right now. */
-export function useKeybindings(): Keybindings {
-  const [bindings, setBindings] = useState<Keybindings>(currentBindings)
-  const activeTabId = useAppStore((s) => s.activeTabId)
-  useEffect(() => {
-    let cancelled = false
-    void readKeybindings().then((loaded) => {
-      if (cancelled) return
-      setKeybindings(loaded)
-      setBindings(loaded)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [activeTabId])
+/** Reactive bindings accessor for Solid components. */
+export function useKeybindings(): Accessor<Keybindings> {
+  // Project overrides can change with the active file, so every consumer
+  // refreshes the bindings when that file changes, just like the old hook did.
+  createEffect(
+    () => useAppStore().activeTabId,
+    () => {
+      let cancelled = false
+      void readKeybindings().then((loaded) => {
+        if (!cancelled) setKeybindings(loaded)
+      })
+      return () => {
+        cancelled = true
+      }
+    },
+  )
   return bindings
+}
+
+/** Load the bindings once during app bootstrap. */
+export async function loadKeybindings(): Promise<Keybindings> {
+  const loaded = await readKeybindings()
+  setKeybindings(loaded)
+  return loaded
 }

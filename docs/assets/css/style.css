@@ -12,19 +12,19 @@
 }
 .skip-link:focus { top: 0; }
 :root {
-  --ink: #1f2937;
-  --ink-soft: #4b5563;
-  --muted: #6b7280;
-  --border: #e5e7eb;
+  --ink: #172033;
+  --ink-soft: #485872;
+  --muted: #7a8aa4;
+  --border: #dce3ef;
   --surface: #ffffff;
-  --surface-2: #f9fafb;
-  --surface-3: #f3f4f6;
+  --surface-2: #f5f7fb;
+  --surface-3: #e9eff8;
 
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-soft: #eff6ff;
-  --accent: #7c3aed;
-  --accent-soft: #faf5ff;
+  --primary: #2f6df2;
+  --primary-hover: #1f52c4;
+  --primary-soft: #e8f0ff;
+  --accent: #0f766e;
+  --accent-soft: #e6f7f2;
 
   --radius: 8px;
   --space-1: 0.5rem;
@@ -44,18 +44,18 @@
 
 [data-theme='dark'] {
   color-scheme: dark;
-  --ink: #f3f4f6;
-  --ink-soft: #cbd5e1;
-  --muted: #94a3b8;
-  --border: #334155;
-  --surface: #0f172a;
-  --surface-2: #0b0d14;
-  --surface-3: #1e293b;
-  --primary: #3b82f6;
-  --primary-hover: #60a5fa;
-  --primary-soft: #1e3a8a;
-  --accent: #a855f7;
-  --accent-soft: #2d1b3a;
+  --ink: #e8eef8;
+  --ink-soft: #aebbd0;
+  --muted: #75849c;
+  --border: #202b3b;
+  --surface: #101620;
+  --surface-2: #0b0e14;
+  --surface-3: #151d29;
+  --primary: #2f6df2;
+  --primary-hover: #5b96ff;
+  --primary-soft: #132b55;
+  --accent: #68e0c8;
+  --accent-soft: #123b36;
 }
 
 :root { color-scheme: light; }
@@ -72,8 +72,8 @@ body {
   margin: 0;
   transition: background 0.3s ease, color 0.3s ease;
   background:
-    radial-gradient(900px 420px at 10% -5%, rgba(37, 99, 235, 0.14), transparent 62%),
-    radial-gradient(700px 380px at 92% 0%, rgba(124, 58, 237, 0.12), transparent 62%),
+    radial-gradient(900px 420px at 10% -5%, rgba(47, 109, 242, 0.14), transparent 62%),
+    radial-gradient(700px 380px at 92% 0%, rgba(104, 224, 200, 0.12), transparent 62%),
     var(--surface-2);
   background-size: 140% 140%;
   animation: bg-shift 22s ease-in-out infinite alternate;
@@ -262,8 +262,8 @@ img { max-width: 100%; display: block; }
   padding-top: var(--space-8);
   padding-bottom: var(--space-8);
   background:
-    radial-gradient(900px 420px at 15% 10%, rgba(37, 99, 235, 0.22), transparent 62%),
-    radial-gradient(700px 380px at 85% 0%, rgba(124, 58, 237, 0.20), transparent 62%),
+    radial-gradient(900px 420px at 15% 10%, rgba(47, 109, 242, 0.18), transparent 62%),
+    radial-gradient(700px 380px at 85% 0%, rgba(104, 224, 200, 0.18), transparent 62%),
     linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
   position: relative;
   overflow: hidden;
@@ -526,7 +526,7 @@ h1, h2, h3, .cta h2 { font-family: var(--font-display); }
 .btn {
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
-.btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -10px rgba(37, 99, 235, 0.45); }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -10px rgba(47, 109, 242, 0.45); }
 .btn:active { transform: translateY(0); }
 
 .feature-card:hover,

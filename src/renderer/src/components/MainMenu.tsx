@@ -1,5 +1,5 @@
-import type { JSX, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createEffect, createMemo, createSignal, For, Show, untrack, type Accessor } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { Profile } from '@shared/types'
 import { itemsForProfile, sectionsForProfile } from '../core/menuStructure'
 import type { MenuItem, MenuSection } from '../core/menuStructure'
@@ -140,96 +140,99 @@ function stepIndex(items: MenuItem[], from: number, dir: 1 | -1): number {
   return from
 }
 
-export function MainMenu({
-  open,
-  onClose,
-  profile,
-  onCommand,
-  anchor = 'left',
-  className,
-}: MainMenuProps): JSX.Element | null {
-  const sections = useMemo(() => sectionsForProfile(profile), [profile])
+export function MainMenu(props: MainMenuProps): JSX.Element {
+  const sections = createMemo(() => sectionsForProfile(props.profile))
   const t = useTWith()
-  const [activeSection, setActiveSection] = useState(0)
-  const [openSection, setOpenSection] = useState<number | null>(null)
-  const [itemIndex, setItemIndex] = useState(0)
-  const [nestedId, setNestedId] = useState<string | null>(null)
-  const [subTop, setSubTop] = useState(0)
-  const [nestedTop, setNestedTop] = useState(0)
-  const [nestedLeft, setNestedLeft] = useState(0)
-  const panelRef = useRef<HTMLDivElement | null>(null)
-  const subRef = useRef<HTMLDivElement | null>(null)
-  const sectionRefs = useRef<(HTMLButtonElement | null)[]>([])
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([])
-  const nestedItemRefs = useRef<(HTMLDivElement | null)[]>([])
+  const [activeSection, setActiveSection] = createSignal(0)
+  const [openSection, setOpenSection] = createSignal<number | null>(null)
+  const [itemIndex, setItemIndex] = createSignal(0)
+  const [nestedId, setNestedId] = createSignal<string | null>(null)
 
-  const openSectionData = useMemo<MenuSection | undefined>(
-    () => (openSection === null ? undefined : sections[openSection]),
-    [openSection, sections],
+  let panelRef: HTMLDivElement | undefined
+  let subRef: HTMLDivElement | undefined
+  let nestedRef: HTMLDivElement | undefined
+  const sectionRefs: (HTMLButtonElement | null)[] = []
+  const itemRefs: (HTMLDivElement | null)[] = []
+  const nestedItemRefs: (HTMLDivElement | null)[] = []
+
+  const openSectionData = createMemo<MenuSection | undefined>(() =>
+    openSection() === null ? undefined : sections()[openSection()!],
   )
-  const openItems = useMemo<MenuItem[]>(
-    () => (openSectionData ? itemsForProfile(openSectionData, profile) : []),
-    [openSectionData, profile],
+  const openItems = createMemo<MenuItem[]>(() =>
+    openSectionData() ? itemsForProfile(openSectionData()!, props.profile) : [],
   )
-  const nestedItems = useMemo<MenuItem[]>(() => {
-    const parent = openItems.find((item) => item.id === nestedId)
+  const nestedItems = createMemo<MenuItem[]>(() => {
+    const parent = openItems().find((item) => item.id === nestedId())
     return parent?.items ?? []
-  }, [openItems, nestedId])
+  })
 
   /* --------------------------- open / reset --------------------------- */
 
-  useEffect(() => {
-    if (!open) return
-    setActiveSection(0)
-    setOpenSection(null)
-    setItemIndex(0)
-    setNestedId(null)
-    const frame = window.requestAnimationFrame(() => panelRef.current?.focus())
-    return () => window.cancelAnimationFrame(frame)
-  }, [open])
+  createEffect(
+    () => props.open,
+    (open) => {
+      if (!open) return
+      setActiveSection(0)
+      setOpenSection(null)
+      setItemIndex(0)
+      setNestedId(null)
+      const frame = window.requestAnimationFrame(() => panelRef?.focus())
+      return () => window.cancelAnimationFrame(frame)
+    },
+  )
 
-  useEffect(() => {
-    if (openSection !== null && openSection >= sections.length) setOpenSection(null)
-  }, [openSection, sections])
+  createEffect(
+    () => ({ section: openSection(), count: sections().length }),
+    ({ section, count }) => {
+      if (section !== null && section >= count) setOpenSection(null)
+    },
+  )
 
   /* ----------------------------- measuring ---------------------------- */
 
-  const measure = useCallback((): void => {
-    const panel = panelRef.current
+  const measure = (section: number | null, nested: string | null, items: MenuItem[]): void => {
+    const panel = panelRef
     if (!panel) return
     const base = panel.getBoundingClientRect()
-    if (openSection !== null) {
-      const button = sectionRefs.current[openSection]
-      if (button) {
+    // Positions are measured layout, not application state: writing them
+    // straight to the flyouts avoids relaying the menu signals into another
+    // signal and rendering one frame with a stale position.
+    if (section !== null) {
+      const button = sectionRefs[section]
+      if (button && subRef) {
         let top = Math.round(button.getBoundingClientRect().top - base.top)
-        const sub = subRef.current
-        if (sub) {
-          // Keep the fly out inside the window.
-          const room = window.innerHeight - sub.offsetHeight - 12 - base.top
-          top = Math.max(0, Math.min(top, room))
-        }
-        setSubTop(top)
+        // Keep the fly out inside the window.
+        const room = window.innerHeight - subRef.offsetHeight - 12 - base.top
+        top = Math.max(0, Math.min(top, room))
+        subRef.style.top = `${top}px`
       }
     }
-    if (nestedId) {
-      const index = openItems.findIndex((item) => item.id === nestedId)
-      const row = index >= 0 ? itemRefs.current[index] : null
+    if (nested && nestedRef) {
+      const index = items.findIndex((item) => item.id === nested)
+      const row = index >= 0 ? itemRefs[index] : null
       if (row) {
-        setNestedTop(Math.round(row.getBoundingClientRect().top - base.top))
-        setNestedLeft(Math.round(base.width))
+        nestedRef.style.top = `${Math.round(row.getBoundingClientRect().top - base.top)}px`
+        nestedRef.style.left = `${Math.round(base.width)}px`
       }
     }
-  }, [openSection, nestedId, openItems])
+  }
 
-  useLayoutEffect(() => {
-    measure()
-  }, [measure])
+  createEffect(
+    () => ({ open: props.open, section: openSection(), nested: nestedId(), items: openItems() }),
+    ({ section, nested, items }) => measure(section, nested, items),
+  )
 
-  useEffect(() => {
-    if (!open) return
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [open, measure])
+  createEffect(
+    () => props.open,
+    (open) => {
+      if (!open) return
+      // A resize is a snapshot: the tracked effect above already re-measures
+      // when the menu state changes, so read the signals untracked here.
+      const onResize = (): void => measure(untrack(openSection), untrack(nestedId), untrack(openItems))
+      window.addEventListener('resize', onResize)
+      return () => window.removeEventListener('resize', onResize)
+    },
+  )
 
   /* ------------------------------ actions ----------------------------- */
 
@@ -239,14 +242,14 @@ export function MainMenu({
       setNestedId(item.id)
       return
     }
-    onCommand(item.id)
-    onClose()
+    props.onCommand(item.id)
+    props.onClose()
   }
 
   const openSubmenu = (index: number): void => {
-    const section = sections[index]
+    const section = sections()[index]
     if (!section) return
-    const items = itemsForProfile(section, profile)
+    const items = itemsForProfile(section, props.profile)
     setActiveSection(index)
     setOpenSection(index)
     setNestedId(null)
@@ -255,34 +258,34 @@ export function MainMenu({
 
   /* ------------------------------ keyboard ---------------------------- */
 
-  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+  const handleKeyDown = (event: KeyboardEvent): void => {
     const key = event.key
     if (key === 'Escape' || key === 'Tab') {
       event.preventDefault()
       event.stopPropagation()
-      onClose()
+      props.onClose()
       return
     }
     if (key === 'ArrowDown' || key === 'ArrowUp') {
       event.preventDefault()
       const dir = key === 'ArrowDown' ? 1 : -1
-      if (openSection === null) {
-        openSubmenu(sections.length ? (dir === 1 ? 0 : sections.length - 1) : 0)
+      if (openSection() === null) {
+        openSubmenu(sections().length ? (dir === 1 ? 0 : sections().length - 1) : 0)
         return
       }
-      setItemIndex((current) => stepIndex(openItems, current, dir))
+      setItemIndex((current) => stepIndex(openItems(), current, dir))
       setNestedId(null)
       return
     }
     if (key === 'ArrowRight') {
-      if (openSection === null) {
+      if (openSection() === null) {
         event.preventDefault()
-        openSubmenu(activeSection)
+        openSubmenu(activeSection())
       }
       return
     }
     if (key === 'ArrowLeft') {
-      if (openSection !== null) {
+      if (openSection() !== null) {
         event.preventDefault()
         setOpenSection(null)
         setNestedId(null)
@@ -291,124 +294,139 @@ export function MainMenu({
     }
     if (key === 'Enter') {
       event.preventDefault()
-      if (openSection === null) {
-        openSubmenu(activeSection)
+      if (openSection() === null) {
+        openSubmenu(activeSection())
         return
       }
-      runItem(openItems[itemIndex])
+      runItem(openItems()[itemIndex()])
     }
   }
 
   /* ------------------------------ rendering --------------------------- */
 
-  if (!open) return null
-
-  const rootClass = ['main-menu', `main-menu-${anchor}`, className].filter(Boolean).join(' ')
-
-  const renderRow = (item: MenuItem, index: number, nested: boolean): JSX.Element => {
-    if (item.separator) {
-      return <div key={`${item.id}-${index}`} className="main-menu-separator" role="separator" />
-    }
-    const highlighted = index === itemIndex
-    const hasChildren = !!item.items && item.items.length > 0
-    const setRef = (el: HTMLDivElement | null): void => {
-      if (nested) nestedItemRefs.current[index] = el
-      else itemRefs.current[index] = el
+  const MenuRow = (props: { item: MenuItem; index: Accessor<number>; nested: boolean }): JSX.Element => {
+    const hasChildren = !!props.item.items && props.item.items.length > 0
+    // The list is static while the menu is open, so a row keeps its index for
+    // the DOM refs and hover handlers. The class binding reads the accessor
+    // reactively so the keyboard highlight still follows itemIndex().
+    const rowIndex = untrack(() => props.index())
+    const setRef = (el: HTMLDivElement): void => {
+      if (props.nested) nestedItemRefs[rowIndex] = el
+      else itemRefs[rowIndex] = el
     }
     return (
-      <div
-        key={`${item.id}-${index}`}
-        ref={setRef}
-        role="menuitem"
-        aria-disabled={item.disabled ? true : undefined}
-        className={[
-          'main-menu-item',
-          highlighted ? 'main-menu-highlight' : '',
-          item.disabled ? 'main-menu-item-disabled' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-        onMouseEnter={() => {
-          setItemIndex(index)
-          setNestedId(hasChildren ? item.id : null)
-        }}
-        onClick={() => runItem(item)}
-      >
-        <span className="main-menu-item-label">{t(commandKey(item.id), item.label)}</span>
-        {item.shortcut && <span className="main-menu-item-shortcut kbd">{item.shortcut}</span>}
-        {hasChildren && <span className="main-menu-item-shortcut">›</span>}
-      </div>
+      <Show when={!props.item.separator} fallback={<div class="main-menu-separator" role="separator" />}>
+        <div
+          ref={setRef}
+          role="menuitem"
+          aria-disabled={props.item.disabled ? 'true' : undefined}
+          class={[
+            'main-menu-item',
+            {
+              'main-menu-highlight': props.index() === itemIndex(),
+              'main-menu-item-disabled': props.item.disabled,
+            },
+          ]}
+          onMouseEnter={() => {
+            setItemIndex(rowIndex)
+            setNestedId(hasChildren ? props.item.id : null)
+          }}
+          onClick={() => runItem(props.item)}
+        >
+          <span class="main-menu-item-label">{t(commandKey(props.item.id), props.item.label)}</span>
+          <Show when={props.item.shortcut}>
+            <span class="main-menu-item-shortcut kbd">{props.item.shortcut}</span>
+          </Show>
+          <Show when={hasChildren}>
+            <span class="main-menu-item-shortcut">›</span>
+          </Show>
+        </div>
+      </Show>
     )
   }
 
   return (
-    <div
-      className={rootClass}
-      onMouseDown={(event: ReactMouseEvent<HTMLDivElement>) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-    >
-      <style href="flintqode-main-menu" precedence="flintqode-main-menu">
-        {MENU_CSS}
-      </style>
+    <Show when={props.open}>
       <div
-        ref={panelRef}
-        className="main-menu-panel"
-        role="menubar"
-        aria-label="Main menu"
-        tabIndex={-1}
-        onKeyDown={handleKeyDown}
-        onMouseDown={(event: ReactMouseEvent<HTMLDivElement>) => event.stopPropagation()}
+        class={['main-menu', `main-menu-${props.anchor}`, props.className]}
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) props.onClose()
+        }}
       >
-        {sections.map((section, index) => (
-          <button
-            key={section.id}
-            ref={(el) => {
-              sectionRefs.current[index] = el
-            }}
-            type="button"
-            role="menuitem"
-            aria-haspopup="menu"
-            aria-expanded={openSection === index}
-            tabIndex={-1}
-            className={[
-              'main-menu-section',
-              openSection === index ? 'main-menu-highlight' : '',
-              activeSection === index && openSection === null ? 'main-menu-highlight' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            onClick={() => openSubmenu(index)}
-            onMouseEnter={() => openSubmenu(index)}
-          >
-            <span className="main-menu-item-label">{t(sectionKey(section.id), section.label)}</span>
-            <span className="main-menu-item-shortcut">›</span>
-          </button>
-        ))}
+        <style {...({ href: 'flintqode-main-menu', precedence: 'flintqode-main-menu' } as Record<string, string>)}>
+          {MENU_CSS}
+        </style>
+        <div
+          ref={(el) => {
+            panelRef = el
+          }}
+          class="main-menu-panel"
+          role="menubar"
+          aria-label="Main menu"
+          tabindex={-1}
+          onKeyDown={handleKeyDown}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <For each={sections()}>
+            {(section, index) => (
+              <button
+                ref={(el) => {
+                  sectionRefs[untrack(() => index())] = el
+                }}
+                type="button"
+                role="menuitem"
+                aria-haspopup="menu"
+                aria-expanded={openSection() === index() ? 'true' : 'false'}
+                tabindex={-1}
+                class={[
+                  'main-menu-section',
+                  {
+                    'main-menu-highlight':
+                      openSection() === index() || (activeSection() === index() && openSection() === null),
+                  },
+                ]}
+                onClick={() => openSubmenu(index())}
+                onMouseEnter={() => openSubmenu(index())}
+              >
+                <span class="main-menu-item-label">{t(sectionKey(section.id), section.label)}</span>
+                <span class="main-menu-item-shortcut">›</span>
+              </button>
+            )}
+          </For>
 
-        {openSectionData && (
-          <div
-            ref={subRef}
-            className="main-menu-submenu"
-            role="menu"
-            aria-label={openSectionData.label}
-            style={{ top: subTop }}
-          >
-            {openItems.map((item, index) => renderRow(item, index, false))}
-          </div>
-        )}
+          <Show when={openSectionData()}>
+            {(data) => (
+              <div
+                ref={(el) => {
+                  subRef = el
+                }}
+                class="main-menu-submenu"
+                role="menu"
+                aria-label={data().label}
+              >
+                <For each={openItems()}>{(item, index) => <MenuRow item={item} index={index} nested={false} />}</For>
+              </div>
+            )}
+          </Show>
 
-        {nestedId && nestedItems.length > 0 && (
-          <div
-            className="main-menu-submenu"
-            role="menu"
-            aria-label={nestedId}
-            style={{ top: nestedTop, left: nestedLeft }}
-          >
-            {nestedItems.map((item, index) => renderRow(item, index, true))}
-          </div>
-        )}
+          <Show when={nestedId()}>
+            {(id) => (
+              <Show when={nestedItems().length > 0}>
+                <div
+                  ref={(el) => {
+                    nestedRef = el
+                  }}
+                  class="main-menu-submenu"
+                  role="menu"
+                  aria-label={id()}
+                >
+                  <For each={nestedItems()}>{(item, index) => <MenuRow item={item} index={index} nested={true} />}</For>
+                </div>
+              </Show>
+            )}
+          </Show>
+        </div>
       </div>
-    </div>
+    </Show>
   )
 }

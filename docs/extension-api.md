@@ -342,7 +342,7 @@ if (!handle) return
 ```
 
 A plugin runs in the renderer and can therefore use it: `window.flintqode.store`
-is the Zustand store of the application, `window.flintqode.run` runs a command,
+is the signal-backed application store, `window.flintqode.run` runs a command,
 `window.flintqode.editor` is the handle of the active tab.
 
 #### The editor handle

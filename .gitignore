@@ -10,6 +10,7 @@ src-tauri/target/
 src-tauri/gen/
 
 # Local tooling
+.tools/
 *.log
 *.tsbuildinfo
 .DS_Store
