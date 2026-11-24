@@ -119,7 +119,7 @@ Every user-visible action is a **command** with a stable id (`file.save`,
 * keyboard shortcuts.
 
 The native menu bar is gone by design: the window is undecorated, the title bar
-is drawn by the app, and the main menu opens from the hamburger button. That
+is drawn by the app, and the main menu opens from the hamburger button(new). That
 keeps the shell identical on Windows, macOS and Linux and removes a whole layer
 of platform-specific menu code.
 
@@ -129,7 +129,7 @@ editor or a Markdown editor.
 
 ## The native side
 
-The Rust backend owns everything that touches the operating system:
+The Fast Rust backend owns everything that touches the operating system:
 
 | Area | Commands |
 | --- | --- |
