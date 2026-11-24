@@ -1,0 +1,48 @@
+name: Update FlintQode site statistics
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    # 06:17 UTC every day, after GitHub's traffic counters have settled.
+    - cron: '17 6 * * *'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: site-stats
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.STATS_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+
+      - name: Refresh stats JSON
+        env:
+          STATS_TOKEN: ${{ secrets.STATS_TOKEN }}
+        run: node scripts/update-stats.mjs
+
+      - name: Commit refreshed stats
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/assets/data/stats.json
+          if git diff --cached --quiet; then
+            echo "Stats are already current."
+          else
+            # [skip ci] keeps the installer workflow from running for a data-only commit.
+            git commit -m "docs: refresh site statistics [skip ci]"
+            git push
+          fi

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stats — FlintQode</title>
+  <meta name="description" content="FlintQode site visitors, repository clones and installer download statistics, refreshed automatically from GitHub." />
+  <link rel="canonical" href="https://hasaanamerravid-source.github.io/FlintQode/stats.html" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="icon" type="image/png" href="assets/img/favicon.png" />
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to content</a>
+  <noscript>
+    <div style="padding:0.7rem 1rem;background:var(--surface-2);color:var(--ink-soft);text-align:center;font-size:0.85rem;">
+      The graphs need JavaScript to read the published statistics file. The numbers are generated from GitHub traffic and release data.
+    </div>
+  </noscript>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="nav-brand"><img src="assets/img/logo.png" alt="" class="nav-logo" width="26" height="26" />Flint<span class="accent">Qode</span></a>
+      <nav class="nav-links">
+        <a href="index.html#features">Features</a>
+        <a href="downloads.html">Downloads</a>
+        <a href="versions.html">Versions</a>
+        <a href="whats-new.html">What's new</a>
+        <a href="stats.html" class="active">Stats</a>
+        <a href="built-with.html">Built with</a>
+        <a href="faqs.html">FAQs</a>
+        <button class="theme-btn" aria-label="Toggle colour theme" id="themeToggle" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+      </nav>
+    </div>
+  </header>
+
+  <section class="section" id="main">
+    <div class="section-inner">
+      <div class="section-head">
+        <span class="kicker">Project insights</span>
+        <h2>FlintQode in numbers</h2>
+        <p>Visitors, repository clones and installer downloads, generated straight from GitHub's own statistics.</p>
+      </div>
+
+      <p class="stats-updated" id="statsUpdated">Loading the latest numbers…</p>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">Page views</span>
+          <strong class="stat-value" id="statViews">—</strong>
+          <span class="stat-note">Last 14 days</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Unique visitors</span>
+          <strong class="stat-value" id="statVisitors">—</strong>
+          <span class="stat-note">Last 14 days</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Repository clones</span>
+          <strong class="stat-value" id="statClones">—</strong>
+          <span class="stat-note" id="statCloneUniques">— unique cloners</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Installer downloads</span>
+          <strong class="stat-value" id="statDownloads">—</strong>
+          <span class="stat-note" id="statLatest">— latest release</span>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <article class="chart-card">
+          <div class="chart-head">
+            <div>
+              <h3>Visitors</h3>
+              <p>Unique visitors and page views each day.</p>
+            </div>
+            <div class="chart-legend">
+              <span><i class="swatch primary"></i>Views</span>
+              <span><i class="swatch accent"></i>Unique</span>
+            </div>
+          </div>
+          <div class="bar-chart" id="visitorsChart" role="img" aria-label="Daily page views and unique visitors">
+            <p class="chart-empty">Waiting for traffic data…</p>
+          </div>
+        </article>
+
+        <article class="chart-card">
+          <div class="chart-head">
+            <div>
+              <h3>Repository clones</h3>
+              <p>Clones and unique cloners each day.</p>
+            </div>
+            <div class="chart-legend">
+              <span><i class="swatch primary"></i>Clones</span>
+              <span><i class="swatch accent"></i>Unique</span>
+            </div>
+          </div>
+          <div class="bar-chart" id="clonesChart" role="img" aria-label="Daily repository clones and unique cloners">
+            <p class="chart-empty">Waiting for traffic data…</p>
+          </div>
+        </article>
+      </div>
+
+      <article class="chart-card chart-wide">
+        <div class="chart-head">
+          <div>
+            <h3>Downloads by release</h3>
+            <p>Total installer downloads for each published version.</p>
+          </div>
+        </div>
+        <div class="download-list" id="releaseChart">
+          <p class="chart-empty">Waiting for release data…</p>
+        </div>
+      </article>
+
+      <article class="chart-card chart-wide">
+        <div class="chart-head">
+          <div>
+            <h3>Latest release by installer</h3>
+            <p id="assetHeading">Which platforms people are downloading.</p>
+          </div>
+        </div>
+        <div class="download-list" id="assetChart">
+          <p class="chart-empty">Waiting for release data…</p>
+        </div>
+      </article>
+
+      <p class="stats-footnote">
+        GitHub keeps traffic history for 14 days and updates it once a day. Download counts come from the release assets and are
+        refreshed nightly and after each new release.
+      </p>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">Flint<span class="accent">Qode</span></div>
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="downloads.html">Downloads</a>
+        <a href="versions.html">Versions</a>
+        <a href="whats-new.html">What's new</a>
+        <a href="stats.html" class="active">Stats</a>
+        <a href="built-with.html">Built with</a>
+        <a href="faqs.html">FAQs</a>
+        <a href="https://github.com/hasaanamerravid-source/FlintQode" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <p class="footer-note">MIT Licensed · Built with Tauri 2, SolidJS 2 and CodeMirror 6.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/site.js" defer></script>
+  <script src="assets/js/stats.js" defer></script>
+</body>
+</html>
