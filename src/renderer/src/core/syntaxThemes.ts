@@ -106,6 +106,8 @@ export interface SyntaxThemeDef {
   label: string
   /** true when the theme is a dark theme */
   dark: boolean
+  /** The source palette, so user overrides can rebuild the style faithfully. */
+  palette: TokenPalette
   /** The CodeMirror highlight style used for token colours. */
   style: HighlightStyle
   /** Editor chrome colours (background, foreground, cursor, selection, gutter, …). */
@@ -484,6 +486,7 @@ export const SYNTAX_THEMES: SyntaxThemeDef[] = [
     id: 'darcula',
     label: 'FlintQode Dark',
     dark: true,
+    palette: darculaPalette,
     style: buildStyle(darculaPalette),
     editor: {
       background: '#2B2B2B',
@@ -507,6 +510,7 @@ export const SYNTAX_THEMES: SyntaxThemeDef[] = [
     id: 'intellij-light',
     label: 'FlintQode Light',
     dark: false,
+    palette: intellijLightPalette,
     style: buildStyle(intellijLightPalette),
     editor: {
       background: '#FFFFFF',
@@ -530,6 +534,7 @@ export const SYNTAX_THEMES: SyntaxThemeDef[] = [
     id: 'rainbow',
     label: 'Rainbow',
     dark: true,
+    palette: rainbowPalette,
     style: buildStyle(rainbowPalette),
     editor: {
       background: '#11131C',
@@ -553,6 +558,7 @@ export const SYNTAX_THEMES: SyntaxThemeDef[] = [
     id: 'monokai',
     label: 'Monokai',
     dark: true,
+    palette: monokaiPalette,
     style: buildStyle(monokaiPalette),
     editor: {
       background: '#272822',
@@ -576,6 +582,7 @@ export const SYNTAX_THEMES: SyntaxThemeDef[] = [
     id: 'solarized',
     label: 'Solarized Dark',
     dark: true,
+    palette: solarizedPalette,
     style: buildStyle(solarizedPalette),
     editor: {
       background: '#002B36',
@@ -599,6 +606,7 @@ export const SYNTAX_THEMES: SyntaxThemeDef[] = [
     id: 'midnight',
     label: 'Midnight',
     dark: true,
+    palette: midnightPalette,
     style: buildStyle(midnightPalette),
     editor: {
       background: '#0F1226',

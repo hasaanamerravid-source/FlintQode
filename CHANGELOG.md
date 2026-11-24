@@ -5,6 +5,26 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.6] - 2026-11-24
+
+### Added
+- A VS Code-style Extensions view: browse a bundled marketplace, search by name, publisher or category, open details, and Install, Uninstall, Enable or Disable with one click.
+- Install a plugin from a local `.js` or `.json` file straight from the Extensions view; plugin folders use the existing `plugin.js` + `plugin.json` layout.
+- Power save mode. It disables glass, gradients, shadows, animations and backdrop effects, pauses minimap polling and stretches session/zoom/LSP/diagnostic background work while keeping the stored appearance preferences intact. Toggle it from Settings, the View menu, or the `View: Toggle power save mode` command.
+- Interface scale (85–125%) and a minimal toolbar option for a quieter window.
+- Per-token code colours: override keywords, strings, comments, numbers, functions, types, variables and more without changing the editor background. Each token starts on “Auto” and follows the selected syntax theme.
+
+### Changed
+- Flatter shell: one hairline under the title bar, consistent tab shapes, unified window controls, and lighter borders and shadows across the rail, dock, dialogs and status bar.
+- Removed duplicate chrome: redundant title-bar actions, duplicated menu entries, the Problems/Run icons in the activity rail, and the overlapping terminal Interrupt button.
+- The packed webview CSP now permits plugin scripts to run (`new Function`), so only install plugins from sources you trust. Plugin code runs in the renderer and can reach `window.api`; there is no plugin sandbox.
+- The browser preview reports the current version and can install extensions into an in-memory catalog.
+
+### Fixed
+- The glass opacity slider now writes a real CSS custom property instead of being inert.
+- Pill tabs no longer combine a full-radius chip with a straight accent line.
+- Plugin reload after install or uninstall now refreshes both the filesystem cache and the command registry.
+
 ## [1.4.5] - 2026-11-24
 
 ### Added

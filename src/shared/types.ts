@@ -106,6 +106,26 @@ export type MainMenuStyle = 'hamburger' | 'native' | 'both'
 /** Syntax colour theme of the code editor. */
 export type SyntaxTheme = 'darcula' | 'intellij-light' | 'rainbow' | 'monokai' | 'solarized' | 'midnight'
 
+/** Code colours that a user can override on top of the selected syntax theme. */
+export type SyntaxColorKey =
+  | 'keyword'
+  | 'string'
+  | 'comment'
+  | 'number'
+  | 'function'
+  | 'type'
+  | 'tag'
+  | 'property'
+  | 'operator'
+  | 'constant'
+  | 'variable'
+  | 'punctuation'
+  | 'heading'
+  | 'emphasis'
+  | 'strong'
+  | 'link'
+  | 'invalid'
+
 /** Look and feel options, all live-editable. */
 export interface Appearance {
   /** Corner radius of buttons, panels, dialogs and tabs (0 - 18 px). */
@@ -159,6 +179,12 @@ export interface Settings {
   soundsEnabled: boolean
   /** Trade features for a smaller memory footprint (low end machines). */
   lowMemory: boolean
+  /** Reduce effects and background work to conserve battery. */
+  powerSave: boolean
+  /** Scale the whole interface without changing the editor font size. */
+  uiScale: number
+  /** Hide secondary toolbar buttons and keep only the primary actions. */
+  minimalToolbar: boolean
   /** Render without the GPU — saves ~100 MB of RAM, slower scrolling. */
   softwareRendering: boolean
   /** Which feature profile is active: plain editing, coding, or everything. */
@@ -167,6 +193,8 @@ export interface Settings {
   mainMenuStyle: MainMenuStyle
   /** Colour theme of the code editor (see core/themePack.ts). */
   syntaxTheme: string
+  /** Per-token colour overrides; missing entries follow the syntax theme. */
+  syntaxColors: Partial<Record<SyntaxColorKey, string>>
   appearance: Appearance
   fontFamily: string
   fontSize: number

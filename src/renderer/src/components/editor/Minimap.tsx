@@ -268,10 +268,12 @@ export function Minimap(props: MinimapProps): JSX.Element {
     })
   }
 
-  // Main loop: keeps the minimap in sync with the editor.
+  // Main loop: keeps the minimap in sync with the editor. In power-save mode
+  // the 120 ms polling loop and its animation-frame redraws are stopped: the
+  // minimap is drawn once on layout changes, then left alone.
   createEffect(
-    () => ({ width: width(), height: height() }),
-    () => {
+    () => ({ width: width(), height: height(), powerSave: useAppStore().settings.powerSave === true }),
+    ({ powerSave }) => {
       let lastScroll = -1
       let lastKey = ''
       let active = true
@@ -309,11 +311,11 @@ export function Minimap(props: MinimapProps): JSX.Element {
 
       // A timer instead of a permanent animation frame: the minimap only has to
       // follow the scroll position, 8 times a second is plenty.
-      const timer = window.setInterval(frame, 120)
+      const timer = powerSave ? 0 : window.setInterval(frame, 120)
       frame()
       return () => {
         active = false
-        window.clearInterval(timer)
+        if (timer) window.clearInterval(timer)
         if (loopFrame) cancelAnimationFrame(loopFrame)
         loopFrame = 0
         if (drawFrame) cancelAnimationFrame(drawFrame)

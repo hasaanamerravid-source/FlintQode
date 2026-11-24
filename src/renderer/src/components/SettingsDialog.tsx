@@ -1,10 +1,10 @@
 import { createEffect, createMemo, createSignal, For, Match, Show, Switch } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import type { Settings } from '@shared/types'
+import type { Settings, SyntaxColorKey } from '@shared/types'
 import { useAppStore } from '../store/app'
 import { useSettings } from '../state/solid'
 import { DEFAULT_SETTINGS, ENCODING_LABELS, EOL_LABELS } from '../core/defaults'
-import { themeGroups, resolveTheme } from '../core/themeResolver'
+import { themeGroups, resolveTheme, syntaxTokens, editorTheme, SYNTAX_COLOR_KEYS } from '../core/themeResolver'
 import { ThemeGallery } from './ThemeGallery'
 import { FileIcon } from './FileIcon'
 import { ICON_THEMES } from '../core/iconThemes'
@@ -245,6 +245,20 @@ export function SettingsDialog(): JSX.Element {
     useAppStore.getState().setSettings({ appearance: { ...settings().appearance, ...partial } })
   }
 
+  const tokenColor = (key: SyntaxColorKey): string =>
+    settings().syntaxColors?.[key] || syntaxTokens(editorTheme(settings()).id)[key]
+
+  const setSyntaxColor = (key: SyntaxColorKey, value: string): void => {
+    const next = { ...settings().syntaxColors }
+    if (value) next[key] = value
+    else delete next[key]
+    useAppStore.getState().setSettings({ syntaxColors: next })
+  }
+
+  const resetSyntaxColors = (): void => {
+    useAppStore.getState().setSettings({ syntaxColors: {} })
+  }
+
   return (
     <Show when={open()}>
       <Modal
@@ -414,6 +428,34 @@ export function SettingsDialog(): JSX.Element {
                 <option value="pill">{t('settings.tabStylePill')}</option>
                 <option value="underline">{t('settings.tabStyleUnderline')}</option>
               </select>
+            </Row>
+            <Row label={t('settings.uiScale')} hint={t('settings.uiScaleHint')}>
+              <input
+                type="range"
+                min={0.85}
+                max={1.25}
+                step={0.05}
+                value={settings().uiScale ?? 1}
+                onInput={(e) => patch({ uiScale: Number(e.currentTarget.value) })}
+                style={{ 'min-width': '220px' }}
+              />
+              <span style={{ width: '44px', 'text-align': 'right' }}>
+                {Math.round((settings().uiScale ?? 1) * 100)}%
+              </span>
+            </Row>
+            <Row label={t('settings.minimalToolbar')} hint={t('settings.minimalToolbarHint')}>
+              <input
+                type="checkbox"
+                checked={settings().minimalToolbar}
+                onChange={(e) => patch({ minimalToolbar: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.powerSave')} hint={t('settings.powerSaveHint')}>
+              <input
+                type="checkbox"
+                checked={settings().powerSave}
+                onChange={(e) => patch({ powerSave: e.currentTarget.checked })}
+              />
             </Row>
             <Row label={t('settings.softShadows')}>
               <input
@@ -642,6 +684,34 @@ export function SettingsDialog(): JSX.Element {
             </Row>
 
             <div class="panel-header" style={{ 'margin-top': '18px' }}>
+              <span>{t('settings.syntaxColours')}</span>
+              <button class="icon-btn" onClick={resetSyntaxColors}>
+                {t('settings.resetSyntaxColours')}
+              </button>
+            </div>
+            <div class="hint" style={{ 'margin-top': 0, 'margin-bottom': '10px' }}>
+              {t('settings.syntaxColoursHint')}
+            </div>
+            <div class="syntax-color-grid">
+              <For each={SYNTAX_COLOR_KEYS}>
+                {(key) => (
+                  <div class="syntax-color-row">
+                    <span>{t(`settings.token.${key}` as MessageKey)}</span>
+                    <input
+                      type="color"
+                      value={tokenColor(key)}
+                      aria-label={t(`settings.token.${key}` as MessageKey)}
+                      onInput={(e) => setSyntaxColor(key, e.currentTarget.value)}
+                    />
+                    <button class="icon-btn" title={t('settings.colourAuto')} onClick={() => setSyntaxColor(key, '')}>
+                      {t('settings.colourAuto')}
+                    </button>
+                  </div>
+                )}
+              </For>
+            </div>
+
+            <div class="panel-header" style={{ 'margin-top': '18px' }}>
               <span>{t('settings.typographyPreview')}</span>
               <span>{t('settings.typographyPreviewHint')}</span>
             </div>
@@ -659,13 +729,42 @@ export function SettingsDialog(): JSX.Element {
                 background: settings().editorBackgroundColor || undefined,
               }}
             >
-              <span class="tok-keyword">function</span> <span class="tok-function">greet</span>(
-              <span class="tok-type">User</span> <span class="tok-property">name</span>) {'{'}
+              <span class="tok-keyword" style={{ color: tokenColor('keyword') }}>
+                function
+              </span>{' '}
+              <span class="tok-function" style={{ color: tokenColor('function') }}>
+                greet
+              </span>
+              (
+              <span class="tok-type" style={{ color: tokenColor('type') }}>
+                User
+              </span>{' '}
+              <span class="tok-property" style={{ color: tokenColor('property') }}>
+                name
+              </span>
+              ) {'{'}
               {'\n'} {'  '}
-              <span class="tok-comment">// 0123456789 — careful with l/i/1 and O/0</span>
+              <span class="tok-comment" style={{ color: tokenColor('comment') }}>
+                // 0123456789 — careful with l/i/1 and O/0
+              </span>
               {'\n'} {'  '}
-              <span class="tok-keyword">return</span>{' '}
-              <span class="tok-string">
+              <span class="tok-keyword" style={{ color: tokenColor('keyword') }}>
+                const
+              </span>{' '}
+              <span class="tok-variable" style={{ color: tokenColor('variable') }}>
+                limit
+              </span>{' '}
+              <span class="tok-operator" style={{ color: tokenColor('operator') }}>
+                =
+              </span>{' '}
+              <span class="tok-number" style={{ color: tokenColor('number') }}>
+                42
+              </span>
+              {'\n'} {'  '}
+              <span class="tok-keyword" style={{ color: tokenColor('keyword') }}>
+                return
+              </span>{' '}
+              <span class="tok-string" style={{ color: tokenColor('string') }}>
                 `Hello ${'{'}name{'}'}`
               </span>
               {'\n'}

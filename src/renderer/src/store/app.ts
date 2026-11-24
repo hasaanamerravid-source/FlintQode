@@ -450,6 +450,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...DEFAULT_SETTINGS.appearance,
         ...((stored?.appearance ?? {}) as Record<string, unknown>),
       } as typeof DEFAULT_SETTINGS.appearance,
+      syntaxColors: { ...(stored?.syntaxColors ?? {}) },
     }
     // The note taking profiles were retired: FlintQode is a code workspace.
     settings.profile = 'coding'

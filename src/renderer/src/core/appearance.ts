@@ -72,15 +72,25 @@ export function applyAppearance(settings: Settings): void {
   root.style.setProperty('--accent-soft', hexToRgba(accent, 0.18))
   root.style.setProperty('--accent-softer', hexToRgba(accent, 0.1))
   root.style.setProperty('--accent-contrast', luminance(accent) > 0.55 ? '#0b0d12' : '#ffffff')
-  root.style.setProperty('--glass-blur', `${Math.max(0, Number(a.glassBlur) || 0)}px`)
+  // Power saver deliberately overrides the expensive visual effects. The
+  // stored preferences are kept intact, so turning it off restores the user's
+  // original appearance exactly.
+  const powerSave = settings.powerSave === true
+  const uiScale = Math.min(1.25, Math.max(0.85, Number(settings.uiScale) || 1))
+
+  root.style.fontSize = `${16 * uiScale}px`
+  root.style.setProperty('--glass-blur', powerSave ? '0px' : `${Math.max(0, Number(a.glassBlur) || 0)}px`)
+  root.style.setProperty('--glass-opacity', String(Math.min(1, Math.max(0, Number(a.glassOpacity) || 0))))
   root.style.setProperty('--gradient-from', gradientFrom)
   root.style.setProperty('--gradient-to', gradientTo)
   root.setAttribute('data-density', a.density ?? DEFAULT_APPEARANCE.density)
   root.setAttribute('data-tab-style', a.tabStyle ?? DEFAULT_APPEARANCE.tabStyle)
-  root.setAttribute('data-glass', a.glassTopBar ? 'on' : 'off')
-  root.setAttribute('data-gradient', a.gradient ? 'on' : 'off')
-  root.setAttribute('data-animations', a.animations ? 'on' : 'off')
-  root.setAttribute('data-shadows', a.softShadows ? 'on' : 'off')
+  root.setAttribute('data-glass', a.glassTopBar && !powerSave ? 'on' : 'off')
+  root.setAttribute('data-gradient', a.gradient && !powerSave ? 'on' : 'off')
+  root.setAttribute('data-animations', a.animations && !powerSave ? 'on' : 'off')
+  root.setAttribute('data-shadows', a.softShadows && !powerSave ? 'on' : 'off')
+  root.setAttribute('data-power-save', powerSave ? 'on' : 'off')
+  root.setAttribute('data-minimal-toolbar', settings.minimalToolbar === true ? 'on' : 'off')
   root.setAttribute('data-syntax-theme', settings.syntaxTheme ?? 'darcula')
 }
 

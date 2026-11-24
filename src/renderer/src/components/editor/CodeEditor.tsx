@@ -39,8 +39,8 @@ import {
 import { bracketMatching, foldGutter, foldKeymap, indentOnInput, indentUnit } from '@codemirror/language'
 import { lintKeymap } from '@codemirror/lint'
 import { syntaxHighlighting } from '@codemirror/language'
-import { resolveTheme } from '../../core/themeResolver'
-import type { Tab } from '@shared/types'
+import { editorTheme, syntaxStyle } from '../../core/themeResolver'
+import type { Settings, Tab } from '@shared/types'
 import { useAppStore } from '../../store/app'
 import { useStatusStore } from '../../store/status'
 import { registerEditor, setActiveEditor, countStats, type EditorHandle } from '../../core/editors'
@@ -76,6 +76,7 @@ function buildTheme(settings: {
   editorSelectionColor: string
   tabSize: number
   syntaxTheme: string
+  syntaxColors: Settings['syntaxColors']
   editorBackground: 'app' | 'theme'
   theme: string
 }): Extension {
@@ -294,30 +295,6 @@ const overwriteCompartment = new Compartment()
 const scrollPastEndCompartment = new Compartment()
 const syntaxCompartment = new Compartment()
 
-/** Whether the app theme is dark ("system" follows the OS preference). */
-function settingsAreDark(theme?: string): boolean {
-  if (theme === 'dark') return true
-  if (theme === 'light') return false
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-}
-
-/**
- * Pick the syntax theme that fits the editor surface.
- *
- * In "theme" mode the editor paints its own background, so the chosen theme is
- * used as-is. In "app" mode the editor borrows the window colours, which means
- * a light palette on a dark window (or the reverse) would be unreadable; pair
- * the palette with the window instead of showing invisible text.
- */
-function editorTheme(settings: { syntaxTheme: string; editorBackground: 'app' | 'theme'; theme?: string }) {
-  const chosen = resolveTheme(settings.syntaxTheme)
-  if (settings.editorBackground !== 'app') return chosen
-  const dark = settingsAreDark(settings.theme)
-  if (chosen.dark === dark) return chosen
-  return resolveTheme(dark ? 'darcula' : 'intellij-light')
-}
-
 /** Guards the split-view state synchronisation against infinite recursion. */
 let forwarding = false
 
@@ -429,7 +406,7 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
         editCompartment.of([EditorState.tabSize.of(settingsNow.tabSize), EditorState.readOnly.of(tab.readonly)]),
         overwriteCompartment.of(settingsNow.overwriteMode ? overwriteKeymap(settingsNow) : []),
         scrollPastEndCompartment.of(settingsNow.scrollPastEnd ? scrollPastEnd() : []),
-        syntaxCompartment.of(syntaxHighlighting(editorTheme(settingsNow).style)),
+        syntaxCompartment.of(syntaxHighlighting(syntaxStyle(editorTheme(settingsNow).id, settingsNow.syntaxColors))),
         highlightAllExtension(),
         bookmarkExtension(),
         guideCompartment.of(
@@ -720,7 +697,7 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
             current.autoCloseBrackets ? closeBrackets() : [],
           ]),
           themeCompartment.reconfigure(buildTheme(current)),
-          syntaxCompartment.reconfigure(syntaxHighlighting(editorTheme(current).style)),
+          syntaxCompartment.reconfigure(syntaxHighlighting(syntaxStyle(editorTheme(current).id, current.syntaxColors))),
           editCompartment.reconfigure([
             EditorState.tabSize.of(current.tabSize),
             indentUnit.of(current.insertSpaces ? ' '.repeat(current.tabSize) : '\t'),

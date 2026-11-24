@@ -7,8 +7,6 @@ import { MainMenu } from './MainMenu'
 import { AppLogo } from './AppLogo'
 import { Icon } from './Icons'
 import { FileIcon } from './FileIcon'
-import { useRunStore } from '../core/runState'
-import { useTerminalStore } from '../core/terminalState'
 import { useT } from '../core/i18n'
 import { useActiveTab, useActiveTabId, useSettings, useTabs } from '../state/solid'
 
@@ -17,28 +15,12 @@ export function TitleBar(): JSX.Element {
   const activeTabId = useActiveTabId()
   const settings = useSettings()
   const maximized = createMemo(() => useStatusStore().maximized)
-  const runRunning = createMemo(() => useRunStore().running)
-  const terminalBusy = createMemo(() => useTerminalStore().sessions.some((entry) => entry.running))
   const active = useActiveTab()
   const iconTheme = createMemo(() => settings().iconTheme)
   const showHamburger = createMemo(() => settings().mainMenuStyle !== 'native')
   const [menuOpen, setMenuOpen] = createSignal(false)
   const t = useT()
   let listRef: HTMLDivElement | undefined
-
-  const anyRunning = createMemo(() => runRunning() || terminalBusy())
-  const runTitle = createMemo(() => (anyRunning() ? t('cmd.tools.stopRun') : t('title.runFile')))
-  const runAria = createMemo(() => (anyRunning() ? t('cmd.tools.stopRun') : t('title.runFile')))
-  const handleRunClick = (): void => {
-    if (runRunning()) {
-      void runCommand('tools.stopRun')
-    } else if (terminalBusy()) {
-      const id = useTerminalStore.getState().activeId
-      if (id) useTerminalStore.getState().interrupt(id)
-    } else {
-      void runCommand('tools.run')
-    }
-  }
 
   /** Show a tab and give it the keyboard focus. */
   const focusTab = (index: number): void => {
@@ -139,62 +121,34 @@ export function TitleBar(): JSX.Element {
 
       <div class="titlebar-drag" data-tauri-drag-region />
 
+      {/* Only the actions that are not already one click away in a panel, the
+          menu or the palette live here. `minimalToolbar` removes even these. */}
       <div class="titlebar-actions">
-        <button
-          class={['icon-btn', { active: useAppStore().sidebarVisible }]}
-          title={t('title.toggleProject')}
-          aria-label={t('title.toggleProject')}
-          onClick={() => void runCommand('view.toggleSidebar')}
-        >
-          <Icon name="file" />
-        </button>
-        <button
-          class="icon-btn"
-          title={t('title.openFile')}
-          aria-label={t('title.openFile')}
-          onClick={() => void runCommand('file.open')}
-        >
-          <Icon name="open" />
-        </button>
-        <button
-          class="icon-btn"
-          title={t('title.save')}
-          aria-label={t('title.save')}
-          onClick={() => void runCommand('file.save')}
-        >
-          <Icon name="save" />
-        </button>
-        <button
-          class="icon-btn"
-          title={t('title.searchInFiles')}
-          aria-label={t('title.searchInFiles')}
-          onClick={() => void runCommand('search.findInFiles')}
-        >
-          <Icon name="search" />
-        </button>
-        <button
-          class="icon-btn"
-          title={t('cmd.view.toggleTerminal')}
-          aria-label={t('cmd.view.toggleTerminal')}
-          onClick={() => void runCommand('view.toggleTerminal')}
-        >
-          <Icon name="terminal" />
-        </button>
-        <button
-          class="icon-btn"
-          title={t('title.splitView')}
-          aria-label={t('title.splitView')}
-          onClick={() => void runCommand('view.toggleSplit')}
-        >
-          <Icon name="split" />
-        </button>
+        <Show when={!settings().minimalToolbar}>
+          <button
+            class="icon-btn"
+            title={t('title.openFile')}
+            aria-label={t('title.openFile')}
+            onClick={() => void runCommand('file.open')}
+          >
+            <Icon name="open" />
+          </button>
+          <button
+            class="icon-btn"
+            title={t('title.save')}
+            aria-label={t('title.save')}
+            onClick={() => void runCommand('file.save')}
+          >
+            <Icon name="save" />
+          </button>
+        </Show>
         <button
           class="icon-btn"
           title={t('title.commandPalette')}
           aria-label={t('title.commandPalette')}
           onClick={() => void runCommand('view.commandPalette')}
         >
-          <Icon name="search" />
+          <Icon name="command" />
         </button>
         <button
           class="icon-btn"

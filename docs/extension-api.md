@@ -13,10 +13,11 @@ This document describes the API exactly as it exists in the code.
 | The command registry | `src/renderer/src/core/commands.ts` |
 | The editor handle | `src/renderer/src/core/editors.ts` |
 | The shared types (`Command`, `PluginManifest`) | `src/shared/types.ts` |
-| The Plugins panel | `src/renderer/src/components/panels/PluginsPanel.tsx` |
+| The Extensions view | `src/renderer/src/workbench/views/PluginsView.tsx` |
+| The bundled marketplace and install flow | `src/renderer/src/core/marketplace.ts` |
 | The bridge a plugin can use | `src/renderer/src/bridge.ts` |
 | The window of the renderer | `src-tauri/src/lib.rs` |
-| The content security policy | `src/renderer/index.html` |
+| The content security policy | `src-tauri/tauri.conf.json` |
 
 ## 1. What a plugin is
 
@@ -28,14 +29,13 @@ The evaluation happens in `evaluatePlugin()` in
 `src/renderer/src/core/plugins.ts`:
 
 ```ts
-const fn = new Function('module', 'exports', 'require', 'window', 'console', source)
+const fn = new Function('module', 'exports', 'require', 'console', normalizePlugin(source))
 fn(
   module,
   module.exports,
   () => {
     throw new Error('require() is not available inside plugins')
   },
-  window,
   console,
 )
 ```
@@ -70,7 +70,9 @@ Three consequences follow from this and matter when a plugin is written:
   module; everything it needs has to be in the file itself or reached through
   the bridge.
 * The plugin sees the real `window` and the real `console`. It shares the
-  global scope of the renderer with the application.
+  global scope of the renderer with the application: `new Function` is not a
+  sandbox, and `window.api` is reachable even though `window` is not passed as
+  a parameter. Install only plugins you trust.
 
 ### The module shape
 
@@ -165,8 +167,8 @@ when it fails.
 
 ### Enabling and disabling
 
-The Plugins panel (`src/renderer/src/components/panels/PluginsPanel.tsx`) is
-the only place where a plugin is switched on or off. The panel is reachable
+The Extensions view (`src/renderer/src/workbench/views/PluginsView.tsx`) is
+the main place where a plugin is installed, switched on or off. It is reachable
 from the activity bar (the **Plugins** tool window).
 
 * **Enable** calls `activatePlugin(manifest.id)`. If the plugin throws, the
@@ -385,32 +387,21 @@ ctx.toast('The document was saved.', 'success')
 ```
 
 The second argument is one of `'info'` (the default), `'error'` and
-`'success'`. The message is meant for the corner of the window, where the
-toasts of the application disappear after a few seconds.
+`'success'`. The message appears in the corner of the window with the other
+toasts and disappears after a few seconds.
 
-> **Known issue.** `ctx.toast()` dispatches a DOM event instead of writing
-> into the store of the application:
->
-> ```ts
-> toast: (message, kind) => {
->   window.dispatchEvent(new CustomEvent('flintqode:toast', { detail: { message, kind } }))
-> },
-> ```
->
-> No component in the application subscribes to `flintqode:toast` — the only
-> occurrence of that name in `src/` is the dispatch itself — so nothing is
-> shown at the moment.
->
-> The working way to show a toast today is the store, which the plugin can
-> reach through `window.flintqode`:
->
-> ```js
-> window.flintqode.store.getState().toast('The document was saved.', 'success')
-> ```
->
-> The signature is `toast(message: string, kind?: 'info' | 'error' | 'success')`
-> (`src/renderer/src/store/app.ts`). The example plugin below uses the store
-> for that reason.
+Internally `ctx.toast()` dispatches a `flintqode:toast` DOM event:
+
+```ts
+toast: (message, kind) => {
+  window.dispatchEvent(new CustomEvent('flintqode:toast', { detail: { message, kind } }))
+},
+```
+
+`App.tsx` listens for that event and forwards it to the application toast
+store, so the event is no longer a dead end. Calling
+`window.flintqode.store.getState().toast(...)` also works, but `ctx.toast()`
+is the supported API.
 
 ### `ctx.api`
 
@@ -499,7 +490,7 @@ let ctx = null
 
 /** Show a message in the corner of the window. */
 function toast(message, kind) {
-  window.flintqode.store.getState().toast(message, kind)
+  ctx?.toast(message, kind)
 }
 
 /** The editor of the tab that is in the focus, or undefined. */
@@ -661,12 +652,14 @@ A plugin is **not** sandboxed.
   every file the user can reach, `ctx.api.shell.openTerminal` opens a shell
   and `ctx.api.run.start` runs a program. The bridge only swallows the
   "Object has been destroyed" error of a window that is closing.
-* The renderer runs with a content security policy
-  (`src/renderer/index.html`): `default-src 'self' file:; img-src 'self' data:
-  blob: file:; style-src 'self' 'unsafe-inline' file:; font-src 'self' data:
-  file:; script-src 'self' 'unsafe-eval' file:`. A plugin cannot load a script
-  or a style from the network. `script-src` contains `'unsafe-eval'`, which is
-  what makes the evaluation of the plugin source possible at all.
+* The packed webview runs with the content security policy configured in
+  `src-tauri/tauri.conf.json`:
+  `default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self'
+  'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:;
+  connect-src 'self' ipc: http://ipc.localhost; worker-src 'self' blob:;
+  object-src 'none'`. A plugin cannot load a script or a style from the
+  network. `script-src` contains `'unsafe-eval'`, which is what makes the
+  evaluation of the plugin source possible at all.
 * The plugins are not signed and not verified. Any `plugin.js` in the
   `plugins` folder of the user-data folder is loaded and evaluated.
 * A plugin that throws is caught: the message is shown in the Plugins panel
@@ -682,6 +675,6 @@ Install a plugin only when you trust its source.
 | The plugin does not appear in the panel | There is no `plugin.js` in the folder, or the folder is not in the `plugins` folder of the user-data folder. |
 | The panel shows an error message | The file could not be evaluated — a syntax error is the usual reason. `export default` is a syntax error here, `module.exports = { ... }` is not. |
 | The plugin is enabled but the commands are missing | The commands are in `activate` and the plugin was never activated, or `activate` threw before the registration. |
-| `ctx.toast(...)` shows nothing | See [the note above](#ctxtoast). Use `window.flintqode.store.getState().toast(...)` instead. |
+| `ctx.toast(...)` shows nothing | Check the browser console for DOM errors. `ctx.toast` forwards to the application toast store through the `flintqode:toast` event. |
 | The shortcut in the palette does nothing | The `shortcut` of a command is a label. A shortcut only works when it is in the in-app menu or in `keybindings.json` — see [Keyboard shortcuts](keyboard-shortcuts.md). |
 | The plugin lost its settings | The settings were written into `settings.json` of the application instead of into the folder of the plugin — that file is overwritten by the application. |

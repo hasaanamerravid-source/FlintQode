@@ -33,6 +33,53 @@ export interface LoadedPlugin {
 
 const loaded = new Map<string, LoadedPlugin>()
 const commandIds = new Map<string, string[]>()
+/** In-memory plugins used by the plain-browser preview (no file system). */
+const browserPlugins = new Map<string, PluginManifest>()
+
+/** Join a path with the separator used by the current platform. */
+function joinPath(base: string, ...parts: string[]): string {
+  const separator = /^[a-zA-Z]:\\/.test(base) || base.includes('\\') ? '\\' : '/'
+  return [base.replace(/[\\/]+$/, ''), ...parts].join(separator)
+}
+
+/** The directory that holds one folder per installed plugin. */
+export async function pluginsDirectory(): Promise<string> {
+  const info = await window.api.info()
+  return joinPath(info.userData || '.', 'plugins')
+}
+
+/** Write the standard plugin folder for an extension. */
+export async function installPluginFiles(
+  id: string,
+  name: string,
+  version: string,
+  description: string,
+  source: string,
+): Promise<void> {
+  const info = await window.api.info().catch(() => null)
+  if (info?.runtime === 'browser') {
+    browserPlugins.set(id, { id, name, version, description, path: '', source })
+    return
+  }
+  const root = await pluginsDirectory()
+  const directory = joinPath(root, id)
+  await window.api.fs.makeDir(root)
+  await window.api.fs.makeDir(directory)
+  await window.api.fs.writeTextFile(joinPath(directory, 'plugin.js'), source)
+  await window.api.fs.writeTextFile(
+    joinPath(directory, 'plugin.json'),
+    JSON.stringify({ id, name, version, description }, null, 2),
+  )
+}
+
+/** Remove the plugin folder from disk (or the browser preview overlay). */
+export async function uninstallPluginFiles(id: string): Promise<void> {
+  browserPlugins.delete(id)
+  const info = await window.api.info().catch(() => null)
+  if (info?.runtime === 'browser' || !info) return
+  const root = await pluginsDirectory()
+  await window.api.fs.remove(joinPath(root, id))
+}
 
 function buildContext(manifest: PluginManifest): PluginContext {
   return {
@@ -56,10 +103,10 @@ function buildContext(manifest: PluginManifest): PluginContext {
  * The plugin is a plain script, so `export default { … }` is translated into
  * `module.exports = { … }`: that is the syntax the documentation shows.
  *
- * SECURITY: the script runs with a deliberately minimal scope. It gets the
- * module object, its exports, a `require` that always fails and the console.
- * The renderer `window` (and with it the whole Tauri bridge) is intentionally
- * NOT passed in, so a plugin cannot read files or run processes through it.
+ * SECURITY: `require` is replaced with a function that always fails, but this
+ * is NOT a sandbox. `new Function` evaluates in the renderer's global scope,
+ * so plugin code can still reach `window` (and therefore `window.api`) just
+ * like any other renderer script. Install plugins you trust.
  */
 export function evaluatePlugin(source: string): PluginModule {
   const module = { exports: {} as PluginModule }
@@ -86,6 +133,12 @@ function normalizePlugin(source: string): string {
 
 /** Discover all installed plugins. */
 export async function discoverPlugins(): Promise<PluginManifest[]> {
+  try {
+    const info = await window.api.info()
+    if (info.runtime === 'browser') return [...browserPlugins.values()]
+  } catch {
+    /* fall through to the native bridge */
+  }
   try {
     return await window.api.plugins.list()
   } catch {
@@ -168,4 +221,22 @@ export async function activateEnabledPlugins(ids: string[]): Promise<void> {
 
 export function getLoadedPlugins(): LoadedPlugin[] {
   return [...loaded.values()]
+}
+
+/** Remove a plugin from the in-memory cache after it has been deactivated. */
+export function forgetPlugin(id: string): void {
+  for (const commandId of commandIds.get(id) ?? []) unregisterCommand(commandId)
+  commandIds.delete(id)
+  loaded.delete(id)
+}
+
+/**
+ * Re-read every plugin from disk. Needed after an install or uninstall because
+ * the loader caches modules for the lifetime of the window.
+ */
+export async function reloadPlugins(): Promise<LoadedPlugin[]> {
+  for (const id of [...loaded.keys()]) deactivatePlugin(id)
+  loaded.clear()
+  commandIds.clear()
+  return loadAllPlugins()
 }

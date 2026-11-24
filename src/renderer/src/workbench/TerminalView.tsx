@@ -269,14 +269,6 @@ export function TerminalView(props: { cwd?: string }): JSX.Element {
         <span class="bar-actions">
           <button
             class="panel-button"
-            title={t('panel.terminalInterrupt')}
-            disabled={!active()?.running}
-            onClick={() => active() && void actions.interrupt(active()!.id)}
-          >
-            ⏹
-          </button>
-          <button
-            class="panel-button"
             title={t('panel.terminalStopShell')}
             disabled={!active()?.running}
             onClick={() => active() && void actions.stop(active()!.id)}

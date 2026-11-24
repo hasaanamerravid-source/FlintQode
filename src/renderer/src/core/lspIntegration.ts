@@ -120,10 +120,12 @@ export function useLspSync(): void {
       void useLspStore.getState().open(source.language, uri, source.content)
       previous = { uri, language: source.language }
       // The change is sent a moment after the last keystroke: the servers are
-      // much slower than the user types.
+      // much slower than the user types. Power save waits longer so a burst of
+      // edits causes fewer server round trips.
+      const delay = useAppStore.getState().settings.powerSave ? 2000 : 600
       timer = window.setTimeout(() => {
         void useLspStore.getState().change(source.language, uri, source.content)
-      }, 600)
+      }, delay)
 
       return () => {
         if (timer !== undefined) window.clearTimeout(timer)

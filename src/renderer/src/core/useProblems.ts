@@ -83,6 +83,7 @@ export function useProblems(): Accessor<Problem[]> {
         publish([])
         return
       }
+      const delay = useAppStore.getState().settings.powerSave ? 1200 : 350
       timer = window.setTimeout(() => {
         const key = `${source.activeTabId}:${source.language}:${source.content.length}`
         // Another place already checked the same document.
@@ -96,7 +97,7 @@ export function useProblems(): Accessor<Problem[]> {
         const found = collectProblems(view, source.language)
         publish(found)
         applyProblems(view, found)
-      }, 350)
+      }, delay)
       return () => {
         if (timer !== undefined) window.clearTimeout(timer)
       }

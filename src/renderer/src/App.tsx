@@ -300,19 +300,25 @@ export default function App(): JSX.Element {
   })
 
   /* ------------------------- session + autosave ---------------------- */
+  const persist = (): void => {
+    void useAppStore.getState().persistSession()
+    // The crash trail keeps unsaved buffers across a crash or exit.
+    void useAppStore.getState().saveCrashTrail()
+    // Settings are normally auto-saved by the dialog, but a change made by a
+    // command or a plugin may land here directly.
+    void useAppStore.getState().saveSettings()
+  }
+  // Power save backs off the periodic session writes; they still run on exit.
+  createEffect(
+    () => settings().powerSave,
+    (powerSave) => {
+      const timer = window.setInterval(persist, powerSave ? 60_000 : 15_000)
+      return () => window.clearInterval(timer)
+    },
+  )
   onSettled(() => {
-    const persist = (): void => {
-      void useAppStore.getState().persistSession()
-      // The crash trail keeps unsaved buffers across a crash or exit.
-      void useAppStore.getState().saveCrashTrail()
-      // Settings are normally auto-saved by the dialog, but a change made by a
-      // command or a plugin may land here directly.
-      void useAppStore.getState().saveSettings()
-    }
-    const timer = window.setInterval(persist, 15000)
     window.addEventListener('beforeunload', persist)
     return () => {
-      window.clearInterval(timer)
       window.removeEventListener('beforeunload', persist)
       persist()
     }
@@ -330,17 +336,25 @@ export default function App(): JSX.Element {
   )
 
   /* ------------------------------- zoom ------------------------------ */
-  onSettled(() => {
-    const timer = window.setInterval(() => {
-      void window.api.win
-        .getZoom()
-        .then((zoom) => {
-          if (typeof zoom === 'number') status.set({ zoom })
-        })
-        .catch(() => undefined)
-    }, 2000)
-    return () => window.clearInterval(timer)
-  })
+  // Zoom polling is cheap on its own, but it is pure background work: stretch
+  // it out when the user asks the app to save power.
+  createEffect(
+    () => settings().powerSave,
+    (powerSave) => {
+      const timer = window.setInterval(
+        () => {
+          void window.api.win
+            .getZoom()
+            .then((zoom) => {
+              if (typeof zoom === 'number') status.set({ zoom })
+            })
+            .catch(() => undefined)
+        },
+        powerSave ? 10_000 : 2000,
+      )
+      return () => window.clearInterval(timer)
+    },
+  )
 
   /* ------------------------- status bar sync ------------------------- */
   // The status bar reads encoding/EOL/language directly from the active tab.

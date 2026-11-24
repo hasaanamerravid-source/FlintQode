@@ -81,13 +81,14 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'FlintQode v__VERSION__'
           releaseBody: |
-            FlintQode v1.4.5 — the SolidJS 2 edition.
+            FlintQode v1.4.6 — easier extensions, power save and a quieter interface.
 
             Highlights:
-            - Complete SolidJS 2 renderer with fine-grained signals and Vite 8.
-            - Aurora Slate design system across the shell, editor, panels and dialogs.
-            - PTY terminal, Git integration, multi-root workspace and LSP tools.
-            - Fresh website screenshots and updated documentation.
+            - VS Code-style Extensions view with search, details, Install / Uninstall / Enable / Disable and Install from file.
+            - Power save mode that turns off expensive effects and background polling; toggle it in Settings, the View menu or the command palette.
+            - Editable code token colours for keywords, strings, comments, numbers, functions, types and more, without changing the editor background.
+            - Interface scale, minimal toolbar and a flatter, less boxy shell with fewer duplicate buttons.
+            - SolidJS 2 renderer, PTY terminal, Git integration, multi-root workspace and LSP tools.
 
             Installers: Linux (.deb, .AppImage, .rpm), Windows (.exe, .msi) and macOS (.dmg).
             See CHANGELOG.md for the full release notes.

@@ -131,6 +131,7 @@ export const MENU_SECTIONS: MenuSection[] = [
       sep('view.sep2'),
       { id: 'view.toggleTheme', label: 'Toggle Dark / Light Theme' },
       { id: 'view.distractionFree', label: 'Distraction Free Mode' },
+      { id: 'view.togglePowerSave', label: 'Toggle Power Save Mode' },
       sep('view.sep3'),
       { id: 'view.commandPalette', label: 'Command Palette…', shortcut: 'Ctrl+Shift+P' },
       { id: 'view.quickSwitcher', label: 'Quick Switcher…', shortcut: 'Ctrl+Shift+O' },
@@ -142,7 +143,6 @@ export const MENU_SECTIONS: MenuSection[] = [
     items: [
       { id: 'search.findInFiles', label: 'Find in Files…', shortcut: 'Ctrl+Shift+F' },
       { id: 'view.quickSwitcher', label: 'Quick Switcher…', shortcut: 'Ctrl+Shift+O' },
-      { id: 'view.commandPalette', label: 'Command Palette…', shortcut: 'Ctrl+Shift+P' },
       sep('navigate.sep1'),
       { id: 'edit.gotoLine', label: 'Go to Line…', shortcut: 'Ctrl+G' },
       sep('navigate.sep2'),

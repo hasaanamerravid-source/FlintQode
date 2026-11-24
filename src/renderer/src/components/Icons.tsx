@@ -26,6 +26,8 @@ export type IconName =
   | 'outline'
   | 'problems'
   | 'plugins'
+  | 'command'
+  | 'power'
   | 'more'
   | 'stop'
   | 'refresh'
@@ -172,6 +174,17 @@ const PATHS: Record<IconName, () => JSX.Element> = {
       <path d="M5.5 2v3M10.5 2v3" />
       <path d="M3 5h10v3.5a5 5 0 0 1-10 0z" />
       <path d="M8 13.5V16" />
+    </>
+  ),
+  command: () => (
+    <>
+      <path d="M5.5 4.5a2 2 0 1 0-2 2h9a2 2 0 1 0-2-2v7a2 2 0 1 0 2-2h-9a2 2 0 1 0 2 2z" />
+    </>
+  ),
+  power: () => (
+    <>
+      <path d="M8 1.8v5.4" />
+      <path d="M4.4 3.9a5.5 5.5 0 1 0 7.2 0" />
     </>
   ),
   more: () => (

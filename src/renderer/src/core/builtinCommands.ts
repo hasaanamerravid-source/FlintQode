@@ -1007,6 +1007,17 @@ export const builtinCommands: Command[] = [
     },
   },
   {
+    id: 'view.togglePowerSave',
+    title: 'Toggle power save mode',
+    category: 'View',
+    run: () => {
+      const next = !store().settings.powerSave
+      store().setSettings({ powerSave: next })
+      void store().saveSettings()
+      store().toast(next ? 'Power save mode on' : 'Power save mode off')
+    },
+  },
+  {
     id: 'view.distractionFree',
     title: 'Distraction free mode',
     category: 'View',

@@ -14,12 +14,13 @@ interface Entry {
   icon: IconName
 }
 
+// Problems and Run & output live in the bottom panel. Showing them here too
+// duplicated the same actions in two places, so the rail stays focused on
+// navigation: project, search, structure and extensions.
 const ENTRIES: Entry[] = [
   { id: 'files', label: 'panel.files', icon: 'explorer' },
   { id: 'search', label: 'panel.search', icon: 'search' },
   { id: 'outline', label: 'panel.structure', icon: 'outline' },
-  { id: 'problems', label: 'panel.problems', icon: 'problems' },
-  { id: 'run', label: 'panel.run', icon: 'terminal' },
   { id: 'plugins', label: 'panel.plugins', icon: 'plugins' },
 ]
 

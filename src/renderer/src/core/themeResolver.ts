@@ -1,5 +1,6 @@
 import { HighlightStyle } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
+import type { SyntaxColorKey, SyntaxTheme } from '@shared/types'
 import { SYNTAX_THEMES, syntaxTheme } from './syntaxThemes'
 import { THEME_PACK, themePackEntry, type ThemePackEntry } from './themePack'
 
@@ -35,6 +36,102 @@ export interface ResolvedTheme {
   style: HighlightStyle
   tokens: PackTokens
   source: 'pack' | 'builtin'
+}
+
+/** Token colours offered in the settings, in display order. */
+export const SYNTAX_COLOR_KEYS: SyntaxColorKey[] = [
+  'keyword',
+  'string',
+  'comment',
+  'number',
+  'function',
+  'type',
+  'tag',
+  'property',
+  'operator',
+  'constant',
+  'variable',
+  'punctuation',
+  'heading',
+  'emphasis',
+  'strong',
+  'link',
+  'invalid',
+]
+
+const HEX_COLOR = /^#[0-9a-f]{3,8}$/i
+
+/** The effective token colours of a theme, before user overrides. */
+export function syntaxTokens(id: string): PackTokens {
+  const resolved = resolveTheme(id)
+  if (resolved.source === 'pack') return resolved.tokens
+  const p = syntaxTheme(id as SyntaxTheme).palette
+  return {
+    keyword: p.keyword,
+    string: p.string,
+    comment: p.comment,
+    number: p.number,
+    function: p.function,
+    type: p.type,
+    tag: p.tagName,
+    property: p.property,
+    operator: p.operator,
+    constant: p.constant,
+    variable: p.variable,
+    punctuation: p.punctuation,
+    heading: p.heading,
+    emphasis: p.emphasis,
+    strong: p.strong,
+    link: p.link,
+    invalid: p.invalid,
+  }
+}
+
+/** Whether the app theme is dark ("system" follows the OS preference). */
+export function settingsAreDark(theme?: string): boolean {
+  if (theme === 'dark') return true
+  if (theme === 'light') return false
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+/**
+ * Pick the syntax theme that fits the editor surface.
+ *
+ * In "theme" mode the editor paints its own background, so the chosen theme is
+ * used as-is. In "app" mode the editor borrows the window colours, which means
+ * a light palette on a dark window (or the reverse) would be unreadable; pair
+ * the palette with the window instead of showing invisible text.
+ */
+export function editorTheme(settings: {
+  syntaxTheme: string
+  editorBackground: 'app' | 'theme'
+  theme?: string
+}): ResolvedTheme {
+  const chosen = resolveTheme(settings.syntaxTheme)
+  if (settings.editorBackground !== 'app') return chosen
+  const dark = settingsAreDark(settings.theme)
+  if (chosen.dark === dark) return chosen
+  return resolveTheme(dark ? 'darcula' : 'intellij-light')
+}
+
+/**
+ * The highlight style to use in the editor. With no overrides the theme's own
+ * (more detailed) style is kept; once the user changes a token colour the
+ * style is rebuilt from the effective palette so the change is immediate.
+ */
+export function syntaxStyle(id: string, overrides: Partial<Record<SyntaxColorKey, string>> = {}): HighlightStyle {
+  const theme = resolveTheme(id)
+  const tokens = { ...syntaxTokens(id) }
+  let changed = false
+  for (const key of SYNTAX_COLOR_KEYS) {
+    const value = overrides[key]
+    if (value && HEX_COLOR.test(value)) {
+      tokens[key] = value
+      changed = true
+    }
+  }
+  return changed ? buildPackStyle(tokens) : theme.style
 }
 
 /** Build a CodeMirror highlight style from a compact token palette. */
