@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/stats.css" />
   <link rel="icon" type="image/png" href="assets/img/favicon.png" />
 </head>
 <body>
@@ -41,73 +42,127 @@
       <div class="section-head">
         <span class="kicker">Project insights</span>
         <h2>FlintQode in numbers</h2>
-        <p>Visitors, repository clones and installer downloads, generated straight from GitHub's own statistics.</p>
+        <p>Visitors, repository clones and installer downloads, generated straight from GitHub's own statistics. Hover any chart for details, toggle metrics and ranges, filter and sort the release table.</p>
       </div>
 
       <p class="stats-updated" id="statsUpdated">Loading the latest numbers…</p>
 
-      <div class="stats-grid">
-        <div class="stat-card">
-          <span class="stat-label">Page views</span>
-          <strong class="stat-value" id="statViews">—</strong>
-          <span class="stat-note">Last 14 days</span>
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card">
+          <span class="kpi-label">Page views</span>
+          <strong class="kpi-value" id="kpiViews">—</strong>
+          <span class="kpi-note" id="kpiViewsNote">Last 14 days</span>
+          <svg class="kpi-spark" id="sparkViews" viewBox="0 0 120 36" preserveAspectRatio="none"></svg>
         </div>
-        <div class="stat-card">
-          <span class="stat-label">Unique visitors</span>
-          <strong class="stat-value" id="statVisitors">—</strong>
-          <span class="stat-note">Last 14 days</span>
+        <div class="kpi-card">
+          <span class="kpi-label">Unique visitors</span>
+          <strong class="kpi-value" id="kpiVisitors">—</strong>
+          <span class="kpi-note" id="kpiVisitorsNote">Last 14 days</span>
+          <svg class="kpi-spark" id="sparkVisitors" viewBox="0 0 120 36" preserveAspectRatio="none"></svg>
         </div>
-        <div class="stat-card">
-          <span class="stat-label">Repository clones</span>
-          <strong class="stat-value" id="statClones">—</strong>
-          <span class="stat-note" id="statCloneUniques">— unique cloners</span>
+        <div class="kpi-card">
+          <span class="kpi-label">Repo clones</span>
+          <strong class="kpi-value" id="kpiClones">—</strong>
+          <span class="kpi-note" id="kpiClonesNote">Last 14 days</span>
+          <svg class="kpi-spark" id="sparkClones" viewBox="0 0 120 36" preserveAspectRatio="none"></svg>
         </div>
-        <div class="stat-card">
-          <span class="stat-label">Installer downloads</span>
-          <strong class="stat-value" id="statDownloads">—</strong>
-          <span class="stat-note" id="statLatest">— latest release</span>
+        <div class="kpi-card">
+          <span class="kpi-label">Unique cloners</span>
+          <strong class="kpi-value" id="kpiCloneUniques">—</strong>
+          <span class="kpi-note" id="kpiCloneUniquesNote">Last 14 days</span>
+          <svg class="kpi-spark" id="sparkCloneUniques" viewBox="0 0 120 36" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Installer downloads</span>
+          <strong class="kpi-value" id="kpiDownloads">—</strong>
+          <span class="kpi-note" id="kpiDownloadsNote">All releases</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Published releases</span>
+          <strong class="kpi-value" id="kpiReleases">—</strong>
+          <span class="kpi-note" id="kpiReleasesNote">On GitHub</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Peak day (views)</span>
+          <strong class="kpi-value" id="kpiPeakViews">—</strong>
+          <span class="kpi-note" id="kpiPeakViewsNote">Best single day</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Avg. daily views</span>
+          <strong class="kpi-value" id="kpiAvgViews">—</strong>
+          <span class="kpi-note" id="kpiAvgViewsNote">Over active days</span>
         </div>
       </div>
+
+      <!-- Traffic explorer -->
+      <article class="chart-card chart-wide">
+        <div class="chart-head">
+          <div>
+            <h3>Traffic explorer</h3>
+            <p id="trafficSub">Daily page views and unique visitors across the last 14 days.</p>
+          </div>
+          <div class="chart-controls">
+            <div class="seg" role="group" aria-label="Metric">
+              <button type="button" data-metric="views" class="seg-btn active">Views</button>
+              <button type="button" data-metric="uniques" class="seg-btn">Uniques</button>
+              <button type="button" data-metric="both" class="seg-btn">Both</button>
+            </div>
+            <div class="seg" role="group" aria-label="Chart type">
+              <button type="button" data-type="bars" class="seg-btn active">Bars</button>
+              <button type="button" data-type="line" class="seg-btn">Line</button>
+              <button type="button" data-type="area" class="seg-btn">Area</button>
+            </div>
+            <div class="seg" role="group" aria-label="Range">
+              <button type="button" data-range="7" class="seg-btn">7d</button>
+              <button type="button" data-range="14" class="seg-btn active">14d</button>
+            </div>
+          </div>
+        </div>
+        <div class="chart-legend" id="trafficLegend">
+          <span><i class="swatch views"></i>Views</span>
+          <span><i class="swatch uniques"></i>Unique visitors</span>
+        </div>
+        <div class="chart-canvas chart-canvas-lg" id="trafficChart" role="img" aria-label="Daily traffic chart"></div>
+        <div class="chart-tooltip" id="trafficTooltip" hidden></div>
+      </article>
 
       <div class="chart-grid">
         <article class="chart-card">
           <div class="chart-head">
             <div>
               <h3>Visitors</h3>
-              <p>Unique visitors and page views each day.</p>
-            </div>
-            <div class="chart-legend">
-              <span><i class="swatch primary"></i>Views</span>
-              <span><i class="swatch accent"></i>Unique</span>
+              <p>Page views and unique visitors per day.</p>
             </div>
           </div>
-          <div class="bar-chart" id="visitorsChart" role="img" aria-label="Daily page views and unique visitors">
-            <p class="chart-empty">Waiting for traffic data…</p>
-          </div>
+          <div class="chart-canvas" id="visitorsChart" role="img" aria-label="Daily page views and unique visitors"></div>
         </article>
-
         <article class="chart-card">
           <div class="chart-head">
             <div>
               <h3>Repository clones</h3>
-              <p>Clones and unique cloners each day.</p>
-            </div>
-            <div class="chart-legend">
-              <span><i class="swatch primary"></i>Clones</span>
-              <span><i class="swatch accent"></i>Unique</span>
+              <p>Clones and unique cloners per day.</p>
             </div>
           </div>
-          <div class="bar-chart" id="clonesChart" role="img" aria-label="Daily repository clones and unique cloners">
-            <p class="chart-empty">Waiting for traffic data…</p>
-          </div>
+          <div class="chart-canvas" id="clonesChart" role="img" aria-label="Daily repository clones and unique cloners"></div>
         </article>
       </div>
 
+      <!-- Downloads by release -->
       <article class="chart-card chart-wide">
         <div class="chart-head">
           <div>
             <h3>Downloads by release</h3>
             <p>Total installer downloads for each published version.</p>
+          </div>
+          <div class="chart-controls">
+            <input type="search" id="releaseSearch" class="chart-input" placeholder="Filter releases…" aria-label="Filter releases" />
+            <select id="releaseSort" class="chart-select" aria-label="Sort releases">
+              <option value="total-desc">Downloads ↓</option>
+              <option value="total-asc">Downloads ↑</option>
+              <option value="date-desc">Newest first</option>
+              <option value="date-asc">Oldest first</option>
+              <option value="tag-asc">Tag A→Z</option>
+            </select>
           </div>
         </div>
         <div class="download-list" id="releaseChart">
@@ -115,21 +170,64 @@
         </div>
       </article>
 
+      <div class="chart-grid">
+        <article class="chart-card">
+          <div class="chart-head">
+            <div>
+              <h3>Platforms</h3>
+              <p id="platformSub">Installers people are downloading for the latest release.</p>
+            </div>
+          </div>
+          <div class="platform-layout">
+            <div class="donut-wrap" id="platformDonut" role="img" aria-label="Downloads by platform"></div>
+            <div class="platform-legend" id="platformLegend"></div>
+          </div>
+        </article>
+        <article class="chart-card">
+          <div class="chart-head">
+            <div>
+              <h3>Top assets</h3>
+              <p id="assetHeading">Installers across every release.</p>
+            </div>
+            <div class="chart-controls">
+              <select id="assetSort" class="chart-select" aria-label="Sort assets">
+                <option value="downloads-desc">Downloads ↓</option>
+                <option value="name-asc">Name A→Z</option>
+              </select>
+            </div>
+          </div>
+          <div class="download-list" id="assetChart">
+            <p class="chart-empty">Waiting for release data…</p>
+          </div>
+        </article>
+      </div>
+
+      <!-- Release timeline -->
       <article class="chart-card chart-wide">
         <div class="chart-head">
           <div>
-            <h3>Latest release by installer</h3>
-            <p id="assetHeading">Which platforms people are downloading.</p>
+            <h3>Release timeline</h3>
+            <p>Cumulative installer downloads as each version shipped.</p>
           </div>
         </div>
-        <div class="download-list" id="assetChart">
-          <p class="chart-empty">Waiting for release data…</p>
+        <div class="chart-canvas chart-canvas-lg" id="timelineChart" role="img" aria-label="Cumulative downloads over releases"></div>
+        <div class="chart-tooltip" id="timelineTooltip" hidden></div>
+      </article>
+
+      <!-- Clone vs view ratio -->
+      <article class="chart-card chart-wide">
+        <div class="chart-head">
+          <div>
+            <h3>Clone-to-visit ratio</h3>
+            <p>How many clones each unique visitor generates, day by day.</p>
+          </div>
         </div>
+        <div class="chart-canvas" id="ratioChart" role="img" aria-label="Clone to visitor ratio per day"></div>
       </article>
 
       <p class="stats-footnote">
         GitHub keeps traffic history for 14 days and updates it once a day. Download counts come from the release assets and are
-        refreshed nightly and after each new release.
+        refreshed nightly and after each new release. Hover a bar or point for exact values; click a legend item to toggle a series.
       </p>
     </div>
   </section>

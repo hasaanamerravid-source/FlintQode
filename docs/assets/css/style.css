@@ -595,6 +595,29 @@ h1, h2, h3, .cta h2 { font-family: var(--font-display); }
 .whats-new ul { list-style: disc; padding-left: 1.4rem; color: var(--ink-soft); line-height: 1.7; }
 .whats-new li { margin-bottom: 0.4rem; }
 
+/* ---------- Custom scrollbar (dark, themed) ---------- */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--primary) 60%, var(--surface-3)) var(--surface-2);
+}
+*::-webkit-scrollbar { width: 12px; height: 12px; }
+*::-webkit-scrollbar-track {
+  background: var(--surface-2);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--primary) 75%, var(--surface-3)),
+    color-mix(in srgb, var(--accent) 60%, var(--surface-3)));
+  border: 2px solid var(--surface-2);
+  border-radius: 999px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--primary), var(--accent));
+}
+*::-webkit-scrollbar-corner { background: var(--surface-2); }
+
 /* ---------- Stats ---------- */
 .stats-updated {
   margin-bottom: var(--space-3);
