@@ -40,33 +40,34 @@
     <div class="section-inner">
       <div class="section-head">
         <span class="kicker">Release notes</span>
-        <h2>What's new in FlintQode 1.4.7</h2>
+        <h2>What's new in FlintQode 1.5.0</h2>
         <p>Released 2026-11-24.</p>
       </div>
       <div class="whats-new">
-        <h3>Fixed in this release</h3>
+        <h3>New in this release</h3>
         <ul>
-          <li><strong>Check for updates no longer freezes the app.</strong> Release checks, downloads and installs run in bounded background tasks, the button shows what is happening, and confirmations use the normal in-app dialog. An update is only offered when the published version is newer.</li>
-          <li><strong>No more 120-character warning.</strong> The always-on line-length problem is gone; syntax, JSON, Java, TODO/FIXME, whitespace, indentation and end-of-file diagnostics are unchanged.</li>
-          <li><strong>One terminal, in the right folder.</strong> Closing and reopening the panel no longer opens a shell in the filesystem root or home directory before the workspace shell.</li>
+          <li><strong>Line-length diagnostics are opt-in.</strong> The 120-character warning no longer appears by default. Enable it in Settings with your own limit and per-language overrides; disabling it clears its problems immediately. The Problems severity filter is reactive and does not rescan the document.</li>
+          <li><strong>Terminals survive a hidden panel.</strong> Sessions stay alive when you hide the panel, closing one tab kills only its shell, and app exit stops every PTY. Set <code>terminal.closeOnPanelHide</code> to restore the old behaviour.</li>
+          <li><strong>Verifiable updates.</strong> The website and in-app updater use a generated Pages manifest with exact tag-qualified URLs and SHA-256 digests. Downloads are verified before install, transient failures are retried, and partial files are cleaned up.</li>
         </ul>
         <h3>Performance</h3>
         <ul>
-          <li>Reviewed the native hot paths: file IO, project search, PTY, LSP, Git and process handling are already Rust with Rayon and dedicated threads. Java or C++ would add another runtime and build matrix without replacing the CodeMirror and SolidJS renderer work, so neither was added.</li>
+          <li>Editor statistics update with incremental deltas after an edit instead of recounting the document. Native search compiles glob patterns once, precomputes line starts and prepares replacements in parallel.</li>
+          <li>ADR 0006 records why no Java or C++ runtime was added: Rust already owns the native hot paths, and the remaining renderer work belongs to CodeMirror and SolidJS.</li>
         </ul>
-        <h3>Carried over from 1.4.6</h3>
+        <h3>Carried over from 1.4.7</h3>
         <ul>
+          <li>A responsive update button, a quieter Problems panel and one integrated terminal that starts in the workspace folder.</li>
           <li>VS Code-style Extensions view with search, details, install, uninstall, enable, disable and local install from a plugin file.</li>
           <li>Power save mode, interface scale, a minimal toolbar and editable code token colours.</li>
-          <li>Full editor typography and colour customisation, a real PTY terminal, Git integration, multi-root workspace and LSP tools.</li>
         </ul>
         <h3>Website</h3>
         <ul>
-          <li>The new <a href="stats.html">Stats tab</a> shows visitors, clones and installer downloads, refreshed from GitHub nightly and after each release.</li>
-          <li>Download links, release notes and installers now describe v1.4.7, with full OS installer coverage for Linux, Windows and macOS.</li>
+          <li>The <a href="stats.html">Stats tab</a> shows visitors, clones and installer downloads, refreshed from GitHub nightly and after each release.</li>
+          <li>Download links, release notes and installers now describe v1.5.0, with full OS installer coverage for Linux, Windows and macOS.</li>
         </ul>
         <p style="margin-top:var(--space-4);">
-          <a href="downloads.html" class="btn btn-primary" data-download="primary">Download 1.4.7</a>
+          <a href="downloads.html" class="btn btn-primary" data-download="primary">Download 1.5.0</a>
           <a href="https://github.com/hasaanamerravid-source/FlintQode/blob/main/CHANGELOG.md" class="btn btn-ghost" target="_blank" rel="noopener">Full changelog</a>
         </p>
       </div>

@@ -43,13 +43,16 @@ test('every documented asset pattern matches an expected asset', () => {
   }
 })
 
-test('the committed update manifest matches the expected release', () => {
+test('the committed update manifest describes a consistent release', () => {
   const manifest = JSON.parse(readFileSync(resolve(root, UPDATE_MANIFEST_PATH), 'utf8'))
-  assert.deepEqual(manifestIssues(manifest, version), [])
-  assert.equal(manifest.version, version)
-  assert.equal(manifest.tag, `v${version}`)
+  // Validate the committed snapshot against its own version. VERSION is bumped
+  // before the tagged assets exist, and release:verify checks the exact match
+  // after the new manifest is published; npm run check must pass in between.
+  const manifestVersion: string = manifest.version
+  assert.deepEqual(manifestIssues(manifest, manifestVersion), [])
+  assert.equal(manifest.tag, `v${manifestVersion}`)
   for (const asset of manifest.assets) {
-    assert.equal(asset.url, releaseAssetUrl(version, asset.name))
+    assert.equal(asset.url, releaseAssetUrl(manifestVersion, asset.name))
     assert.ok(isSha256(asset.sha256))
   }
 })

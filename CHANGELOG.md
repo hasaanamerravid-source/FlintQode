@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-11-25
+
+### Added
+- **Optional line-length diagnostics.** The 120-character warning is now a setting, off by default, with a configurable limit and per-language overrides. Problems can be filtered by severity without rescanning the document.
+- Terminal sessions survive hiding the panel by default; `terminal.closeOnPanelHide` restores the old close-on-hide behaviour. Closing one tab kills only that shell, and app exit stops every PTY.
+- A generated update manifest on GitHub Pages with exact tag-qualified URLs and SHA-256 digests. The website and the in-app updater read it first and fall back to GitHub's release API.
+- ADR 0006 records the decision not to add a Java or C++ runtime, the Rust/CodeMirror/SolidJS ownership boundaries, and the profiling gate for any future native addition.
+- The release pipeline builds installers only from `v*` tags, runs the full frontend gate on every push, and wires optional Apple and Windows signing secrets into the tagged build.
+
+### Changed
+- Editor statistics use incremental deltas after edits instead of recounting the whole document; native search compiles glob patterns once, precomputes line starts and prepares replacements in parallel.
+- Update checks, downloads and installs now verify GitHub's SHA-256 digest before install, retry transient failures with bounded backoff and remove partial downloads on failure.
+- Text files are checked out with LF line endings on every platform via `.gitattributes`, so Prettier's format gate behaves identically on Windows, macOS and Linux.
+- Documentation pages now have a `main` landmark; the static accessibility audit on the download page scores 1.0.
+
+### Fixed
+- Enabling the line-length limit reports only lines above the configured value, and disabling it removes those problems immediately.
+- A manifest describing the previous release no longer breaks `npm run check` during the window between a version bump and publishing the new assets.
+
 ## [1.4.7] - 2026-11-24
 
 ### Fixed
