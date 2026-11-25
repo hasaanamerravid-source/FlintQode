@@ -239,7 +239,9 @@ fn line_at(text: &str, starts: &[usize], offset: usize) -> String {
     let at = offset.min(text.len());
     let index = line_index(starts, at);
     let start = starts[index];
-    let end = starts.get(index + 1).copied().unwrap_or(text.len());
+    // The next line start sits after the newline; stop before it to match the
+    // original line preview, which never included the newline itself.
+    let end = starts.get(index + 1).map_or(text.len(), |&start| start - 1);
     text[start..end].chars().take(400).collect()
 }
 
