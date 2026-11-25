@@ -3,6 +3,7 @@ import type { JSX } from '@solidjs/web'
 import type { Settings, SyntaxColorKey } from '@shared/types'
 import { useAppStore } from '../store/app'
 import { confirm } from '../store/ui'
+import { runUpdateFlow } from '../core/updateFlow'
 import { useSettings } from '../state/solid'
 import { DEFAULT_SETTINGS, ENCODING_LABELS, EOL_LABELS } from '../core/defaults'
 import { themeGroups, resolveTheme, syntaxTokens, editorTheme, SYNTAX_COLOR_KEYS } from '../core/themeResolver'
@@ -201,46 +202,21 @@ export function SettingsDialog(): JSX.Element {
   const [updateStatus, setUpdateStatus] = createSignal('')
   const [updateBusy, setUpdateBusy] = createSignal(false)
 
-  // Update work happens in the native async commands. This handler only waits
-  // for them and uses the in-app confirm dialog instead of window.confirm(),
-  // so the webview stays responsive from the first click to the last prompt.
-  const checkForUpdate = async (): Promise<void> => {
-    setUpdateBusy(true)
-    setUpdateStatus(t('settings.updatesChecking'))
-    try {
-      const app = await window.api.info()
-      const update = await window.api.app.checkUpdate(app.version)
-      if (!update) {
-        setUpdateStatus(t('settings.updatesUpToDate'))
-        return
-      }
-      setUpdateStatus(t('settings.updatesAvailable', { version: update.version }))
-      setUpdateBusy(false)
-      const download = await confirm(
-        t('settings.title'),
-        t('settings.updatesDownloadPrompt', { version: update.version }),
-        t('common.yes'),
-      )
-      if (!download) return
-      setUpdateBusy(true)
-      setUpdateStatus(t('settings.updatesDownloading'))
-      const temp = app.temp.replace(/[\\/]+$/, '') || '/tmp'
-      const dest = `${temp}/flintqode-update.deb`
-      await window.api.app.downloadUpdate(update.url, dest)
-      setUpdateStatus(t('settings.updatesDownloaded'))
-      setUpdateBusy(false)
-      const install = await confirm(t('settings.title'), t('settings.updatesInstallPrompt'), t('common.yes'))
-      if (!install) return
-      setUpdateBusy(true)
-      setUpdateStatus(t('settings.updatesInstalling'))
-      await window.api.app.installUpdate(dest)
-      setUpdateStatus(t('settings.updatesInstalled'))
-    } catch (error) {
-      setUpdateStatus(String(error))
-    } finally {
-      setUpdateBusy(false)
-    }
-  }
+  // The flow is testable and keeps every prompt inside the app instead of
+  // blocking the webview with window.confirm().
+  const checkForUpdate = (): Promise<void> =>
+    runUpdateFlow({
+      api: {
+        info: () => window.api.info(),
+        checkUpdate: (version) => window.api.app.checkUpdate(version),
+        downloadUpdate: (url, destination) => window.api.app.downloadUpdate(url, destination),
+        installUpdate: (path) => window.api.app.installUpdate(path),
+      },
+      confirm,
+      text: t,
+      status: setUpdateStatus,
+      busy: setUpdateBusy,
+    })
 
   const commandsWithShortcuts = getCommands().filter((command) => command.shortcut && !command.hidden)
   const progress = createMemo(() => translationProgress(settings().language))

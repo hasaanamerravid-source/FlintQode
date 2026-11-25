@@ -90,6 +90,17 @@ test('the values of a message are replaced', () => {
   assert.ok(!text.includes('{{name}}'))
 })
 
+test('the update prompts render the version in every language', () => {
+  for (const locale of LOCALES) {
+    const prompt = translate(locale.id, 'settings.updatesDownloadPrompt', { version: '9.9.9' })
+    const status = translate(locale.id, 'settings.updatesAvailable', { version: '9.9.9' })
+    assert.ok(prompt.includes('9.9.9'), `${locale.id} download prompt lost the version`)
+    assert.ok(status.includes('9.9.9'), `${locale.id} status lost the version`)
+    assert.ok(!prompt.includes('{{version}}') && !prompt.includes('{version}'))
+    assert.ok(!status.includes('{{version}}') && !status.includes('{version}'))
+  }
+})
+
 test('a fallback is used when the key is unknown', () => {
   const text = translateWith('de', 'common.ok', 'The fallback')
   assert.equal(typeof text, 'string')

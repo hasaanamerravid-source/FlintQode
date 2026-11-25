@@ -178,3 +178,32 @@ pub async fn app_install_update(path: String) -> Result<String, String> {
         .await
         .map_err(|error| format!("update install failed: {error}"))?
 }
+
+#[cfg(test)]
+mod tests {
+    use super::is_newer;
+
+    #[test]
+    fn a_higher_patch_is_newer() {
+        assert!(is_newer("1.4.8", "1.4.7"));
+        assert!(!is_newer("1.4.7", "1.4.7"));
+    }
+
+    #[test]
+    fn a_higher_minor_or_major_is_newer() {
+        assert!(is_newer("1.5.0", "1.4.9"));
+        assert!(is_newer("2.0.0", "1.9.9"));
+    }
+
+    #[test]
+    fn a_prefix_and_missing_components_are_handled() {
+        assert!(is_newer("v1.5", "1.4.7"));
+        assert!(!is_newer("1.4.7.0", "1.4.7"));
+    }
+
+    #[test]
+    fn a_bad_tag_is_not_newer() {
+        assert!(!is_newer("nightly", "1.4.7"));
+        assert!(!is_newer("", "1.4.7"));
+    }
+}
