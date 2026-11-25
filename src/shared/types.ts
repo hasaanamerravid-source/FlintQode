@@ -157,6 +157,24 @@ export interface Appearance {
 /** How the editor surface is painted. */
 export type EditorBackground = 'app' | 'theme'
 
+/** A built-in diagnostic rule that can be switched on or off. */
+export type DiagnosticRuleId = 'syntax' | 'json' | 'java' | 'todo' | 'whitespace' | 'indentation' | 'eof' | 'lineLength'
+
+/** One diagnostic rule. `limit` is only used by the line-length rule. */
+export interface DiagnosticRuleConfig {
+  enabled: boolean
+  /** Maximum characters before a line is reported. */
+  limit?: number
+}
+
+/** Configuration of the built-in Problems checks. */
+export interface DiagnosticSettings {
+  /** Defaults for every language. */
+  rules: Record<DiagnosticRuleId, DiagnosticRuleConfig>
+  /** Language id → overrides; missing rules fall back to `rules`. */
+  languages: Record<string, Partial<Record<DiagnosticRuleId, DiagnosticRuleConfig>>>
+}
+
 /** User settings (persisted as JSON). */
 export interface Settings {
   theme: 'light' | 'dark' | 'system'
@@ -250,6 +268,8 @@ export interface Settings {
   direction: 'ltr' | 'rtl'
   /** Show git diff markers in the editor gutter (when in a git repo). */
   gitGutter: boolean
+  /** Built-in Problems checks; line length is off by default (v1.4.7 behaviour). */
+  diagnostics?: DiagnosticSettings
 }
 
 /** Command executed from the palette, menu or keyboard map. */

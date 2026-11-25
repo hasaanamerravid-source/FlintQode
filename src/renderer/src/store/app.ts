@@ -1,7 +1,7 @@
 import { create } from '@/state/compat'
 import type { Eol, SessionState, Settings, Tab } from '@shared/types'
 import { translate, type MessageKey } from '@shared/i18n'
-import { DEFAULT_SETTINGS } from '../core/defaults'
+import { DEFAULT_SETTINGS, mergeDiagnostics } from '../core/defaults'
 import { getEditor } from '../core/editors'
 import { runCommand } from '../core/commands'
 import { sfx } from '../core/soundFx'
@@ -451,6 +451,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...((stored?.appearance ?? {}) as Record<string, unknown>),
       } as typeof DEFAULT_SETTINGS.appearance,
       syntaxColors: { ...(stored?.syntaxColors ?? {}) },
+      diagnostics: mergeDiagnostics(stored?.diagnostics),
     }
     // The note taking profiles were retired: FlintQode is a code workspace.
     settings.profile = 'coding'

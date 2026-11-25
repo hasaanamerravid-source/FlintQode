@@ -1,7 +1,8 @@
+import type { DiagnosticSettings } from '@shared/types'
 import { createEffect, createMemo, createSignal, onSettled, type Accessor } from 'solid-js'
 import { useAppStore } from '../store/app'
 import { getView } from './views'
-import { applyProblems, collectProblems, type Problem } from './diagnostics'
+import { applyProblems, collectProblems, diagnosticsKey, type Problem } from './diagnostics'
 import { asProblems, lspProblemsForPath } from './lspIntegration'
 import { useLspStore } from './lspState'
 import { useReferenceStore } from './lspCommands'
@@ -43,6 +44,7 @@ interface CheckSource {
   language: string
   large: boolean
   path: string
+  diagnostics: DiagnosticSettings | undefined
 }
 
 /**
@@ -75,6 +77,7 @@ export function useProblems(): Accessor<Problem[]> {
         language: tab?.language ?? 'text',
         large: tab?.largeFile ?? false,
         path: tab?.path ?? '',
+        diagnostics: state.settings.diagnostics,
       } satisfies CheckSource
     },
     (source) => {
@@ -88,7 +91,9 @@ export function useProblems(): Accessor<Problem[]> {
       timer = window.setTimeout(() => {
         const run = ++generation
         // Content, not just length: two edits of the same size must both run.
-        const key = `${source.activeTabId}:${source.language}:${source.content}`
+        // The rule signature is part of the key so toggling a setting without
+        // touching the document still produces a fresh check immediately.
+        const key = `${source.activeTabId}:${source.language}:${diagnosticsKey(source.diagnostics, source.language)}:${source.content}`
         // Another place already checked the same document.
         if (key === lastKey) return
         lastKey = key
@@ -97,7 +102,7 @@ export function useProblems(): Accessor<Problem[]> {
           if (run === generation) publish([])
           return
         }
-        const found = collectProblems(view, source.language)
+        const found = collectProblems(view, source.language, source.diagnostics)
         // A newer debounce (or the tab changing) owns the result now.
         if (run !== generation) return
         publish(found)

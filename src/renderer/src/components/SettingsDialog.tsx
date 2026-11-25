@@ -1,11 +1,18 @@
 import { createEffect, createMemo, createSignal, For, Match, Show, Switch } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import type { Settings, SyntaxColorKey } from '@shared/types'
+import type {
+  DiagnosticRuleConfig,
+  DiagnosticRuleId,
+  DiagnosticSettings,
+  Settings,
+  SyntaxColorKey,
+} from '@shared/types'
 import { useAppStore } from '../store/app'
 import { confirm } from '../store/ui'
 import { runUpdateFlow } from '../core/updateFlow'
 import { useSettings } from '../state/solid'
-import { DEFAULT_SETTINGS, ENCODING_LABELS, EOL_LABELS } from '../core/defaults'
+import { DEFAULT_DIAGNOSTICS, DEFAULT_SETTINGS, ENCODING_LABELS, EOL_LABELS } from '../core/defaults'
+import { DIAGNOSTIC_RULES, resolveDiagnostics } from '../core/diagnostics'
 import { themeGroups, resolveTheme, syntaxTokens, editorTheme, SYNTAX_COLOR_KEYS } from '../core/themeResolver'
 import { ThemeGallery } from './ThemeGallery'
 import { FileIcon } from './FileIcon'
@@ -34,7 +41,16 @@ import {
 import { Modal } from './Modal'
 
 type Section =
-  'appearance' | 'typography' | 'icons' | 'toolchain' | 'workspace' | 'editor' | 'files' | 'shortcuts' | 'updates'
+  | 'appearance'
+  | 'typography'
+  | 'icons'
+  | 'toolchain'
+  | 'workspace'
+  | 'editor'
+  | 'diagnostics'
+  | 'files'
+  | 'shortcuts'
+  | 'updates'
 
 const SECTIONS: [Section, MessageKey][] = [
   ['appearance', 'settings.tab.appearance'],
@@ -43,6 +59,7 @@ const SECTIONS: [Section, MessageKey][] = [
   ['toolchain', 'settings.tab.toolchain'],
   ['workspace', 'settings.tab.general'],
   ['editor', 'settings.tab.editor'],
+  ['diagnostics', 'settings.tab.diagnostics'],
   ['files', 'settings.tab.files'],
   ['shortcuts', 'settings.tab.shortcuts'],
   ['updates', 'settings.tab.updates'],
@@ -201,6 +218,7 @@ export function SettingsDialog(): JSX.Element {
   const [bindings, setBindings] = createSignal<Keybindings>({})
   const [updateStatus, setUpdateStatus] = createSignal('')
   const [updateBusy, setUpdateBusy] = createSignal(false)
+  const [diagnosticLanguage, setDiagnosticLanguage] = createSignal('json')
 
   // The flow is testable and keeps every prompt inside the app instead of
   // blocking the webview with window.confirm().
@@ -262,6 +280,40 @@ export function SettingsDialog(): JSX.Element {
 
   const patchAppearance = (partial: Partial<Settings['appearance']>): void => {
     useAppStore.getState().setSettings({ appearance: { ...settings().appearance, ...partial } })
+  }
+
+  const diagnostics = createMemo<DiagnosticSettings>(() => settings().diagnostics ?? DEFAULT_DIAGNOSTICS)
+  const languageOverride = createMemo(() => diagnosticLanguage().trim().toLowerCase())
+  const languageRules = createMemo(() => resolveDiagnostics(diagnostics(), languageOverride()))
+
+  const setGlobalRule = (rule: DiagnosticRuleId, partial: Partial<DiagnosticRuleConfig>): void => {
+    const current = diagnostics()
+    patch({
+      diagnostics: {
+        rules: { ...current.rules, [rule]: { ...current.rules[rule], ...partial } },
+        languages: { ...current.languages },
+      },
+    })
+  }
+
+  const setLanguageRule = (language: string, rule: DiagnosticRuleId, partial: Partial<DiagnosticRuleConfig>): void => {
+    const current = diagnostics()
+    if (!language) return
+    const overrides = { ...(current.languages[language] ?? {}) }
+    overrides[rule] = { ...(overrides[rule] ?? current.rules[rule]), ...partial }
+    patch({
+      diagnostics: {
+        rules: { ...current.rules },
+        languages: { ...current.languages, [language]: overrides },
+      },
+    })
+  }
+
+  const removeLanguageOverride = (language: string): void => {
+    const current = diagnostics()
+    const languages = { ...current.languages }
+    delete languages[language]
+    patch({ diagnostics: { rules: { ...current.rules }, languages } })
   }
 
   const tokenColor = (key: SyntaxColorKey): string =>
@@ -1210,6 +1262,87 @@ export function SettingsDialog(): JSX.Element {
                 onChange={(e) => useAppStore.getState().setSettings({ spellcheck: e.currentTarget.checked })}
               />
             </Row>
+          </Match>
+
+          <Match when={section() === 'diagnostics'}>
+            <div class="panel-header" style={{ 'margin-top': '10px' }}>
+              <span>{t('settings.diagnosticsTitle')}</span>
+              <span>{t('settings.diagnosticsRules')}</span>
+            </div>
+            <div class="hint" style={{ margin: '4px 0 14px' }}>
+              {t('settings.diagnosticsHint')}
+            </div>
+            <For each={DIAGNOSTIC_RULES}>
+              {(rule) => (
+                <Row
+                  label={t(`settings.diagnosticsRule.${rule}` as MessageKey)}
+                  hint={rule === 'lineLength' ? t('settings.diagnosticsLineLengthHint') : undefined}
+                >
+                  <input
+                    type="checkbox"
+                    checked={diagnostics().rules[rule].enabled}
+                    onChange={(event) => setGlobalRule(rule, { enabled: event.currentTarget.checked })}
+                  />
+                  <Show when={rule === 'lineLength'}>
+                    <input
+                      type="number"
+                      min={1}
+                      max={9999}
+                      value={diagnostics().rules.lineLength.limit ?? 120}
+                      disabled={!diagnostics().rules.lineLength.enabled}
+                      onInput={(event) => setGlobalRule('lineLength', { limit: Number(event.currentTarget.value) })}
+                    />
+                  </Show>
+                </Row>
+              )}
+            </For>
+            <div class="panel-header" style={{ 'margin-top': '10px' }}>
+              <span>{t('settings.diagnosticsLanguageTitle')}</span>
+              <Show when={diagnostics().languages[languageOverride()]}>
+                <button class="icon-btn" onClick={() => removeLanguageOverride(languageOverride())}>
+                  {t('settings.diagnosticsUseGlobal')}
+                </button>
+              </Show>
+            </div>
+            <div class="hint" style={{ margin: '4px 0 14px' }}>
+              {t('settings.diagnosticsLanguageHint')}
+            </div>
+            <Row label={t('settings.diagnosticsLanguage')}>
+              <input
+                type="text"
+                value={diagnosticLanguage()}
+                placeholder="json"
+                onInput={(event) => setDiagnosticLanguage(event.currentTarget.value)}
+              />
+            </Row>
+            <Show when={!!languageOverride()}>
+              <For each={DIAGNOSTIC_RULES}>
+                {(rule) => (
+                  <Row label={t(`settings.diagnosticsRule.${rule}` as MessageKey)}>
+                    <input
+                      type="checkbox"
+                      checked={languageRules().enabled[rule]}
+                      onChange={(event) =>
+                        setLanguageRule(languageOverride(), rule, { enabled: event.currentTarget.checked })
+                      }
+                    />
+                    <Show when={rule === 'lineLength'}>
+                      <input
+                        type="number"
+                        min={1}
+                        max={9999}
+                        value={languageRules().lineLengthLimit}
+                        onInput={(event) =>
+                          setLanguageRule(languageOverride(), 'lineLength', {
+                            limit: Number(event.currentTarget.value),
+                          })
+                        }
+                      />
+                    </Show>
+                  </Row>
+                )}
+              </For>
+            </Show>
           </Match>
 
           <Match when={section() === 'files'}>

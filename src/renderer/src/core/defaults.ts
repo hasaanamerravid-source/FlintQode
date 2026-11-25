@@ -1,5 +1,46 @@
-import type { Eol, Settings } from '@shared/types'
+import type { DiagnosticRuleConfig, DiagnosticRuleId, DiagnosticSettings, Eol, Settings } from '@shared/types'
 import { DEFAULT_APPEARANCE } from './appearance'
+
+/**
+ * Built-in diagnostics. Every familiar check stays on, but the 120-character
+ * warning that v1.4.7 removed is off unless the user asks for it.
+ */
+export const DEFAULT_DIAGNOSTICS: DiagnosticSettings = {
+  rules: {
+    syntax: { enabled: true },
+    json: { enabled: true },
+    java: { enabled: true },
+    todo: { enabled: true },
+    whitespace: { enabled: true },
+    indentation: { enabled: true },
+    eof: { enabled: true },
+    lineLength: { enabled: false, limit: 120 },
+  },
+  languages: {},
+}
+
+/**
+ * Merge stored diagnostic settings with the defaults, one rule at a time. An
+ * older settings file (or a partially written one) must never leave a rule
+ * without an `enabled` value.
+ */
+export function mergeDiagnostics(stored: DiagnosticSettings | undefined): DiagnosticSettings {
+  const rules: DiagnosticSettings['rules'] = { ...DEFAULT_DIAGNOSTICS.rules }
+  for (const rule of Object.keys(rules) as DiagnosticRuleId[]) {
+    rules[rule] = { ...rules[rule], ...(stored?.rules?.[rule] ?? {}) }
+  }
+  const languages: DiagnosticSettings['languages'] = {}
+  for (const [language, overrides] of Object.entries(stored?.languages ?? {})) {
+    const merged: Partial<Record<DiagnosticRuleId, DiagnosticRuleConfig>> = {}
+    for (const [rule, config] of Object.entries(overrides ?? {})) {
+      if (config && typeof config === 'object') {
+        merged[rule as DiagnosticRuleId] = { ...(rules[rule as DiagnosticRuleId] ?? {}), ...config }
+      }
+    }
+    languages[language] = merged
+  }
+  return { rules, languages }
+}
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
@@ -62,6 +103,7 @@ export const DEFAULT_SETTINGS: Settings = {
   plugins: [],
   direction: 'ltr',
   gitGutter: true,
+  diagnostics: DEFAULT_DIAGNOSTICS,
 }
 
 export const ENCODING_LABELS: Record<string, string> = {

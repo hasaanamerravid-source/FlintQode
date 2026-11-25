@@ -9,7 +9,11 @@
  * - parse errors of data formats (`JSON.parse` for JSON)
  * - warnings that every editor knows: TODO/FIXME markers, trailing whitespace,
  *   a missing newline at the end of the file and tabs in files whose
- *   indentation is part of the syntax.
+ *   indentation is part of the syntax
+ * - an optional line-length warning, off by default, with a configurable limit
+ *
+ * Every rule can be switched off globally or for one language. The defaults
+ * deliberately match v1.4.7: there is no always-on 120-character warning.
  *
  * The analysis is completely synchronous and linear in the size of the
  * document, so it stays fast enough to run while the user types. The result
@@ -20,9 +24,11 @@
  * paints a squiggly underline below the offending range.
  */
 
+import type { DiagnosticRuleConfig, DiagnosticRuleId, DiagnosticSettings } from '@shared/types'
 import { syntaxTree } from '@codemirror/language'
 import { StateEffect, StateField, type Extension, type Range, type Text } from '@codemirror/state'
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
+import { DEFAULT_DIAGNOSTICS } from './defaults'
 
 export type ProblemSeverity = 'error' | 'warning' | 'info'
 
@@ -46,6 +52,53 @@ export const MAX_PROBLEMS = 500
 
 /** How many "tab indentation" problems are reported at most. */
 const MAX_TAB_PROBLEMS = 20
+
+/** Every configurable rule, in the order shown in Settings. */
+export const DIAGNOSTIC_RULES: readonly DiagnosticRuleId[] = [
+  'syntax',
+  'json',
+  'java',
+  'todo',
+  'whitespace',
+  'indentation',
+  'eof',
+  'lineLength',
+]
+
+/** The rules, resolved for one language. */
+export interface ResolvedDiagnostics {
+  enabled: Record<DiagnosticRuleId, boolean>
+  lineLengthLimit: number
+}
+
+/**
+ * Merge the global defaults, the user's global rules and the overrides of one
+ * language. Partial or older settings files are handled by falling back to
+ * {@link DEFAULT_DIAGNOSTICS} for every missing piece.
+ */
+export function resolveDiagnostics(config: DiagnosticSettings | undefined, language: string): ResolvedDiagnostics {
+  const enabled = {} as Record<DiagnosticRuleId, boolean>
+  let lineLengthLimit = DEFAULT_DIAGNOSTICS.rules.lineLength.limit ?? 120
+  for (const rule of DIAGNOSTIC_RULES) {
+    const merged: DiagnosticRuleConfig = {
+      ...DEFAULT_DIAGNOSTICS.rules[rule],
+      ...(config?.rules?.[rule] ?? {}),
+      ...(config?.languages?.[language]?.[rule] ?? {}),
+    }
+    enabled[rule] = merged.enabled
+    if (rule === 'lineLength') {
+      const limit = Number(merged.limit ?? 120)
+      lineLengthLimit = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : 120
+    }
+  }
+  return { enabled, lineLengthLimit }
+}
+
+/** A stable signature of the rules, used to invalidate a cached check. */
+export function diagnosticsKey(config: DiagnosticSettings | undefined, language: string): string {
+  const { enabled, lineLengthLimit } = resolveDiagnostics(config, language)
+  return `${DIAGNOSTIC_RULES.map((rule) => (enabled[rule] ? '1' : '0')).join('')}:${lineLengthLimit}`
+}
 
 /** Languages where the indentation is part of the syntax. */
 const INDENTATION_SENSITIVE = new Set([
@@ -87,24 +140,28 @@ interface Span {
 export const MAX_DIAGNOSTIC_CHARS = 1_500_000
 
 /**
- * Collect the problems of a document. `language` is the language id of the tab.
+ * Collect the problems of a document. `language` is the language id of the tab
+ * and `config` the user's rule settings; when omitted the v1.4.7 defaults are
+ * used.
  */
-export function collectProblems(view: EditorView, language: string): Problem[] {
+export function collectProblems(view: EditorView, language: string, config?: DiagnosticSettings): Problem[] {
   const state = view.state
   const doc = state.doc
   const huge = doc.length > MAX_DIAGNOSTIC_CHARS
+  const { enabled, lineLengthLimit } = resolveDiagnostics(config, language)
 
   const comments: Span[] = []
   const syntaxErrors: Span[] = []
   // A big document is not parsed: the tree is built lazily by CodeMirror and
-  // asking for it would block the editor for seconds.
-  const tree = huge ? null : syntaxTree(state)
+  // asking for it would block the editor for seconds. When neither syntax nor
+  // markers are wanted there is no reason to build it either.
+  const tree = huge || (!enabled.syntax && !enabled.todo) ? null : syntaxTree(state)
   if (tree && tree.length > 0) {
     tree.iterate({
       enter(node) {
-        if (node.type.isError) {
+        if (enabled.syntax && node.type.isError) {
           syntaxErrors.push({ from: node.from, to: node.to })
-        } else if (isCommentNode(node.name)) {
+        } else if (enabled.todo && isCommentNode(node.name)) {
           comments.push({ from: node.from, to: node.to })
         }
       },
@@ -118,7 +175,7 @@ export function collectProblems(view: EditorView, language: string): Problem[] {
   // JSON gets a dedicated parser: its error messages are much better than
   // the ones of the generic grammar, so they replace the syntax errors.
   let handledByJson = false
-  if (!huge && language === 'json') {
+  if (!huge && enabled.json && language === 'json') {
     const jsonProblem = collectJsonProblem(doc, text, syntaxErrors)
     if (jsonProblem) {
       problems.push(jsonProblem)
@@ -126,7 +183,7 @@ export function collectProblems(view: EditorView, language: string): Problem[] {
     }
   }
 
-  if (!handledByJson) {
+  if (!handledByJson && enabled.syntax) {
     for (const error of syntaxErrors) {
       const problem = makeSyntaxProblem(doc, text, error)
       if (problem) problems.push(problem)
@@ -135,17 +192,27 @@ export function collectProblems(view: EditorView, language: string): Problem[] {
 
   // Java gets a dedicated local validator: common mistakes are caught even
   // when no Java language server is installed.
-  if (!huge && language === 'java') {
+  if (!huge && enabled.java && language === 'java') {
     problems.push(...collectJavaProblems(doc, text))
   }
 
   // TODO/FIXME markers are only interesting inside a comment - but only when
   // the language knows about comments at all.
-  const commentTokens = state.languageDataAt<unknown>('commentTokens', 0)
-  const onlyInComments = tree !== null && tree.length > 0 && commentTokens.length > 0
-  problems.push(...collectMarkerProblems(doc, text, comments, onlyInComments))
+  if (enabled.todo) {
+    const commentTokens = state.languageDataAt<unknown>('commentTokens', 0)
+    const onlyInComments = tree !== null && tree.length > 0 && commentTokens.length > 0
+    problems.push(...collectMarkerProblems(doc, text, comments, onlyInComments))
+  }
 
-  problems.push(...collectLineProblems(doc, text, language))
+  problems.push(
+    ...collectLineProblems(doc, text, language, {
+      whitespace: enabled.whitespace,
+      indentation: enabled.indentation,
+      eof: enabled.eof,
+      lineLength: enabled.lineLength,
+      limit: lineLengthLimit,
+    }),
+  )
 
   return limitProblems(sortProblems(problems))
 }
@@ -469,8 +536,30 @@ function insideComment(comments: Span[], offset: number): boolean {
  * Line based problems
  * ------------------------------------------------------------------ */
 
-/** Report the problems that every line of the document can have. */
-export function collectLineProblems(doc: Text, text: string, language: string): Problem[] {
+/** Which line-based rules to apply, and the line-length limit. */
+export interface LineProblemOptions {
+  whitespace?: boolean
+  indentation?: boolean
+  eof?: boolean
+  lineLength?: boolean
+  limit?: number
+}
+
+/**
+ * Report the problems that every line of the document can have. When options
+ * are omitted the v1.4.7 behaviour is kept: no line-length warnings.
+ */
+export function collectLineProblems(
+  doc: Text,
+  text: string,
+  language: string,
+  options: LineProblemOptions = {},
+): Problem[] {
+  const whitespaceEnabled = options.whitespace ?? true
+  const indentationEnabled = options.indentation ?? true
+  const eofEnabled = options.eof ?? true
+  const lineLengthEnabled = options.lineLength ?? false
+  const limit = Math.max(1, Math.floor(options.limit ?? 120))
   const problems: Problem[] = []
   const length = text.length
   const tabsRelevant = INDENTATION_SENSITIVE.has(language)
@@ -491,7 +580,7 @@ export function collectLineProblems(doc: Text, text: string, language: string): 
       if (code === 32 || code === 9) whitespaceStart--
       else break
     }
-    if (whitespaceStart < contentEnd) {
+    if (whitespaceEnabled && whitespaceStart < contentEnd) {
       problems.push({
         line: lineNumber,
         column: whitespaceStart - lineStart + 1,
@@ -503,7 +592,20 @@ export function collectLineProblems(doc: Text, text: string, language: string): 
       })
     }
 
-    if (tabsRelevant && tabProblems < MAX_TAB_PROBLEMS) {
+    if (lineLengthEnabled && contentEnd - lineStart > limit) {
+      const from = lineStart + limit
+      problems.push({
+        line: lineNumber,
+        column: limit + 1,
+        from,
+        to: contentEnd,
+        severity: 'warning',
+        message: `Line is ${contentEnd - lineStart} characters; limit is ${limit}`,
+        source: 'lineLength',
+      })
+    }
+
+    if (indentationEnabled && tabsRelevant && tabProblems < MAX_TAB_PROBLEMS) {
       let index = lineStart
       while (index < contentEnd) {
         const code = text.charCodeAt(index)
@@ -529,7 +631,7 @@ export function collectLineProblems(doc: Text, text: string, language: string): 
     lineNumber++
   }
 
-  if (length > 0 && text.charCodeAt(length - 1) !== 10) {
+  if (eofEnabled && length > 0 && text.charCodeAt(length - 1) !== 10) {
     const lastLine = doc.lineAt(length - 1)
     problems.push({
       line: lastLine.number,
