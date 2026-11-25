@@ -6,7 +6,11 @@ export const setHighlightAll = StateEffect.define<string | null>()
 
 const mark = Decoration.mark({ class: 'cm-searchMatch' })
 
-function build(term: string | null, doc: Text): DecorationSet {
+/** A huge document must not create an unbounded decoration set. */
+export const MAX_HIGHLIGHT_MATCHES = 2_000
+
+/** Build the decorations for a term; exported so the baseline can measure it. */
+export function buildHighlightDecorations(term: string | null, doc: Text): DecorationSet {
   if (!term) return Decoration.none
   const ranges: Range<Decoration>[] = []
   const text = doc.toString()
@@ -16,6 +20,7 @@ function build(term: string | null, doc: Text): DecorationSet {
   let index = haystack.indexOf(needle)
   while (index >= 0) {
     ranges.push(mark.range(index, index + needle.length))
+    if (ranges.length >= MAX_HIGHLIGHT_MATCHES) break
     index = haystack.indexOf(needle, index + needle.length)
   }
   return Decoration.set(ranges, true)
@@ -36,7 +41,7 @@ export function highlightAllExtension(): Extension {
       }
       if (tr.docChanged && term) changed = true
       if (!changed) return value
-      return { term, decorations: build(term, tr.state.doc) }
+      return { term, decorations: buildHighlightDecorations(term, tr.state.doc) }
     },
     provide: (f) => EditorView.decorations.from(f, (v) => v.decorations),
   })

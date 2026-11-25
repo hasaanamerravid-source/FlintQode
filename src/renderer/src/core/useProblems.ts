@@ -79,26 +79,32 @@ export function useProblems(): Accessor<Problem[]> {
     },
     (source) => {
       let timer: number | undefined
+      let generation = 0
       if (source.large) {
         publish([])
         return
       }
       const delay = useAppStore.getState().settings.powerSave ? 1200 : 350
       timer = window.setTimeout(() => {
-        const key = `${source.activeTabId}:${source.language}:${source.content.length}`
+        const run = ++generation
+        // Content, not just length: two edits of the same size must both run.
+        const key = `${source.activeTabId}:${source.language}:${source.content}`
         // Another place already checked the same document.
         if (key === lastKey) return
         lastKey = key
         const view = getView(source.activeTabId)
         if (!view) {
-          publish([])
+          if (run === generation) publish([])
           return
         }
         const found = collectProblems(view, source.language)
+        // A newer debounce (or the tab changing) owns the result now.
+        if (run !== generation) return
         publish(found)
         applyProblems(view, found)
       }, delay)
       return () => {
+        generation++
         if (timer !== undefined) window.clearTimeout(timer)
       }
     },

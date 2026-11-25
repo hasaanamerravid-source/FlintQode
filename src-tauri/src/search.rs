@@ -102,6 +102,42 @@ const MAX_FILES: usize = 20_000;
 const MAX_RESULTS: usize = 2_000;
 const MAX_PER_FILE: usize = 200;
 
+/// An include rule compiled once per search instead of once per file.
+enum Glob {
+    All,
+    Suffix(String),
+    Regex(Regex),
+}
+
+impl Glob {
+    fn from_pattern(glob: &str) -> Self {
+        let pattern = glob.trim().to_lowercase();
+        if pattern.is_empty() {
+            return Self::All;
+        }
+        if !pattern.contains('*') {
+            return Self::Suffix(pattern);
+        }
+        let escaped = regex::escape(&pattern).replace(r"\*", ".*");
+        match Regex::new(&format!("^{escaped}$")) {
+            Ok(regex) => Self::Regex(regex),
+            Err(_) => Self::All,
+        }
+    }
+
+    fn matches(&self, name: &str) -> bool {
+        if matches!(self, Self::All) {
+            return true;
+        }
+        let name = name.to_lowercase();
+        match self {
+            Self::All => true,
+            Self::Suffix(suffix) => name.ends_with(suffix),
+            Self::Regex(regex) => regex.is_match(&name),
+        }
+    }
+}
+
 fn matcher_of(request: &SearchRequest) -> Option<Regex> {
     let query = request.query.trim();
     if query.is_empty() {
@@ -123,22 +159,7 @@ fn matcher_of(request: &SearchRequest) -> Option<Regex> {
         .or_else(|| Regex::new(&format!("(?i){}", regex::escape(query))).ok())
 }
 
-fn matches_glob(name: &str, glob: &str) -> bool {
-    let pattern = glob.trim().to_lowercase();
-    if pattern.is_empty() {
-        return true;
-    }
-    let name = name.to_lowercase();
-    if pattern.contains('*') {
-        let escaped = regex::escape(&pattern).replace(r"\*", ".*");
-        return Regex::new(&format!("^{escaped}$"))
-            .map(|regex| regex.is_match(&name))
-            .unwrap_or(true);
-    }
-    name.ends_with(&pattern)
-}
-
-fn collect_files(folder: &str, glob: &str, limit: usize) -> Vec<PathBuf> {
+fn collect_files(folder: &str, glob: &Glob, limit: usize) -> Vec<PathBuf> {
     let mut out = Vec::new();
     // A VecDeque keeps the scan linear. `Vec::remove(0)` shifted the entire
     // queue for every directory in a large workspace.
@@ -175,7 +196,7 @@ fn collect_files(folder: &str, glob: &str, limit: usize) -> Vec<PathBuf> {
             if name.starts_with('.') && name.len() > 1 {
                 continue;
             }
-            if !matches_glob(&name, glob) {
+            if !glob.matches(&name) {
                 continue;
             }
             if let Ok(metadata) = entry.metadata() {
@@ -189,21 +210,36 @@ fn collect_files(folder: &str, glob: &str, limit: usize) -> Vec<PathBuf> {
     out
 }
 
-fn position_of(text: &str, offset: usize) -> (usize, usize) {
-    let before = &text[..offset.min(text.len())];
-    let line = before.bytes().filter(|byte| *byte == b'\n').count() + 1;
-    let line_start = before.rfind('\n').map(|index| index + 1).unwrap_or(0);
-    let column = text[line_start..offset.min(text.len())].chars().count() + 1;
-    (line, column)
+/// Byte offsets of every line start, computed once per searched file.
+fn line_starts(text: &str) -> Vec<usize> {
+    let mut starts = Vec::with_capacity(text.bytes().filter(|byte| *byte == b'\n').count() + 1);
+    starts.push(0);
+    for (index, byte) in text.bytes().enumerate() {
+        if byte == b'\n' {
+            starts.push(index + 1);
+        }
+    }
+    starts
 }
 
-fn line_at(text: &str, offset: usize) -> String {
+fn line_index(starts: &[usize], offset: usize) -> usize {
+    starts
+        .partition_point(|&start| start <= offset)
+        .saturating_sub(1)
+}
+
+fn position_of(text: &str, starts: &[usize], offset: usize) -> (usize, usize) {
     let at = offset.min(text.len());
-    let start = text[..at].rfind('\n').map(|index| index + 1).unwrap_or(0);
-    let end = text[at..]
-        .find('\n')
-        .map(|index| at + index)
-        .unwrap_or(text.len());
+    let index = line_index(starts, at);
+    let column = text[starts[index]..at].chars().count() + 1;
+    (index + 1, column)
+}
+
+fn line_at(text: &str, starts: &[usize], offset: usize) -> String {
+    let at = offset.min(text.len());
+    let index = line_index(starts, at);
+    let start = starts[index];
+    let end = starts.get(index + 1).copied().unwrap_or(text.len());
     text[start..end].chars().take(400).collect()
 }
 
@@ -232,11 +268,8 @@ pub fn search_in_files(request: &SearchRequest) -> SearchResult {
     }
 
     let limit = request.max_results.unwrap_or(MAX_RESULTS).min(MAX_RESULTS);
-    let files = collect_files(
-        &request.folder,
-        request.include.as_deref().unwrap_or(""),
-        MAX_FILES,
-    );
+    let glob = Glob::from_pattern(request.include.as_deref().unwrap_or(""));
+    let files = collect_files(&request.folder, &glob, MAX_FILES);
     let scanned = files.len();
 
     let per_file: Vec<(bool, Vec<SearchMatch>)> = files
@@ -249,14 +282,15 @@ pub fn search_in_files(request: &SearchRequest) -> SearchResult {
             if binary {
                 return (true, Vec::new());
             }
+            let starts = line_starts(&text);
             let mut found = Vec::new();
             for hit in matcher.find_iter(&text) {
-                let (line, column) = position_of(&text, hit.start());
+                let (line, column) = position_of(&text, &starts, hit.start());
                 found.push(SearchMatch {
                     path: path.to_string_lossy().to_string(),
                     line,
                     column,
-                    text: line_at(&text, hit.start()),
+                    text: line_at(&text, &starts, hit.start()),
                 });
                 if found.len() >= MAX_PER_FILE {
                     break;
@@ -311,49 +345,55 @@ pub fn replace_in_files(request: &SearchRequest) -> ReplaceResult {
         };
     }
 
-    let files = collect_files(
-        &request.folder,
-        request.include.as_deref().unwrap_or(""),
-        MAX_FILES,
-    );
+    let glob = Glob::from_pattern(request.include.as_deref().unwrap_or(""));
+    let files = collect_files(&request.folder, &glob, MAX_FILES);
     let replacement = request.replacement.as_deref().unwrap_or("");
+    // Decode and replace in parallel, then write sequentially. Two threads can
+    // never race to write the same file, and a failed write cannot leave a
+    // half-written file behind.
+    let prepared: Vec<(PathBuf, Vec<u8>, usize)> = files
+        .par_iter()
+        .filter_map(|path| {
+            let Ok(metadata) = fs::metadata(path) else {
+                return None;
+            };
+            // Only rewrite a file that the scan actually read in full. A file
+            // that grew past the read limit, or is being written while we read
+            // it, is skipped instead of being replaced with a partial copy.
+            if metadata.len() > MAX_FILE_BYTES {
+                return None;
+            }
+            let Ok(bytes) = fs::read(path) else {
+                return None;
+            };
+            if bytes.len() as u64 != metadata.len() {
+                return None;
+            }
+            let (text, encoding, binary) = decode_text(&bytes);
+            if binary || !matcher.is_match(&text) {
+                return None;
+            }
+            // The decoded text must round-trip to exactly the bytes on disk.
+            // Files with invalid byte sequences or a BOM are skipped rather
+            // than saved lossily by the replace command.
+            let probe_encoding = if bytes.starts_with(&[0xef, 0xbb, 0xbf]) {
+                "utf8-bom"
+            } else {
+                encoding.as_str()
+            };
+            if encode_text(&text, probe_encoding) != bytes {
+                return None;
+            }
+            let count = matcher.find_iter(&text).count();
+            let next = matcher.replace_all(&text, replacement).into_owned();
+            Some((path.clone(), encode_text(&next, probe_encoding), count))
+        })
+        .collect();
+
     let mut changed = 0usize;
     let mut replaced = 0usize;
-    for path in files {
-        let Ok(metadata) = fs::metadata(&path) else {
-            continue;
-        };
-        // Only rewrite a file that the scan actually read in full. A file that
-        // grew past the read limit, or is being written while we read it, is
-        // skipped instead of being replaced with a partial copy.
-        if metadata.len() > MAX_FILE_BYTES {
-            continue;
-        }
-        let Ok(bytes) = fs::read(&path) else {
-            continue;
-        };
-        if bytes.len() as u64 != metadata.len() {
-            continue;
-        }
-        let (text, encoding, binary) = decode_text(&bytes);
-        if binary || !matcher.is_match(&text) {
-            continue;
-        }
-        // The decoded text must round-trip to exactly the bytes on disk. Files
-        // with invalid byte sequences or a BOM are skipped rather than saved
-        // lossily by the replace command.
-        let probe_encoding = if bytes.starts_with(&[0xef, 0xbb, 0xbf]) {
-            "utf8-bom"
-        } else {
-            encoding.as_str()
-        };
-        if encode_text(&text, probe_encoding) != bytes {
-            continue;
-        }
-        let count = matcher.find_iter(&text).count();
-        let next = matcher.replace_all(&text, replacement).into_owned();
-        // Atomic write: a crash can never leave a half-written file behind.
-        if write_atomic(&path.to_string_lossy(), &encode_text(&next, probe_encoding)).is_ok() {
+    for (path, bytes, count) in prepared {
+        if write_atomic(&path.to_string_lossy(), &bytes).is_ok() {
             changed += 1;
             replaced += count;
         }
@@ -364,6 +404,31 @@ pub fn replace_in_files(request: &SearchRequest) -> ReplaceResult {
         replaced,
         took: started.elapsed().as_millis() as u64,
         error: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{line_at, line_starts, position_of, Glob};
+
+    #[test]
+    fn glob_rules_are_case_insensitive() {
+        assert!(Glob::from_pattern("").matches("README.md"));
+        assert!(Glob::from_pattern(".TS").matches("notes.ts"));
+        assert!(!Glob::from_pattern(".ts").matches("notes.js"));
+        assert!(Glob::from_pattern("*.tsx").matches("App.tsx"));
+        assert!(!Glob::from_pattern("*.tsx").matches("App.ts"));
+    }
+
+    #[test]
+    fn line_offsets_are_binary_searched() {
+        let text = "one\ntwo\nthree";
+        let starts = line_starts(text);
+        assert_eq!(starts, vec![0, 4, 8]);
+        assert_eq!(position_of(text, &starts, 0), (1, 1));
+        assert_eq!(position_of(text, &starts, 5), (2, 2));
+        assert_eq!(position_of(text, &starts, 12), (3, 5));
+        assert_eq!(line_at(text, &starts, 5), "two");
     }
 }
 

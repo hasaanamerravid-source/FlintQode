@@ -1,0 +1,32 @@
+{
+  "capturedAt": "2026-11-25T02:33:02.444Z",
+  "node": "v22.12.0",
+  "fixture": {
+    "lines": 10001,
+    "bytes": 856682,
+    "term": "item"
+  },
+  "measurements": [
+    {
+      "name": "countStats: full document",
+      "iterations": 7,
+      "minMs": 18.07,
+      "medianMs": 27.83,
+      "p95Ms": 31.97
+    },
+    {
+      "name": "highlightAll: all occurrences",
+      "iterations": 7,
+      "minMs": 5.29,
+      "medianMs": 6.96,
+      "p95Ms": 15.67
+    },
+    {
+      "name": "indentGuides: full document",
+      "iterations": 7,
+      "minMs": 1.49,
+      "medianMs": 1.59,
+      "p95Ms": 6.26
+    }
+  ]
+}

@@ -20,6 +20,7 @@
     "sync:version": "node scripts/sync-version.mjs",
     "version:check": "node scripts/sync-version.mjs && git diff --exit-code -- VERSION package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json",
     "release:verify": "node scripts/verify-release.mjs",
+    "perf:baseline": "node --import ./scripts/register-ts.mjs scripts/perf-baseline.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.test.json",
     "test:unit": "node --import ./scripts/register-ts.mjs --test tests/*.test.mts",
     "icons": "tauri icon src-tauri/icons/icon-source.png",

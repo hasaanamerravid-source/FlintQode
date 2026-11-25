@@ -17,7 +17,8 @@ export function indentGuidesExtension(options: { tabSize: number; enabled: boole
   })
 }
 
-function buildGuides(
+/** Build the guide decorations; exported so the baseline can measure it. */
+export function buildGuides(
   state: { doc: { lines: number; line(n: number): { from: number; text: string } } },
   tabSize: number,
 ): Range<Decoration>[] {

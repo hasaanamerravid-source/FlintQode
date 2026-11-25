@@ -43,7 +43,7 @@ import { editorTheme, syntaxStyle } from '../../core/themeResolver'
 import type { Settings, Tab } from '@shared/types'
 import { useAppStore } from '../../store/app'
 import { useStatusStore } from '../../store/status'
-import { registerEditor, setActiveEditor, countStats, type EditorHandle } from '../../core/editors'
+import { registerEditor, setActiveEditor, countStats, statsAfterChange, type EditorHandle } from '../../core/editors'
 import { languageExtension } from '../../core/languages'
 import { registerView, joinGroup, peersOf } from '../../core/views'
 import { highlightAllExtension } from '../../core/highlightAll'
@@ -344,6 +344,9 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
   /** Create the CodeMirror view from a plain tab snapshot. */
   function createEditor(tab: Tab): () => void {
     let disposed = false
+    // Status counters are seeded once and then updated from the local change.
+    // The common keystroke path never scans the whole document again.
+    let stats = countStats(tab.content ?? '')
     const stateNow = useAppStore.getState()
     const settingsNow = stateNow.settings
     // Same one-time snapshot as the old editor: the group is decided when the
@@ -421,6 +424,19 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
         ),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
+            const changes: Array<{ from: number; to: number; insert: string }> = []
+            update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+              changes.push({ from: fromA, to: toA, insert: inserted.toString() })
+            })
+            // Typing produces one small change. Undo, replace-all and pastes
+            // can produce several; those rare cases take the full scan.
+            if (changes.length === 1 && changes[0].insert.length < 4096) {
+              stats = statsAfterChange(stats, update.startState.doc, changes[0])
+            } else {
+              stats = countStats(update.state.doc.toString())
+            }
+          }
+          if (update.docChanged) {
             setTabDirty(tab.id, true)
             const text = update.state.doc.toString()
             // Read the prop when the change happens: Solid props are live getters,
@@ -456,12 +472,9 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
           if (update.selectionSet || update.docChanged) {
             const pos = update.state.selection.main
             const line = update.state.doc.lineAt(pos.head)
-            const before = update.state.doc.sliceString(0, pos.head)
             const col = pos.head - line.from + 1
             const lineNo = update.state.doc.lineAt(pos.head).number
-            void before
-            const text = update.state.doc.toString()
-            const { words, chars } = countStats(text)
+            const { words, chars } = stats
             statusSet({
               line: lineNo,
               col,
@@ -503,8 +516,7 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
       view.dispatch({ selection: { anchor: pos } })
     }
     {
-      const text = view.state.doc.toString()
-      const { words, chars } = countStats(text)
+      const { words, chars } = stats
       statusSet({
         line: 1,
         col: 1,
@@ -576,8 +588,7 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
       },
       stats: () => {
         const pos = view.state.selection.main
-        const text = view.state.doc.toString()
-        const { words, chars } = countStats(text)
+        const { words, chars } = stats
         return {
           lines: view.state.doc.lines,
           cols: pos.head - view.state.doc.lineAt(pos.head).from + 1,
