@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Requirements &amp; resources — FlintQode</title>
+  <meta name="description" content="What FlintQode needs to run, how large the installers are, and which built-in limits and settings keep resource use predictable." />
+  <link rel="canonical" href="https://hasaanamerravid-source.github.io/FlintQode/requirements.html" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="icon" type="image/png" href="assets/img/favicon.png" />
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to content</a>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="nav-brand"><img src="assets/img/logo.png" alt="" class="nav-logo" width="26" height="26" />Flint<span class="accent">Qode</span></a>
+      <nav class="nav-links">
+        <a href="index.html#features">Features</a>
+        <a href="downloads.html">Downloads</a>
+        <a href="versions.html">Versions</a>
+        <a href="requirements.html" class="active">Requirements</a>
+        <a href="whats-new.html">What's new</a>
+        <a href="built-with.html">Built with</a>
+        <a href="faqs.html">FAQs</a>
+        <a href="stats.html">Stats</a>
+        <button class="theme-btn" aria-label="Toggle colour theme" id="themeToggle" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+
+  <section class="section" id="main">
+    <div class="section-inner">
+      <div class="section-head">
+        <span class="kicker">System fit</span>
+        <h2>Requirements &amp; resource use</h2>
+        <p>What the installed app needs, how much space the installers take, and the built-in guards that keep editing predictable on large files.</p>
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <span class="feature-icon" aria-hidden="true">🖥️</span>
+          <h3>Uses your system webview</h3>
+          <p>FlintQode is built with Tauri 2. It uses WebView2 on Windows, WebKitGTK on Linux and WKWebView on macOS instead of shipping another Chromium runtime.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon" aria-hidden="true">📦</span>
+          <h3>No runtime to install</h3>
+          <p>Node.js, Rust, Java and a C++ runtime are needed only to build from source. The installed app runs without them.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon" aria-hidden="true">🔌</span>
+          <h3>Offline by default</h3>
+          <p>Editing, search, Git and the terminal work offline. An internet connection is only needed for updates, downloads and optional language servers.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section features">
+    <div class="section-inner">
+      <div class="section-head">
+        <span class="kicker">Runtime requirements</span>
+        <h2>What your machine needs</h2>
+        <p>Pick the installer for your platform from the <a href="downloads.html">Downloads page</a>. Package dependencies are handled by your package manager where applicable.</p>
+      </div>
+
+      <table class="versions-table">
+        <thead>
+          <tr>
+            <th>Platform</th>
+            <th>Installers</th>
+            <th>What must be present</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Windows</strong></td>
+            <td><code>.exe</code>, <code>.msi</code></td>
+            <td>64-bit Windows 10 or 11 and the WebView2 Runtime (normally already installed with current Edge/Windows updates).</td>
+          </tr>
+          <tr>
+            <td><strong>Linux</strong></td>
+            <td><code>.deb</code>, <code>.AppImage</code>, <code>.rpm</code></td>
+            <td>64-bit distribution with WebKitGTK 4.1 and GTK 3. The AppImage is portable, but still uses the system webview libraries.</td>
+          </tr>
+          <tr>
+            <td><strong>macOS</strong></td>
+            <td><code>.dmg</code>, <code>.app.tar.gz</code></td>
+            <td>Apple silicon build on a current macOS release. The webview is provided by WKWebView; the first launch may need the usual “Open Anyway” step because the build is unsigned.</td>
+          </tr>
+          <tr>
+            <td><strong>From source</strong></td>
+            <td>Git repository</td>
+            <td>Node.js 22.12+, Rust stable and the platform build tools. See the <a href="https://github.com/hasaanamerravid-source/FlintQode#requirements" target="_blank" rel="noopener">build requirements</a>.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:var(--space-4); color:var(--ink-soft); font-size:0.9rem; max-width:70ch;">
+        Leave additional disk space for your projects, terminal sessions and any language servers you install. Language servers such as
+        <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">rust-analyzer</code>
+        or <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">pyright</code>
+        have their own requirements and are optional.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-head">
+        <span class="kicker">Download footprint</span>
+        <h2>Installer sizes for v1.5.0</h2>
+        <p>Exact sizes from the published release assets, rounded to two decimal places. The AppImage bundles more of its own dependencies, so it is larger than the native packages.</p>
+      </div>
+
+      <table class="versions-table">
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th>Platform</th>
+            <th>Size</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>FlintQode_1.5.0_x64-setup.exe</code></td><td>Windows NSIS</td><td>2.48 MiB</td></tr>
+          <tr><td><code>FlintQode_1.5.0_x64_en-US.msi</code></td><td>Windows MSI</td><td>3.27 MiB</td></tr>
+          <tr><td><code>FlintQode_1.5.0_amd64.deb</code></td><td>Debian / Ubuntu</td><td>3.35 MiB</td></tr>
+          <tr><td><code>FlintQode-1.5.0-1.x86_64.rpm</code></td><td>Fedora / openSUSE</td><td>3.35 MiB</td></tr>
+          <tr><td><code>FlintQode_1.5.0_aarch64.dmg</code></td><td>macOS Apple silicon</td><td>4.36 MiB</td></tr>
+          <tr><td><code>FlintQode_aarch64.app.tar.gz</code></td><td>macOS Apple silicon</td><td>3.62 MiB</td></tr>
+          <tr><td><code>FlintQode_1.5.0_amd64.AppImage</code></td><td>Linux portable</td><td>78.21 MiB</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section features">
+    <div class="section-inner">
+      <div class="section-head">
+        <span class="kicker">While you work</span>
+        <h2>How resource use is kept in check</h2>
+        <p>FlintQode protects large files from expensive work and keeps editor updates inside a single 60&nbsp;Hz frame on a 10,000-line test document.</p>
+      </div>
+
+      <table class="versions-table">
+        <thead>
+          <tr>
+            <th>File size</th>
+            <th>What changes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Above 24 MB</td><td>Only the first 24 MB is read and the tab is marked as truncated.</td></tr>
+          <tr><td>Above 4 MB</td><td>The tab becomes read-only, syntax highlighting is switched off and the content is no longer copied into the store on every keystroke.</td></tr>
+          <tr><td>Above 2 MB</td><td>The content is not written back into the store while typing.</td></tr>
+          <tr><td>Above 1.5 M characters</td><td>The syntax tree is skipped; cheap checks such as whitespace and end-of-file still run.</td></tr>
+          <tr><td>Above 1 MB</td><td>The document is not sent to a language server.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="feature-grid" style="margin-top:var(--space-5);">
+        <div class="feature-card">
+          <span class="feature-icon" aria-hidden="true">⚡</span>
+          <h3>Editor work stays under a frame</h3>
+          <p>On a 10,000-line, 856 KB fixture, the DOM update p95 was 7.2 ms while typing and 8.0 ms with highlight-all active. The next-frame paint p95 was 18.9 ms and 22.7 ms, limited by the frame interval rather than editor work. These are browser measurements, not clean-VM native benchmarks.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon" aria-hidden="true">🌙</span>
+          <h3>Power save and low memory</h3>
+          <p>Power save mode reduces glass, gradients, shadows, animations and background polling. Low memory mode removes the minimap. Line-length diagnostics are optional and off by default.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon" aria-hidden="true">🧭</span>
+          <h3>Terminals are bounded</h3>
+          <p>Terminal sessions stay alive when the panel is hidden; set <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">terminal.closeOnPanelHide</code> to close them instead. Closing a tab ends only that shell, and app exit stops every PTY.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-head">
+        <span class="kicker">Measuring your own machine</span>
+        <h2>CPU and RAM vary by session</h2>
+        <p>There is no single published idle memory or CPU number: the operating system webview shares memory with other apps, and the total depends on open tabs, terminals, git status work and any language servers you have installed.</p>
+      </div>
+
+      <div class="cta">
+        <h2>Check it yourself</h2>
+        <p>Use Task Manager on Windows, Activity Monitor on macOS, or <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">ps</code>/System Monitor on Linux. Compare the editor with one empty tab, then with a real project open. Remember that webview memory may be counted as shared rather than charged entirely to FlintQode.</p>
+        <div class="hero-actions">
+          <a href="downloads.html" class="btn btn-primary">Get FlintQode</a>
+          <a href="https://github.com/hasaanamerravid-source/FlintQode/blob/main/docs/maintenance/perf-browser.json" class="btn btn-outline" target="_blank" rel="noopener">See the performance data</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">Flint<span class="accent">Qode</span></div>
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="downloads.html">Downloads</a>
+        <a href="versions.html">Versions</a>
+        <a href="requirements.html">Requirements</a>
+        <a href="whats-new.html">What's new</a>
+        <a href="built-with.html">Built with</a>
+        <a href="faqs.html">FAQs</a>
+        <a href="stats.html">Stats</a>
+        <a href="https://github.com/hasaanamerravid-source/FlintQode" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <p class="footer-note">MIT Licensed · Built with Tauri 2, SolidJS 2 and CodeMirror 6.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/site.js" defer></script>
+</body>
+</html>
