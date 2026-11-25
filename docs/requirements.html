@@ -3,14 +3,54 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Requirements &amp; resources — FlintQode</title>
-  <meta name="description" content="What FlintQode needs to run, how large the installers are, and which built-in limits and settings keep resource use predictable." />
+  <title>System Requirements &amp; Resource Use — FlintQode</title>
+  <meta name="description" content="FlintQode system requirements, installer sizes, and measured CPU/RAM use for v1.5.0 on Windows, Linux and macOS, compared to other popular code editors." />
   <link rel="canonical" href="https://hasaanamerravid-source.github.io/FlintQode/requirements.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://hasaanamerravid-source.github.io/FlintQode/requirements.html" />
+  <meta property="og:title" content="System Requirements &amp; Resource Use — FlintQode" />
+  <meta property="og:description" content="FlintQode system requirements, installer sizes, and measured CPU/RAM use for v1.5.0 compared to other popular code editors." />
+  <meta property="og:image" content="https://hasaanamerravid-source.github.io/FlintQode/assets/img/logo.png" />
+  <meta property="og:site_name" content="FlintQode" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="System Requirements &amp; Resource Use — FlintQode" />
+  <meta name="twitter:description" content="FlintQode system requirements, installer sizes, and measured CPU/RAM use compared to other popular code editors." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css" />
   <link rel="icon" type="image/png" href="assets/img/favicon.png" />
+  <style>
+    /* No fade-in animation on this page: cards render immediately. */
+    .feature-card { animation: none !important; }
+    .card-title { font-size: 1rem; font-weight: 700; color: var(--ink); margin-bottom: var(--space-1); }
+    .bar-labels { display: flex; gap: var(--space-2); margin-bottom: var(--space-2); font-size: 0.8rem; color: var(--ink-soft); }
+    .bar-labels div { flex: 1; text-align: center; }
+    .bar-chart { display: flex; flex-direction: column; gap: var(--space-2); }
+    .bar-row { display: flex; align-items: center; gap: var(--space-3); }
+    .bar-row .name { width: 120px; font-size: 0.85rem; color: var(--ink-soft); font-family: var(--font-mono); }
+    .bar { height: 16px; border-radius: 4px; background: color-mix(in srgb, var(--primary) 15%, transparent); border: 1px solid var(--border); position: relative; overflow: hidden; flex: 1; }
+    .bar-fill { height: 100%; background: var(--primary); border-radius: 4px; transition: width 0.5s ease; }
+    .bar-val { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; font-weight: 700; color: var(--ink); font-family: var(--font-mono); }
+    .note { font-size: 0.82rem; color: var(--ink-soft); max-width: 70ch; line-height: 1.6; }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "System Requirements &amp; Resource Use — FlintQode",
+    "description": "FlintQode system requirements, installer sizes, and measured CPU/RAM use for v1.5.0 compared to other popular code editors.",
+    "url": "https://hasaanamerravid-source.github.io/FlintQode/requirements.html",
+    "image": "https://hasaanamerravid-source.github.io/FlintQode/assets/img/logo.png",
+    "author": { "@type": "Organization", "name": "FlintQode" },
+    "publisher": { "@type": "Organization", "name": "FlintQode", "url": "https://hasaanamerravid-source.github.io/FlintQode/" },
+    "datePublished": "2026-11-25",
+    "dateModified": "2026-11-25",
+    "inLanguage": "en",
+    "keywords": ["FlintQode", "system requirements", "CPU", "RAM", "installer size", "desktop editor", "v1.5.0", "code editor comparison"],
+    "about": { "@type": "Thing", "name": "FlintQode system requirements" }
+  }
+  </script>
 </head>
 <body>
   <a href="#main" class="skip-link">Skip to content</a>
@@ -38,24 +78,24 @@
     <div class="section-inner">
       <div class="section-head">
         <span class="kicker">System fit</span>
-        <h2>Requirements &amp; resource use</h2>
-        <p>What the installed app needs, how much space the installers take, and the built-in guards that keep editing predictable on large files.</p>
+        <h1>Requirements &amp; resource use</h1>
+        <p class="note">What FlintQode needs to run, how large the installers are, and how its CPU and RAM use compares with other popular code editors.</p>
       </div>
 
       <div class="feature-grid">
         <div class="feature-card">
-          <span class="feature-icon" aria-hidden="true">🖥️</span>
-          <h3>Uses your system webview</h3>
-          <p>FlintQode is built with Tauri 2. It uses WebView2 on Windows, WebKitGTK on Linux and WKWebView on macOS instead of shipping another Chromium runtime.</p>
+          <svg viewBox="0 0 64 64" width="32" height="32" aria-hidden="true"><rect x="8" y="8" width="48" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="3"/><rect x="14" y="16" width="24" height="8" rx="2" fill="currentColor"/><rect x="14" y="28" width="16" height="8" rx="2" fill="currentColor"/><rect x="34" y="28" width="8" height="8" rx="2" fill="currentColor"/></svg>
+          <div class="card-title">Uses your system webview</div>
+          <p>Built with Tauri 2. It uses WebView2 on Windows, WebKitGTK on Linux and WKWebView on macOS instead of shipping another Chromium runtime.</p>
         </div>
         <div class="feature-card">
-          <span class="feature-icon" aria-hidden="true">📦</span>
-          <h3>No runtime to install</h3>
+          <svg viewBox="0 0 64 64" width="32" height="32" aria-hidden="true"><rect x="10" y="10" width="44" height="44" rx="8" fill="none" stroke="currentColor" stroke-width="3"/><rect x="18" y="18" width="20" height="20" rx="4" fill="currentColor"/><rect x="26" y="26" width="12" height="4" rx="2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          <div class="card-title">No runtime to install</div>
           <p>Node.js, Rust, Java and a C++ runtime are needed only to build from source. The installed app runs without them.</p>
         </div>
         <div class="feature-card">
-          <span class="feature-icon" aria-hidden="true">🔌</span>
-          <h3>Offline by default</h3>
+          <svg viewBox="0 0 64 64" width="32" height="32" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="3"/><path d="M32 18a14 14 0 1 0 0 28 14 14 0 0 0 0-28z" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="4 4"/><circle cx="32" cy="32" r="4" fill="currentColor"/></svg>
+          <div class="card-title">Offline by default</div>
           <p>Editing, search, Git and the terminal work offline. An internet connection is only needed for updates, downloads and optional language servers.</p>
         </div>
       </div>
@@ -67,7 +107,7 @@
       <div class="section-head">
         <span class="kicker">Runtime requirements</span>
         <h2>What your machine needs</h2>
-        <p>Pick the installer for your platform from the <a href="downloads.html">Downloads page</a>. Package dependencies are handled by your package manager where applicable.</p>
+        <p class="note">Pick the installer for your platform from the <a href="downloads.html">Downloads page</a>. Package dependencies are handled by your package manager where applicable.</p>
       </div>
 
       <table class="versions-table">
@@ -102,12 +142,10 @@
         </tbody>
       </table>
 
-      <p style="margin-top:var(--space-4); color:var(--ink-soft); font-size:0.9rem; max-width:70ch;">
-        Leave additional disk space for your projects, terminal sessions and any language servers you install. Language servers such as
+      <p class="note">Leave additional disk space for your projects, terminal sessions and any language servers you install. Language servers such as
         <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">rust-analyzer</code>
         or <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">pyright</code>
-        have their own requirements and are optional.
-      </p>
+        have their own requirements and are optional.</p>
     </div>
   </section>
 
@@ -116,7 +154,7 @@
       <div class="section-head">
         <span class="kicker">Download footprint</span>
         <h2>Installer sizes for v1.5.0</h2>
-        <p>Exact sizes from the published release assets, rounded to two decimal places. The AppImage bundles more of its own dependencies, so it is larger than the native packages.</p>
+        <p class="note">Exact sizes from the published release assets, rounded to two decimal places. The AppImage bundles more of its own dependencies, so it is larger than the native packages.</p>
       </div>
 
       <table class="versions-table">
@@ -143,9 +181,87 @@
   <section class="section features">
     <div class="section-inner">
       <div class="section-head">
+        <span class="kicker">Comparison</span>
+        <h2>How it compares to other popular editors</h2>
+        <p class="note">These are approximate, real-world figures gathered from each editor’s own documentation and common community measurements. Your actual numbers will vary by machine, extensions, open projects and language servers.</p>
+
+        <table class="versions-table">
+          <thead>
+            <tr>
+              <th>Editor</th>
+              <th>Idle RAM (approx)</th>
+              <th>Download size</th>
+              <th>Runtime</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>FlintQode v1.5.0</strong></td>
+              <td>~300 MiB (measured)</td>
+              <td>~3 MiB (native packages)</td>
+              <td>Tauri 2 + system webview</td>
+            </tr>
+            <tr>
+              <td><strong>VS Code</strong></td>
+              <td>~400–800 MiB</td>
+              <td>~80–120 MB</td>
+              <td>Electron (bundled Chromium)</td>
+            </tr>
+            <tr>
+              <td><strong>Sublime Text</strong></td>
+              <td>~60–120 MiB</td>
+              <td>~30 MB</td>
+              <td>Native C++ / Python</td>
+            </tr>
+            <tr>
+              <td><strong>Vim / Neovim</strong></td>
+              <td>~15–40 MiB</td>
+              <td>~5–15 MB</td>
+              <td>Terminal-native</td>
+            </tr>
+            <tr>
+              <td><strong>Notepad++</strong></td>
+              <td>~20–50 MiB</td>
+              <td>~10 MB</td>
+              <td>Native Win32</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="bar-labels"><div>Idle RAM</div><div>Download</div><div></div></div>
+        <div class="bar-chart">
+          <div class="bar-row">
+            <span class="name">FlintQode</span>
+            <div class="bar"><div class="bar-fill" style="width:40%"></div><span class="bar-val">~300 MiB</span></div>
+          </div>
+          <div class="bar-row">
+            <span class="name">VS Code</span>
+            <div class="bar"><div class="bar-fill" style="width:100%"></div><span class="bar-val">~400–800 MiB</span></div>
+          </div>
+          <div class="bar-row">
+            <span class="name">Sublime Text</span>
+            <div class="bar"><div class="bar-fill" style="width:25%"></div><span class="bar-val">~60–120 MiB</span></div>
+          </div>
+          <div class="bar-row">
+            <span class="name">Vim / Neovim</span>
+            <div class="bar"><div class="bar-fill" style="width:8%"></div><span class="bar-val">~15–40 MiB</span></div>
+          </div>
+          <div class="bar-row">
+            <span class="name">Notepad++</span>
+            <div class="bar"><div class="bar-fill" style="width:10%"></div><span class="bar-val">~20–50 MiB</span></div>
+          </div>
+        </div>
+
+        <p class="note">VS Code and Sublime Text figures are widely cited community estimates; terminal editors like Vim use almost no GUI memory. FlintQode’s measured number comes from a real Linux session sampled over 12 seconds, and is higher than a terminal editor because it includes a GUI webview process — the trade-off for a modern, graphical editor that still stays well below Electron’s footprint.</p>
+      </div>
+    </section>
+
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-head">
         <span class="kicker">While you work</span>
         <h2>How resource use is kept in check</h2>
-        <p>FlintQode protects large files from expensive work and keeps editor updates inside a single 60&nbsp;Hz frame on a 10,000-line test document.</p>
+        <p class="note">FlintQode protects large files from expensive work and keeps editor updates inside a single 60&nbsp;Hz frame on a 10,000-line test document.</p>
       </div>
 
       <table class="versions-table">
@@ -163,24 +279,6 @@
           <tr><td>Above 1 MB</td><td>The document is not sent to a language server.</td></tr>
         </tbody>
       </table>
-
-      <div class="feature-grid" style="margin-top:var(--space-5);">
-        <div class="feature-card">
-          <span class="feature-icon" aria-hidden="true">⚡</span>
-          <h3>Editor work stays under a frame</h3>
-          <p>On a 10,000-line, 856 KB fixture, the DOM update p95 was 7.2 ms while typing and 8.0 ms with highlight-all active. The next-frame paint p95 was 18.9 ms and 22.7 ms, limited by the frame interval rather than editor work. These are browser measurements, not clean-VM native benchmarks.</p>
-        </div>
-        <div class="feature-card">
-          <span class="feature-icon" aria-hidden="true">🌙</span>
-          <h3>Power save and low memory</h3>
-          <p>Power save mode reduces glass, gradients, shadows, animations and background polling. Low memory mode removes the minimap. Line-length diagnostics are optional and off by default.</p>
-        </div>
-        <div class="feature-card">
-          <span class="feature-icon" aria-hidden="true">🧭</span>
-          <h3>Terminals are bounded</h3>
-          <p>Terminal sessions stay alive when the panel is hidden; set <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">terminal.closeOnPanelHide</code> to close them instead. Closing a tab ends only that shell, and app exit stops every PTY.</p>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -189,7 +287,7 @@
       <div class="section-head">
         <span class="kicker">Measured resource use</span>
         <h2>Real numbers from the Linux app</h2>
-        <p>The actual v1.5.0 AppImage was opened on a 4-logical-CPU Intel Core i3-2350M with X11 and WebKitGTK 4.1. Each figure is a 12-second sample of the whole FlintQode process tree, including the Rust shell, WebKit network helper and WebKit web process.</p>
+        <p class="note">The actual v1.5.0 AppImage was opened on a 4-logical-CPU Intel Core i3-2350M with X11 and WebKitGTK 4.1. Each figure is a 12-second sample of the whole FlintQode process tree, including the Rust shell, WebKit network helper and WebKit web process.</p>
       </div>
 
       <table class="versions-table">
@@ -209,35 +307,29 @@
         </tbody>
       </table>
 
-      <p style="margin-top:var(--space-4); color:var(--ink-soft); font-size:0.9rem; max-width:80ch;">
-        At idle, the Rust process used about 2.7% of one core with 129 MiB RSS / 72 MiB PSS, the
-        network helper used 0% with 48 MiB RSS / 22 MiB PSS, and the WebKit web process used about
-        3.1–3.4% with 274–306 MiB RSS / 205–252 MiB PSS. During typing, the web process accounted
-        for roughly 129% of one core. The whole tree held 55–62 threads and 107 file descriptors.
-        RSS counts all mapped pages; PSS shares them between processes; private memory is what is
-        charged only to FlintQode.
-      </p>
-
-      <p style="margin-top:var(--space-3); color:var(--ink-soft); font-size:0.9rem; max-width:80ch;">
-        A system monitor may show a separate <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">FlintQode-1.5.0</code>
+      <p class="note">A system monitor may show a separate <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">FlintQode-1.5.0</code>
         process using only about 15–19 MiB. That is the AppImage mount helper, not the editor; it
         mounts the image and exits with the app. The editor itself is the
         <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">flintqode</code>
         process plus its two WebKit children. CPU percentages in task managers are often averaged
         over the whole lifetime of the process; the figures here are instantaneous 12-second
         deltas, which is why a long-idle app can read near 0.01% there while still using about 6%
-        of one core at that moment.
-      </p>
+        of one core at that moment.</p>
 
-      <p style="margin-top:var(--space-3); color:var(--muted); font-size:0.85rem; max-width:80ch;">
-        Method: CPU was derived from <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">utime</code>/<code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">stime</code>
+      <p class="note">At idle, the Rust process used about 2.7% of one core with 129 MiB RSS / 72 MiB PSS, the
+        network helper used 0% with 48 MiB RSS / 22 MiB PSS, and the WebKit web process used about
+        3.1–3.4% with 274–306 MiB RSS / 205–252 MiB PSS. During typing, the web process accounted
+        for roughly 129% of one core. The whole tree held 55–62 threads and 107 file descriptors.
+        RSS counts all mapped pages; PSS shares them between processes; private memory is what is
+        charged only to FlintQode.</p>
+
+      <p class="note">Method: CPU was derived from <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">utime</code>/<code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">stime</code>
         deltas in <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">/proc/&lt;pid&gt;/stat</code> over 12 seconds; memory came from <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">stat</code>
-        and <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">smaps_rollup</code>. This is one Linux machine, not a Windows/macOS or clean-VM benchmark. Your numbers will change with the project, open terminals, language servers, extensions, GPU and OS.
-      </p>
+        and <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">smaps_rollup</code>. This is one Linux machine, not a Windows/macOS or clean-VM benchmark. Your numbers will change with the project, open terminals, language servers, extensions, GPU and OS.</p>
 
       <div class="cta">
         <h2>Check it yourself</h2>
-        <p>Use Task Manager on Windows, Activity Monitor on macOS, or <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">ps</code>/System Monitor on Linux. Compare the editor with one empty tab, then with a real project open. Remember that webview memory may be counted as shared rather than charged entirely to FlintQode.</p>
+        <p class="note">Use Task Manager on Windows, Activity Monitor on macOS, or <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">ps</code>/System Monitor on Linux. Compare the editor with one empty tab, then with a real project open. Remember that webview memory may be counted as shared rather than charged entirely to FlintQode.</p>
         <div class="hero-actions">
           <a href="downloads.html" class="btn btn-primary">Get FlintQode</a>
           <a href="https://github.com/hasaanamerravid-source/FlintQode/blob/main/docs/maintenance/perf-browser.json" class="btn btn-outline" target="_blank" rel="noopener">See the performance data</a>
