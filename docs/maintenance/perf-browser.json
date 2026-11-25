@@ -1,6 +1,6 @@
 {
   "capturedAt": "2026-11-25T03:29:28.597Z",
-  "browser": "Chromium via OpenCode in-app browser",
+  "browser": "Chromium browser session",
   "fixture": {
     "file": "src/renderer/perf.html",
     "lines": 10000,

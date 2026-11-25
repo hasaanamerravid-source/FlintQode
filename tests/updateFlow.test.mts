@@ -33,7 +33,7 @@ function setup(overrides: Partial<UpdateApi> = {}) {
     info: async () =>
       ({
         version: '1.4.7',
-        temp: '/tmp/opencode/',
+        temp: '/tmp/flintqode/',
       }) as Awaited<ReturnType<UpdateApi['info']>>,
     checkUpdate: async () => ({
       version: '1.4.8',
@@ -44,7 +44,7 @@ function setup(overrides: Partial<UpdateApi> = {}) {
     downloadUpdate: async (_url, _destination, sha256) => {
       calls.push('download')
       checksums.push(sha256)
-      return '/tmp/opencode/flintqode-update.deb'
+      return '/tmp/flintqode/flintqode-update.deb'
     },
     installUpdate: async (_path, sha256) => {
       calls.push('install')
@@ -69,7 +69,7 @@ function setup(overrides: Partial<UpdateApi> = {}) {
 }
 
 test('the temp path is normalized before the download', () => {
-  assert.equal(updateDestination('/tmp/opencode/'), '/tmp/opencode/flintqode-update.deb')
+  assert.equal(updateDestination('/tmp/flintqode/'), '/tmp/flintqode/flintqode-update.deb')
   assert.equal(updateDestination(''), '/tmp/flintqode-update.deb')
   assert.equal(updateDestination('C:\\Temp\\'), 'C:\\Temp/flintqode-update.deb')
 })
