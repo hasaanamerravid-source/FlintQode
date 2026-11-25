@@ -29,7 +29,7 @@ const RELEASE_API_URL: &str =
 const RELEASE_DOWNLOAD_PREFIX: &str =
     "https://github.com/hasaanamerravid-source/FlintQode/releases/download/";
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateInfo {
     pub version: String,
