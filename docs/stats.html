@@ -125,8 +125,9 @@
           <span><i class="swatch views"></i>Views</span>
           <span><i class="swatch uniques"></i>Unique visitors</span>
         </div>
-        <div class="chart-canvas chart-canvas-lg" id="trafficChart" role="img" aria-label="Daily traffic chart"></div>
-        <div class="chart-tooltip" id="trafficTooltip" hidden></div>
+        <div class="chart-canvas chart-canvas-lg" id="trafficChart" role="img" aria-label="Daily traffic chart">
+          <div class="chart-tooltip" id="trafficTooltip" hidden></div>
+        </div>
       </article>
 
       <div class="chart-grid">
@@ -137,7 +138,9 @@
               <p>Page views and unique visitors per day.</p>
             </div>
           </div>
-          <div class="chart-canvas" id="visitorsChart" role="img" aria-label="Daily page views and unique visitors"></div>
+          <div class="chart-canvas" id="visitorsChart" role="img" aria-label="Daily page views and unique visitors">
+            <div class="chart-tooltip" id="visitorsTooltip" hidden></div>
+          </div>
         </article>
         <article class="chart-card">
           <div class="chart-head">
@@ -146,7 +149,9 @@
               <p>Clones and unique cloners per day.</p>
             </div>
           </div>
-          <div class="chart-canvas" id="clonesChart" role="img" aria-label="Daily repository clones and unique cloners"></div>
+          <div class="chart-canvas" id="clonesChart" role="img" aria-label="Daily repository clones and unique cloners">
+            <div class="chart-tooltip" id="clonesTooltip" hidden></div>
+          </div>
         </article>
       </div>
 
@@ -213,8 +218,9 @@
             <p>Cumulative installer downloads as each version shipped.</p>
           </div>
         </div>
-        <div class="chart-canvas chart-canvas-lg" id="timelineChart" role="img" aria-label="Cumulative downloads over releases"></div>
-        <div class="chart-tooltip" id="timelineTooltip" hidden></div>
+        <div class="chart-canvas chart-canvas-lg" id="timelineChart" role="img" aria-label="Cumulative downloads over releases">
+          <div class="chart-tooltip" id="timelineTooltip" hidden></div>
+        </div>
       </article>
 
       <!-- Clone vs view ratio -->
@@ -225,7 +231,9 @@
             <p>How many clones each unique visitor generates, day by day.</p>
           </div>
         </div>
-        <div class="chart-canvas" id="ratioChart" role="img" aria-label="Clone to visitor ratio per day"></div>
+        <div class="chart-canvas" id="ratioChart" role="img" aria-label="Clone to visitor ratio per day">
+          <div class="chart-tooltip" id="ratioTooltip" hidden></div>
+        </div>
       </article>
 
       <p class="stats-footnote">

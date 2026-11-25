@@ -17,6 +17,24 @@
   margin-top: var(--space-2);
 }
 
+/* Method notes on the left, verification box on the right with breathing room. */
+.measure-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: var(--space-5);
+  align-items: start;
+  margin-top: var(--space-5);
+}
+.measure-layout .note { max-width: none; }
+.measure-cta {
+  margin-top: 0;
+  text-align: left;
+  padding: var(--space-4);
+}
+.measure-cta h2 { font-size: 1.25rem; }
+.measure-cta .hero-actions { justify-content: flex-start; }
+.measure-cta .hero-actions .btn { flex: 0 1 auto; }
+
 /* Horizontal-bar helpers layered on top of .chart-svg from stats.css. */
 .chart-svg .req-bar-track { fill: var(--surface-3); }
 .chart-svg .req-bar { transition: filter 0.15s ease; cursor: pointer; }
@@ -36,6 +54,7 @@
 
 @media (max-width: 719px) {
   .req-chart-grid { grid-template-columns: 1fr; }
+  .measure-layout { grid-template-columns: 1fr; gap: var(--space-3); }
 }
 
 @media (prefers-reduced-motion: reduce) {

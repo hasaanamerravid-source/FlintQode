@@ -81,6 +81,9 @@
   const tooltipEls = {
     traffic: byId('trafficTooltip'),
     timeline: byId('timelineTooltip'),
+    visitors: byId('visitorsTooltip'),
+    clones: byId('clonesTooltip'),
+    ratio: byId('ratioTooltip'),
   };
 
   function showTooltip(el, container, day, series, evt) {
@@ -250,7 +253,8 @@
     const sliced = (Array.isArray(days) ? days : []).slice(-(opts.range || days.length));
     if (sliced.length === 0) { showEmpty(container, opts.empty || 'No data for this period.'); return; }
 
-    container.innerHTML = '';
+    // Keep the tooltip node inside the canvas; only redraw the SVG.
+    container.querySelectorAll('svg.chart-svg').forEach((node) => node.remove());
     const tooltipEl = opts.tooltipEl;
     const w = container.clientWidth || 600;
     const h = opts.height || 220;
@@ -361,7 +365,7 @@
       type: state.trafficType,
       range: state.trafficRange,
       tooltipEl: tooltipEls.traffic,
-      height: 260,
+      height: 280,
     });
   }
 
@@ -371,13 +375,13 @@
     renderSeriesChart(byId('visitorsChart'), vDays, [
       { key: 'count', label: 'Page views', color: 'var(--primary)' },
       { key: 'uniques', label: 'Unique visitors', color: 'var(--accent)' },
-    ], { type: 'bars', range: 14, height: 200, tooltipEl: null });
+    ], { type: 'bars', range: 14, height: 230, tooltipEl: tooltipEls.visitors });
 
     const cDays = clonesDays();
     renderSeriesChart(byId('clonesChart'), cDays, [
       { key: 'count', label: 'Clones', color: 'var(--primary)' },
       { key: 'uniques', label: 'Unique cloners', color: 'var(--accent)' },
-    ], { type: 'bars', range: 14, height: 200, tooltipEl: null });
+    ], { type: 'bars', range: 14, height: 230, tooltipEl: tooltipEls.clones });
   }
 
   /* ---------- downloads by release ---------- */
@@ -565,10 +569,10 @@
     });
     const maxCum = Math.max(1, ...points.map((p) => p.cum));
 
-    container.innerHTML = '';
+    container.querySelectorAll('svg.chart-svg').forEach((node) => node.remove());
     const tooltipEl = tooltipEls.timeline;
     const w = container.clientWidth || 600;
-    const h = 240;
+    const h = 260;
     const pad = { top: 14, right: 14, bottom: 30, left: 44 };
     const plotW = Math.max(10, w - pad.left - pad.right);
     const plotH = Math.max(10, h - pad.top - pad.bottom);
@@ -648,7 +652,7 @@
     const temp = data.map((d) => ({ date: d.date, count: d.ratio }));
     renderSeriesChart(container, temp, [
       { key: 'count', label: 'Clones per unique visitor', color: 'var(--accent)' },
-    ], { type: 'bars', range: 14, height: 180, tooltipEl: null });
+    ], { type: 'bars', range: 14, height: 210, tooltipEl: tooltipEls.ratio });
   }
 
   /* ---------- wire controls ---------- */
