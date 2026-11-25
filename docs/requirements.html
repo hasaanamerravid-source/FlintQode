@@ -21,18 +21,22 @@
   <link rel="stylesheet" href="assets/css/style.css" />
   <link rel="icon" type="image/png" href="assets/img/favicon.png" />
   <style>
-    /* No fade-in animation on this page: cards render immediately. */
-    .feature-card { animation: none !important; }
+    /* Keep animations but prevent text from starting invisible: only animate transform, not opacity. */
+    @keyframes fade-up {
+      from { transform: translate3d(0, 18px, 0); }
+      to { transform: translate3d(0, 0, 0); }
+    }
     .card-title { font-size: 1rem; font-weight: 700; color: var(--ink); margin-bottom: var(--space-1); }
     .bar-labels { display: flex; gap: var(--space-2); margin-bottom: var(--space-2); font-size: 0.8rem; color: var(--ink-soft); }
     .bar-labels div { flex: 1; text-align: center; }
     .bar-chart { display: flex; flex-direction: column; gap: var(--space-2); }
     .bar-row { display: flex; align-items: center; gap: var(--space-3); }
-    .bar-row .name { width: 120px; font-size: 0.85rem; color: var(--ink-soft); font-family: var(--font-mono); }
-    .bar { height: 16px; border-radius: 4px; background: color-mix(in srgb, var(--primary) 15%, transparent); border: 1px solid var(--border); position: relative; overflow: hidden; flex: 1; }
-    .bar-fill { height: 100%; background: var(--primary); border-radius: 4px; transition: width 0.5s ease; }
-    .bar-val { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; font-weight: 700; color: var(--ink); font-family: var(--font-mono); }
-    .note { font-size: 0.82rem; color: var(--ink-soft); max-width: 70ch; line-height: 1.6; }
+    .bar-row .name { width: 120px; font-size: 0.85rem; color: var(--ink); font-family: var(--font-mono); font-weight: 600; }
+    .bar { height: 20px; border-radius: 4px; background: var(--surface-3); border: 1px solid var(--border); position: relative; overflow: hidden; flex: 1; min-width: 60px; }
+    .bar-fill { height: 100%; background: var(--primary); border-radius: 4px; }
+    .bar-val { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; font-weight: 700; color: #fff; font-family: var(--font-mono); text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+    .note { font-size: 0.9rem; color: var(--ink); max-width: 70ch; line-height: 1.6; }
+    .cta { margin-top: var(--space-6); }
   </style>
   <script type="application/ld+json">
   {
@@ -84,17 +88,17 @@
 
       <div class="feature-grid">
         <div class="feature-card">
-          <svg viewBox="0 0 64 64" width="32" height="32" aria-hidden="true"><rect x="8" y="8" width="48" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="3"/><rect x="14" y="16" width="24" height="8" rx="2" fill="currentColor"/><rect x="14" y="28" width="16" height="8" rx="2" fill="currentColor"/><rect x="34" y="28" width="8" height="8" rx="2" fill="currentColor"/></svg>
+          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
           <div class="card-title">Uses your system webview</div>
           <p>Built with Tauri 2. It uses WebView2 on Windows, WebKitGTK on Linux and WKWebView on macOS instead of shipping another Chromium runtime.</p>
         </div>
         <div class="feature-card">
-          <svg viewBox="0 0 64 64" width="32" height="32" aria-hidden="true"><rect x="10" y="10" width="44" height="44" rx="8" fill="none" stroke="currentColor" stroke-width="3"/><rect x="18" y="18" width="20" height="20" rx="4" fill="currentColor"/><rect x="26" y="26" width="12" height="4" rx="2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
           <div class="card-title">No runtime to install</div>
           <p>Node.js, Rust, Java and a C++ runtime are needed only to build from source. The installed app runs without them.</p>
         </div>
         <div class="feature-card">
-          <svg viewBox="0 0 64 64" width="32" height="32" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="3"/><path d="M32 18a14 14 0 1 0 0 28 14 14 0 0 0 0-28z" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="4 4"/><circle cx="32" cy="32" r="4" fill="currentColor"/></svg>
+          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
           <div class="card-title">Offline by default</div>
           <p>Editing, search, Git and the terminal work offline. An internet connection is only needed for updates, downloads and optional language servers.</p>
         </div>
@@ -196,31 +200,31 @@
           </thead>
           <tbody>
             <tr>
-              <td><strong>FlintQode v1.5.0</strong></td>
+              <td><strong><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg> FlintQode v1.5.0</strong></td>
               <td>~300 MiB (measured)</td>
               <td>~3 MiB (native packages)</td>
               <td>Tauri 2 + system webview</td>
             </tr>
             <tr>
-              <td><strong>VS Code</strong></td>
+              <td><strong><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg> VS Code</strong></td>
               <td>~400–800 MiB</td>
               <td>~80–120 MB</td>
               <td>Electron (bundled Chromium)</td>
             </tr>
             <tr>
-              <td><strong>Sublime Text</strong></td>
+              <td><strong><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Sublime Text</strong></td>
               <td>~60–120 MiB</td>
               <td>~30 MB</td>
               <td>Native C++ / Python</td>
             </tr>
             <tr>
-              <td><strong>Vim / Neovim</strong></td>
+              <td><strong><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h4M6 12h.01M10 12h4M6 16h.01M10 16h4"/></svg> Vim / Neovim</strong></td>
               <td>~15–40 MiB</td>
               <td>~5–15 MB</td>
               <td>Terminal-native</td>
             </tr>
             <tr>
-              <td><strong>Notepad++</strong></td>
+              <td><strong><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg> Notepad++</strong></td>
               <td>~20–50 MiB</td>
               <td>~10 MB</td>
               <td>Native Win32</td>
