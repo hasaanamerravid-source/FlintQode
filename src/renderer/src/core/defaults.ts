@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: Settings = {
   soundsEnabled: false,
   lowMemory: false,
   powerSave: false,
+  closeOnPanelHide: false,
   uiScale: 1,
   minimalToolbar: false,
   softwareRendering: false,

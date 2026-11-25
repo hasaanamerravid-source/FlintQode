@@ -236,6 +236,15 @@
   white-space: nowrap;
 }
 
+.workbench-terminal-tab .terminal-tab-cwd {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-muted);
+  opacity: 0.8;
+}
+
 .tab-dot {
   width: 6px;
   height: 6px;

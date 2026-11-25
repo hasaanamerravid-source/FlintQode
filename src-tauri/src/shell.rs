@@ -8,18 +8,37 @@ fn open_terminal_at(directory: &Path) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         // cmd.exe splits the command at unquoted whitespace, so a path such as
-        // "C:\My Documents" must be quoted. A trailing backslash would escape
-        // the closing quote in some parsers, so it is doubled first.
+        // "C:\My Documents" must be quoted. Keep a drive root intact and drop
+        // other trailing separators so the closing quote is never ambiguous.
         let mut directory_text = directory.display().to_string();
-        if directory_text.ends_with('\\') {
-            directory_text.push('\\');
+        if directory_text.ends_with('\\') && !directory_text.ends_with(":\\") {
+            directory_text.pop();
         }
         let line = format!("cd /d \"{directory_text}\"");
+
+        // Windows Terminal is the nicer fallback when it is installed, but a
+        // missing or failing `wt` must still leave us with a working cmd shell.
+        let mut first_error = None;
+        if let Some(program) = find_executable("wt") {
+            let args = [
+                "-d".to_string(),
+                directory_text.clone(),
+                "cmd".to_string(),
+                "/K".to_string(),
+            ];
+            match spawn_detached(&program.to_string_lossy(), &args, None) {
+                Ok(()) => return Ok(()),
+                Err(error) => first_error = Some(error.to_string()),
+            }
+        }
         std::process::Command::new("cmd")
             .args(["/C", "start", "", "cmd", "/K", &line])
             .spawn()
             .map(|_| ())
-            .map_err(|error| error.to_string())
+            .map_err(|error| match first_error {
+                Some(wt_error) => format!("Windows Terminal: {wt_error}; cmd: {error}"),
+                None => error.to_string(),
+            })
     }
     #[cfg(target_os = "macos")]
     {
@@ -58,8 +77,9 @@ fn open_terminal_at(directory: &Path) -> Result<(), String> {
 #[tauri::command]
 pub fn shell_open_terminal(cwd: Option<String>) -> Result<bool, String> {
     let directory = cwd
-        .map(PathBuf::from)
+        .map(|value| PathBuf::from(value.trim().trim_matches('"')))
         .filter(|path| path.is_dir())
+        .or_else(|| std::env::current_dir().ok().filter(|path| path.is_dir()))
         .unwrap_or_else(home_dir);
     open_terminal_at(&directory)?;
     Ok(true)

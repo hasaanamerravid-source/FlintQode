@@ -186,6 +186,8 @@ pub fn run() {
         if let tauri::RunEvent::Exit = event {
             let state = app_handle.state::<lsp::LspState>();
             tauri::async_runtime::block_on(lsp::stop_all(&state));
+            let state = app_handle.state::<terminal::TerminalState>();
+            tauri::async_runtime::block_on(terminal::stop_all(&state));
         }
     });
 }

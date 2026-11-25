@@ -1052,6 +1052,13 @@ export function SettingsDialog(): JSX.Element {
                 <option value="both">{t('settings.menuBoth')}</option>
               </select>
             </Row>
+            <Row label={t('settings.terminalCloseOnHide')} hint={t('settings.terminalCloseOnHideHint')}>
+              <input
+                type="checkbox"
+                checked={settings().closeOnPanelHide ?? false}
+                onChange={(e) => patch({ closeOnPanelHide: e.currentTarget.checked })}
+              />
+            </Row>
             <div class="hint">
               The native Windows menu bar stays reachable with the <kbd>Alt</kbd> key, exactly like other open-source
               editors. Every command is also available in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+

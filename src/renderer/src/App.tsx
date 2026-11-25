@@ -1,6 +1,7 @@
 import { createEffect, createSignal, lazy, Loading, onSettled, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
 import { useAppStore } from './store/app'
+import { useTerminalStore } from './core/terminalState'
 import { TitleBar } from './components/TitleBar'
 import { StatusBar } from './components/StatusBar'
 import { Sidebar } from './workbench/Sidebar'
@@ -92,6 +93,15 @@ export default function App(): JSX.Element {
 
   // The shortcuts of the user are kept in the keyboard handler.
   createEffect(keybindings, setKeybindings)
+
+  // Panel visibility owns the terminal lifecycle. Hiding unmounts the xterm
+  // views; the store closes their PTYs only when the user asked for that.
+  createEffect(
+    () => !distractionFree() && bottomPanelVisible(),
+    (visible) => {
+      void useTerminalStore.getState().handlePanelVisibility(visible)
+    },
+  )
 
   // A plugin shows a message with `ctx.toast(...)`.
   onSettled(() => {

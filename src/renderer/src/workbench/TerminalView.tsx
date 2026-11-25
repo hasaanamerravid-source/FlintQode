@@ -201,10 +201,9 @@ export function TerminalView(props: { cwd?: string }): JSX.Element {
   createEffect(
     () => ({ count: sessions().length, cwd: props.cwd }),
     (source) => {
-      // Both values come from the tracked compute function. The in-flight
-      // guard in terminalState prevents a second PTY if another UI path asks
-      // for the first shell at the same time.
-      if (source.count === 0) void actions.start(source.cwd)
+      // This view owns the first shell. Reopening the dock with a live
+      // session must reattach to it, not start another PTY.
+      if (source.count === 0) void actions.ensureFirst(source.cwd)
     },
   )
 
@@ -241,6 +240,11 @@ export function TerminalView(props: { cwd?: string }): JSX.Element {
                     onCancel={() => setEditing(null)}
                   />
                 </Show>
+                <Show when={info()?.cwd}>
+                  <span class="terminal-tab-cwd" title={info()!.cwd}>
+                    {info()!.cwd}
+                  </span>
+                </Show>
                 <span class={`tab-dot${info()?.running ? ' live' : ''}`} />
                 <button
                   class="tab-close"
@@ -258,8 +262,8 @@ export function TerminalView(props: { cwd?: string }): JSX.Element {
         </For>
         <button
           class="panel-button"
-          title="New terminal"
-          onClick={() => void actions.start(active()?.cwd ?? props.cwd)}
+          title={t('panel.terminalNewHere')}
+          onClick={() => void actions.create(active()?.cwd ?? props.cwd)}
         >
           +
         </button>
@@ -270,6 +274,13 @@ export function TerminalView(props: { cwd?: string }): JSX.Element {
           {active() ? `${active()?.shell} · ${active()?.cwd}` : t('panel.terminalNoShell')}
         </span>
         <span class="bar-actions">
+          <button
+            class="panel-button"
+            title={t('panel.terminalNewHere')}
+            onClick={() => void actions.create(active()?.cwd ?? props.cwd)}
+          >
+            {t('panel.terminalNewHere')}
+          </button>
           <button
             class="panel-button"
             title={t('panel.terminalStopShell')}

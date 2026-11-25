@@ -328,6 +328,7 @@ export const en = {
   'panel.terminalUnknownFolder': 'The working directory is unknown',
   'panel.terminalInterrupt': 'Interrupt',
   'panel.terminalStart': 'Start the shell',
+  'panel.terminalNewHere': 'New terminal here',
   'panel.terminalHint':
     'The shell runs in {{folder}}. The arrow keys walk through the history, Escape clears the input.',
   'panel.terminalCopied': 'The working directory was copied',
@@ -519,6 +520,8 @@ export const en = {
   'settings.lowMemoryHint': 'Drops the minimap and the heavy panels.',
   'settings.powerSave': 'Power save mode',
   'settings.powerSaveHint': 'Turns off glass, gradients, shadows and animations, and reduces background work.',
+  'settings.terminalCloseOnHide': 'Close terminal sessions when the panel hides',
+  'settings.terminalCloseOnHideHint': 'Off by default: shells keep running and reattach when the panel opens again.',
   'settings.uiScale': 'Interface scale',
   'settings.uiScaleHint': 'Scales the whole interface without changing the editor font size.',
   'settings.minimalToolbar': 'Minimal toolbar',

@@ -42,6 +42,7 @@ import {
   searchWorkspaceSymbols,
 } from './lspCommands'
 import { FILE_FILTERS } from './defaults'
+import { projectFolder } from './projectConfig'
 import { cursorMatchingBracket } from '@codemirror/commands'
 import { EditorSelection } from '@codemirror/state'
 
@@ -54,6 +55,20 @@ function activeTab(): ReturnType<typeof store>['tabs'][number] | undefined {
 
 function activeView(): ReturnType<typeof getView> {
   return getView(store().activeTabId)
+}
+
+/**
+ * Parent folder of a file path, accepting both slash styles. Windows drive and
+ * UNC roots are kept as directories instead of collapsing to `C:` or `//server`.
+ */
+function parentFolder(filePath: string | undefined): string | undefined {
+  if (!filePath) return undefined
+  const normalized = filePath.replace(/\\/g, '/').replace(/\/+$/, '')
+  const lastSlash = normalized.lastIndexOf('/')
+  if (lastSlash < 0) return undefined
+  if (normalized.startsWith('/') && lastSlash === 0) return '/'
+  if (/^[A-Za-z]:\//.test(normalized) && lastSlash === 2) return `${normalized.slice(0, 2)}/`
+  return normalized.slice(0, lastSlash) || undefined
 }
 
 /** Apply a text transform to the selection, or to the whole document. */
@@ -1465,8 +1480,8 @@ export const builtinCommands: Command[] = [
     title: 'Open terminal here',
     category: 'Tools',
     run: () => {
-      const tab = activeTab()
-      const cwd = tab?.path ? tab.path.replace(/[\\/][^\\/]*$/, '') : undefined
+      const s = store()
+      const cwd = parentFolder(activeTab()?.path ?? undefined) ?? s.workspaceRoot ?? projectFolder() ?? undefined
       void window.api.shell.openTerminal(cwd)
     },
   },
@@ -1496,15 +1511,11 @@ export const builtinCommands: Command[] = [
     shortcut: 'Ctrl+Shift+`',
     run: async () => {
       const { useTerminalStore } = await import('./terminalState')
+      const state = store()
+      state.setBottomTab('terminal')
+      state.setBottomPanelVisible(true)
       const current = useTerminalStore.getState().getActive()
-      const tab = current
-        ? await useTerminalStore.getState().create(current.cwd)
-        : await useTerminalStore.getState().start()
-      if (tab) {
-        const state = store()
-        state.setBottomTab('terminal')
-        state.setBottomPanelVisible(true)
-      }
+      await (current ? useTerminalStore.getState().create(current.cwd) : useTerminalStore.getState().start())
     },
   },
   {
@@ -1513,9 +1524,10 @@ export const builtinCommands: Command[] = [
     category: 'Tools',
     run: async () => {
       const { useTerminalStore } = await import('./terminalState')
-      const current = useTerminalStore.getState().getActive()
-      if (current) useTerminalStore.getState().close(current.id)
-      void useTerminalStore.getState().start(current?.cwd || undefined)
+      const state = store()
+      state.setBottomTab('terminal')
+      state.setBottomPanelVisible(true)
+      await useTerminalStore.getState().restart()
     },
   },
   {

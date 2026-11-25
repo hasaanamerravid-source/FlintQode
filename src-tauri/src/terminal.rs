@@ -154,7 +154,9 @@ fn shell_command() -> (String, Vec<String>, String) {
 
 fn working_directory(cwd: Option<String>) -> PathBuf {
     cwd.and_then(|value| {
-        let path = PathBuf::from(value);
+        // Tauri passes strings verbatim; a path copied from a terminal may
+        // still be quoted, especially on Windows.
+        let path = PathBuf::from(value.trim().trim_matches('"'));
         path.is_dir().then_some(path)
     })
     .unwrap_or_else(|| {
@@ -449,6 +451,17 @@ pub async fn terminal_resize(
     Ok(true)
 }
 
+/// Ask the shell to exit, then make sure its child process is gone.
+fn terminate_session(session: &Session) {
+    if let Ok(mut writer) = session.writer.lock() {
+        let _ = writer.write_all(b"exit\r\n");
+        let _ = writer.flush();
+    }
+    if let Ok(mut child) = session.child.lock() {
+        let _ = child.kill();
+    }
+}
+
 #[tauri::command]
 pub async fn terminal_stop(
     app: AppHandle,
@@ -459,13 +472,7 @@ pub async fn terminal_stop(
     let Some(session) = sessions.remove(&session_id) else {
         return Ok(false);
     };
-    if let Ok(mut writer) = session.writer.lock() {
-        let _ = writer.write_all(b"exit\r\n");
-        let _ = writer.flush();
-    }
-    if let Ok(mut child) = session.child.lock() {
-        let _ = child.kill();
-    }
+    terminate_session(&session);
     emit_exit_once(&app, &session_id, &session.exited, None);
     let mut active = state.active.lock().await;
     if *active == session_id {
@@ -481,4 +488,16 @@ pub async fn terminal_close(
     session_id: String,
 ) -> Result<bool, String> {
     terminal_stop(app, state, session_id).await
+}
+
+/// Stop every PTY when the application exits, so no shell is orphaned.
+pub async fn stop_all(state: &State<'_, TerminalState>) {
+    let sessions: Vec<Session> = {
+        let mut sessions = state.sessions.lock().await;
+        std::mem::take(&mut *sessions).into_values().collect()
+    };
+    for session in sessions {
+        terminate_session(&session);
+    }
+    state.active.lock().await.clear();
 }

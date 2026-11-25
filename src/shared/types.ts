@@ -181,6 +181,8 @@ export interface Settings {
   lowMemory: boolean
   /** Reduce effects and background work to conserve battery. */
   powerSave: boolean
+  /** Close integrated terminal sessions when the bottom panel is hidden (default: false). */
+  closeOnPanelHide?: boolean
   /** Scale the whole interface without changing the editor font size. */
   uiScale: number
   /** Hide secondary toolbar buttons and keep only the primary actions. */
