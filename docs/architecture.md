@@ -522,4 +522,6 @@ profile uses LTO, one codegen unit, `opt-level = "s"` and symbol stripping.
 | A new persistent file | A command in `src-tauri/src/store.rs` that writes into the application-data folder |
 | A new plugin capability | The `PluginContext` in `src/renderer/src/core/plugins.ts` and the bridge in `src/renderer/src/bridge.ts` |
 
-The decisions that shape the code are recorded in `docs/adr/`.
+The decisions that shape the code are recorded in `docs/adr/`. In particular,
+[ADR 6](adr/0006-no-java-or-cpp-runtime.md) records why Java and C/C++ toolchains are integrated
+from the user's machine instead of being bundled.

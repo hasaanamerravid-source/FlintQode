@@ -1,7 +1,8 @@
 # Security policy
 
 FlintQode is a local desktop editor. It does not collect telemetry or make
-network requests without an explicit user action.
+network requests without an explicit user action. Renderer errors are written
+to a local log file; no remote crash report or source content is uploaded.
 
 ## Reporting a vulnerability
 

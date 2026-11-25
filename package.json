@@ -18,7 +18,9 @@
     "start": "tauri dev",
     "tauri": "tauri",
     "sync:version": "node scripts/sync-version.mjs",
-    "version:check": "node scripts/sync-version.mjs && git diff --exit-code -- VERSION package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json",
+    "manifest:generate": "node scripts/generate-update-manifest.mjs",
+    "manifest:check": "node scripts/generate-update-manifest.mjs --check",
+    "version:check": "node scripts/sync-version.mjs && npm run manifest:check && git diff --exit-code -- VERSION package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json docs/assets/data/update-manifest.json",
     "release:verify": "node scripts/verify-release.mjs",
     "perf:baseline": "node --import ./scripts/register-ts.mjs scripts/perf-baseline.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.test.json",
@@ -29,7 +31,7 @@
     "i18n:template": "node scripts/i18n.mjs template",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"scripts/*.{mjs,js}\" \"tests/*.mts\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"scripts/*.{mjs,js}\" \"tests/*.mts\"",
-    "check": "npm run format:check && npm run typecheck && npm run i18n:check && npm run test:unit && npm run build"
+    "check": "npm run format:check && npm run typecheck && npm run i18n:check && npm run manifest:check && npm run test:unit && npm run build"
   },
   "devDependencies": {
     "@solidjs/vite-plugin": "^3.0.1",

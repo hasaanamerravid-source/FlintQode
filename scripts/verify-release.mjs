@@ -13,6 +13,8 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { expectedAssets, PAGES_ROOT, UPDATE_MANIFEST_PATH } from './release-assets.mjs'
+import { manifestIssues, readVersion } from './generate-update-manifest.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repo = 'hasaanamerravid-source/FlintQode'
@@ -61,18 +63,6 @@ function checkVersions(version) {
   }
 }
 
-function expectedAssets(version) {
-  return [
-    `FlintQode_${version}_amd64.deb`,
-    `FlintQode_${version}_amd64.AppImage`,
-    `FlintQode-${version}-1.x86_64.rpm`,
-    `FlintQode_${version}_x64-setup.exe`,
-    `FlintQode_${version}_x64_en-US.msi`,
-    `FlintQode_${version}_aarch64.dmg`,
-    'FlintQode_aarch64.app.tar.gz',
-  ]
-}
-
 async function checkStatus(url) {
   try {
     const response = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(30000) })
@@ -103,12 +93,13 @@ async function checkRelease(version) {
   if (release.isPrerelease) fail(`release v${version} is marked prerelease`)
   else ok('release is not a prerelease')
 
+  const expected = expectedAssets(version)
   const names = (release.assets ?? []).map((asset) => asset.name)
-  for (const name of expectedAssets(version)) {
+  for (const name of expected) {
     if (!names.includes(name)) fail(`missing release asset: ${name}`)
   }
-  if (names.length !== expectedAssets(version).length) {
-    fail(`expected ${expectedAssets(version).length} assets, found ${names.length}`)
+  if (names.length !== expected.length) {
+    fail(`expected ${expected.length} assets, found ${names.length}`)
   } else {
     ok(`release has ${names.length} assets`)
   }
@@ -120,6 +111,39 @@ async function checkRelease(version) {
       else fail(`${asset.name}: HTTP ${status}`)
     }),
   )
+}
+
+function checkUpdateManifest(version) {
+  const manifest = parseJson(UPDATE_MANIFEST_PATH)
+  if (!manifest) return
+  const issues = manifestIssues(manifest, version)
+  if (issues.length > 0) {
+    for (const issue of issues) fail(`${UPDATE_MANIFEST_PATH}: ${issue}`)
+  } else {
+    ok(`${UPDATE_MANIFEST_PATH} matches v${version}`)
+  }
+}
+
+async function checkPublishedManifest(version) {
+  const url = `${PAGES_ROOT}/assets/data/update-manifest.json?verify=${Date.now()}`
+  const manifest = await fetch(url, { signal: AbortSignal.timeout(30000) })
+    .then((response) => (response.ok ? response.json() : null))
+    .catch((error) => {
+      fail(`published update manifest: ${error.message}`)
+      return null
+    })
+  if (manifest === null) {
+    if (!problems.some((problem) => problem.startsWith('published update manifest:'))) {
+      fail('published update manifest: HTTP error')
+    }
+    return
+  }
+  const issues = manifestIssues(manifest, version)
+  if (issues.length > 0) {
+    for (const issue of issues) fail(`published update manifest: ${issue}`)
+  } else {
+    ok(`published update manifest matches v${version}`)
+  }
 }
 
 async function checkPages(version) {
@@ -148,12 +172,14 @@ async function checkPages(version) {
   else fail(`Stats latest release: expected v${version}, found ${latest ?? 'nothing'}`)
 }
 
-const version = read('VERSION').trim().replace(/^v/, '')
+const version = readVersion()
 if (!/^\d+\.\d+\.\d+$/.test(version)) fail(`VERSION has an unexpected format: ${version}`)
 else ok(`VERSION is ${version}`)
 
 checkVersions(version)
+checkUpdateManifest(version)
 await checkRelease(version)
+await checkPublishedManifest(version)
 await checkPages(version)
 
 for (const note of notes) console.log(`ok   ${note}`)

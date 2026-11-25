@@ -6,9 +6,10 @@
 //! broken `sudo` in a GUI.
 //!
 //! Every command is async: the actual work runs in `spawn_blocking` so a slow
-//! network or a polkit prompt can never block the webview's event loop. GitHub
-//! publishes a SHA-256 digest for every release asset; the updater uses it to
-//! reject corrupt or substituted downloads before install.
+//! network or a polkit prompt can never block the webview's event loop. The
+//! published update manifest carries exact tag-qualified URLs and GitHub's
+//! SHA-256 digests; the updater verifies that digest before install and only
+//! falls back to the release API when the manifest cannot be fetched.
 
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -21,6 +22,12 @@ use std::time::Duration;
 
 const NETWORK_ATTEMPTS: u32 = 3;
 const RETRY_BASE_MS: u64 = 250;
+const UPDATE_MANIFEST_URL: &str =
+    "https://hasaanamerravid-source.github.io/FlintQode/assets/data/update-manifest.json";
+const RELEASE_API_URL: &str =
+    "https://api.github.com/repos/hasaanamerravid-source/FlintQode/releases/latest";
+const RELEASE_DOWNLOAD_PREFIX: &str =
+    "https://github.com/hasaanamerravid-source/FlintQode/releases/download/";
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -168,31 +175,33 @@ fn verify_checksum(path: &str, expected: &str) -> Result<(), String> {
     }
 }
 
-fn check_update_blocking(current_version: &str) -> Result<Option<UpdateInfo>, String> {
-    // GitHub redirects /latest to the newest non-prerelease; the API is simpler.
-    // The timeouts keep a stalled connection from holding a blocking thread.
-    let body = retry_transient(
-        "update check",
+/// Fetch a small JSON document with bounded timeouts and retries.
+fn fetch_json_document(label: &str, url: &str) -> Result<String, String> {
+    retry_transient(
+        label,
         NETWORK_ATTEMPTS,
         || {
             run(
                 "curl",
-                &[
-                    "-fsSL",
-                    "--connect-timeout",
-                    "10",
-                    "--max-time",
-                    "60",
-                    "https://api.github.com/repos/hasaanamerravid-source/FlintQode/releases/latest",
-                ],
+                &["-fsSL", "--connect-timeout", "10", "--max-time", "60", url],
             )
         },
         sleep,
-    )?;
+    )
+}
+
+/// Read either the static manifest or GitHub's release JSON.
+///
+/// The manifest has `version`, `tag` and `assets[]` with `url`/`sha256`;
+/// GitHub uses `tag_name`, `browser_download_url` and `digest`. Accepting both
+/// shapes keeps the updater working if the manifest has not been published.
+fn update_from_json(body: &str, current_version: &str) -> Result<Option<UpdateInfo>, String> {
     let json: serde_json::Value =
-        serde_json::from_str(&body).map_err(|error| format!("bad release JSON: {error}"))?;
+        serde_json::from_str(body).map_err(|error| format!("bad update JSON: {error}"))?;
     let tag = json
         .get("tag_name")
+        .or_else(|| json.get("tag"))
+        .or_else(|| json.get("version"))
         .and_then(|value| value.as_str())
         .unwrap_or("")
         .trim_start_matches('v')
@@ -200,7 +209,9 @@ fn check_update_blocking(current_version: &str) -> Result<Option<UpdateInfo>, St
     if tag.is_empty() || !is_newer(&tag, current_version) {
         return Ok(None);
     }
-    // Prefer a .deb asset for the current platform.
+
+    // The installer still only handles Linux .deb packages. Prefer that asset
+    // and keep the fallback for a manifest with an unexpected asset order.
     let assets = json
         .get("assets")
         .and_then(|value| value.as_array())
@@ -217,7 +228,7 @@ fn check_update_blocking(current_version: &str) -> Result<Option<UpdateInfo>, St
         })
         .or_else(|| assets.first());
     let Some(asset) = asset else {
-        return Ok(None);
+        return Err(format!("release {tag} has no downloadable asset"));
     };
     let name = asset
         .get("name")
@@ -226,16 +237,20 @@ fn check_update_blocking(current_version: &str) -> Result<Option<UpdateInfo>, St
         .to_string();
     let url = asset
         .get("browser_download_url")
+        .or_else(|| asset.get("url"))
         .and_then(|value| value.as_str())
         .unwrap_or("")
         .to_string();
     let sha256 = asset
         .get("digest")
+        .or_else(|| asset.get("sha256"))
         .and_then(|value| value.as_str())
         .map(sha256_from_digest)
         .unwrap_or_default();
-    if url.is_empty() {
-        return Ok(None);
+    if !url.starts_with(RELEASE_DOWNLOAD_PREFIX) {
+        return Err(format!(
+            "release {tag} has an unexpected download URL for {name}"
+        ));
     }
     if !is_sha256(&sha256) {
         return Err(format!("the release asset {name} has no usable checksum"));
@@ -246,6 +261,19 @@ fn check_update_blocking(current_version: &str) -> Result<Option<UpdateInfo>, St
         asset_name: name,
         sha256,
     }))
+}
+
+fn check_update_blocking(current_version: &str) -> Result<Option<UpdateInfo>, String> {
+    // The static manifest uses exact tag-qualified URLs. Only when it cannot be
+    // fetched do we fall back to GitHub's release API; neither path relies on a
+    // browser-style `/releases/latest` redirect.
+    match fetch_json_document("update manifest", UPDATE_MANIFEST_URL) {
+        Ok(body) => update_from_json(&body, current_version),
+        Err(manifest_error) => match fetch_json_document("update check", RELEASE_API_URL) {
+            Ok(body) => update_from_json(&body, current_version),
+            Err(api_error) => Err(format!("{manifest_error}; {api_error}")),
+        },
+    }
 }
 
 fn download_update_blocking(url: &str, dest: &str, expected: &str) -> Result<String, String> {
@@ -348,7 +376,7 @@ pub async fn app_install_update(path: String, sha256: String) -> Result<String, 
 mod tests {
     use super::{
         download_update_blocking, install_update_blocking, is_newer, is_sha256, is_transient,
-        retry_transient, sha256_file, verify_checksum, CommandFailure,
+        retry_transient, sha256_file, update_from_json, verify_checksum, CommandFailure,
     };
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicU64, Ordering};
@@ -482,5 +510,70 @@ mod tests {
         assert!(!destination.exists());
         assert!(!destination.with_extension("part").exists());
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn a_static_manifest_selects_the_deb_asset() {
+        let body = r#"{
+            "version": "1.4.8",
+            "tag": "v1.4.8",
+            "assets": [
+                {
+                    "name": "FlintQode-1.4.8-1.x86_64.rpm",
+                    "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.4.8/FlintQode-1.4.8-1.x86_64.rpm",
+                    "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+                },
+                {
+                    "name": "FlintQode_1.4.8_amd64.deb",
+                    "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.4.8/FlintQode_1.4.8_amd64.deb",
+                    "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+                }
+            ]
+        }"#;
+        let update = update_from_json(body, "1.4.7").unwrap().unwrap();
+        assert_eq!(update.version, "1.4.8");
+        assert_eq!(update.asset_name, "FlintQode_1.4.8_amd64.deb");
+        assert_eq!(
+            update.sha256,
+            "2222222222222222222222222222222222222222222222222222222222222222"
+        );
+        assert!(update.url.ends_with("FlintQode_1.4.8_amd64.deb"));
+    }
+
+    #[test]
+    fn an_equal_manifest_version_is_not_an_update() {
+        let body = r#"{
+            "version": "1.4.7",
+            "tag": "v1.4.7",
+            "assets": []
+        }"#;
+        assert!(update_from_json(body, "1.4.7").unwrap().is_none());
+    }
+
+    #[test]
+    fn a_newer_manifest_without_a_checksum_is_rejected() {
+        let body = r#"{
+            "tag": "v1.4.8",
+            "assets": [{
+                "name": "FlintQode_1.4.8_amd64.deb",
+                "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.4.8/FlintQode_1.4.8_amd64.deb"
+            }]
+        }"#;
+        let error = update_from_json(body, "1.4.7").unwrap_err();
+        assert!(error.contains("no usable checksum"));
+    }
+
+    #[test]
+    fn a_manifest_url_outside_the_release_is_rejected() {
+        let body = r#"{
+            "tag": "v1.4.8",
+            "assets": [{
+                "name": "FlintQode_1.4.8_amd64.deb",
+                "url": "https://example.test/FlintQode_1.4.8_amd64.deb",
+                "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+            }]
+        }"#;
+        let error = update_from_json(body, "1.4.7").unwrap_err();
+        assert!(error.contains("unexpected download URL"));
     }
 }
