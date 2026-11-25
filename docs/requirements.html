@@ -345,7 +345,7 @@
         RSS counts all mapped pages; PSS shares them between processes; private memory is what is
         charged only to FlintQode.</p>
 
-      <p class="note" id="measurement-method">Method: CPU was derived from <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">utime</code>/<code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">stime</code>
+      <p class="note">Method: CPU was derived from <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">utime</code>/<code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">stime</code>
         deltas in <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">/proc/&lt;pid&gt;/stat</code> over 12 seconds; memory came from <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">stat</code>
         and <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">smaps_rollup</code>. This is one Linux machine, not a Windows/macOS or clean-VM benchmark. Your numbers will change with the project, open terminals, language servers, extensions, GPU and OS.</p>
 
@@ -354,7 +354,6 @@
         <p class="note">Use Task Manager on Windows, Activity Monitor on macOS, or <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">ps</code>/System Monitor on Linux. Compare the editor with one empty tab, then with a real project open. Remember that webview memory may be counted as shared rather than charged entirely to FlintQode.</p>
         <div class="hero-actions">
           <a href="downloads.html" class="btn btn-primary">Get FlintQode</a>
-          <a href="#measurement-method" class="btn btn-outline">Read the measurement method</a>
         </div>
       </div>
     </div>
