@@ -27,14 +27,8 @@
       to { transform: translate3d(0, 0, 0); }
     }
     .card-title { font-size: 1rem; font-weight: 700; color: var(--ink); margin-bottom: var(--space-1); }
-    .bar-labels { display: flex; gap: var(--space-2); margin-bottom: var(--space-2); font-size: 0.8rem; color: var(--ink-soft); }
-    .bar-labels div { flex: 1; text-align: center; }
-    .bar-chart { display: flex; flex-direction: column; gap: var(--space-2); }
-    .bar-row { display: flex; align-items: center; gap: var(--space-3); }
-    .bar-row .name { width: 120px; font-size: 0.85rem; color: var(--ink); font-family: var(--font-mono); font-weight: 600; }
-    .bar { height: 20px; border-radius: 4px; background: var(--surface-3); border: 1px solid var(--border); position: relative; overflow: hidden; flex: 1; min-width: 60px; }
-    .bar-fill { height: 100%; background: var(--primary); border-radius: 4px; }
-    .bar-val { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; font-weight: 700; color: #fff; font-family: var(--font-mono); text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+    .chart-wrap { margin: var(--space-4) 0; padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    .chart-wrap svg text { font-family: var(--font-sans); }
     .note { font-size: 0.9rem; color: var(--ink); max-width: 70ch; line-height: 1.6; }
     .cta { margin-top: var(--space-6); }
   </style>
@@ -232,28 +226,35 @@
           </tbody>
         </table>
 
-        <div class="bar-labels"><div>Idle RAM</div><div>Download</div><div></div></div>
-        <div class="bar-chart">
-          <div class="bar-row">
-            <span class="name">FlintQode</span>
-            <div class="bar"><div class="bar-fill" style="width:40%"></div><span class="bar-val">~300 MiB</span></div>
-          </div>
-          <div class="bar-row">
-            <span class="name">VS Code</span>
-            <div class="bar"><div class="bar-fill" style="width:100%"></div><span class="bar-val">~400–800 MiB</span></div>
-          </div>
-          <div class="bar-row">
-            <span class="name">Sublime Text</span>
-            <div class="bar"><div class="bar-fill" style="width:25%"></div><span class="bar-val">~60–120 MiB</span></div>
-          </div>
-          <div class="bar-row">
-            <span class="name">Vim / Neovim</span>
-            <div class="bar"><div class="bar-fill" style="width:8%"></div><span class="bar-val">~15–40 MiB</span></div>
-          </div>
-          <div class="bar-row">
-            <span class="name">Notepad++</span>
-            <div class="bar"><div class="bar-fill" style="width:10%"></div><span class="bar-val">~20–50 MiB</span></div>
-          </div>
+        <div class="chart-wrap">
+          <svg viewBox="0 0 600 260" width="100%" height="auto" role="img" aria-label="Bar chart comparing idle RAM usage of code editors">
+            <text x="0" y="16" font-size="12" font-weight="600" fill="#485872" font-family="var(--font-sans)">Idle RAM (MiB, lower is better)</text>
+            <!-- FlintQode -->
+            <text x="0" y="48" font-size="12" font-weight="600" fill="#172033" font-family="var(--font-mono)">FlintQode</text>
+            <rect x="110" y="36" width="120" height="18" rx="4" fill="#2f6df2" />
+            <text x="238" y="50" font-size="11" font-weight="700" fill="#172033" font-family="var(--font-mono)">~300</text>
+            <!-- VS Code -->
+            <text x="0" y="88" font-size="12" font-weight="600" fill="#172033" font-family="var(--font-mono)">VS Code</text>
+            <rect x="110" y="76" width="300" height="18" rx="4" fill="#7a8aa4" />
+            <text x="418" y="90" font-size="11" font-weight="700" fill="#172033" font-family="var(--font-mono)">~400–800</text>
+            <!-- Sublime Text -->
+            <text x="0" y="128" font-size="12" font-weight="600" fill="#172033" font-family="var(--font-mono)">Sublime</text>
+            <rect x="110" y="116" width="75" height="18" rx="4" fill="#7a8aa4" />
+            <text x="193" y="130" font-size="11" font-weight="700" fill="#172033" font-family="var(--font-mono)">~60–120</text>
+            <!-- Vim -->
+            <text x="0" y="168" font-size="12" font-weight="600" fill="#172033" font-family="var(--font-mono)">Vim/Neovim</text>
+            <rect x="110" y="156" width="24" height="18" rx="4" fill="#7a8aa4" />
+            <text x="142" y="170" font-size="11" font-weight="700" fill="#172033" font-family="var(--font-mono)">~15–40</text>
+            <!-- Notepad++ -->
+            <text x="0" y="208" font-size="12" font-weight="600" fill="#172033" font-family="var(--font-mono)">Notepad++</text>
+            <rect x="110" y="196" width="30" height="18" rx="4" fill="#7a8aa4" />
+            <text x="148" y="210" font-size="11" font-weight="700" fill="#172033" font-family="var(--font-mono)">~20–50</text>
+            <!-- Axis -->
+            <line x1="110" y1="230" x2="560" y2="230" stroke="#dce3ef" stroke-width="1" />
+            <text x="110" y="246" font-size="9" fill="#485872" font-family="var(--font-sans)">0</text>
+            <text x="260" y="246" font-size="9" fill="#485872" font-family="var(--font-sans)">400</text>
+            <text x="410" y="246" font-size="9" fill="#485872" font-family="var(--font-sans)">800 MiB</text>
+          </svg>
         </div>
 
         <p class="note">VS Code and Sublime Text figures are widely cited community estimates; terminal editors like Vim use almost no GUI memory. FlintQode’s measured number comes from a real Linux session sampled over 12 seconds, and is higher than a terminal editor because it includes a GUI webview process — the trade-off for a modern, graphical editor that still stays well below Electron’s footprint.</p>
