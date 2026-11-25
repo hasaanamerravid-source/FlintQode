@@ -1,0 +1,43 @@
+/* ---------- Requirements page chart styles ----------
+   Uses the same SVG chart conventions as the Stats page (stats.css). */
+
+.req-chart-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.req-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+.req-chart-wide {
+  grid-column: 1 / -1;
+  margin-top: var(--space-2);
+}
+
+/* Horizontal-bar helpers layered on top of .chart-svg from stats.css. */
+.chart-svg .req-bar-track { fill: var(--surface-3); }
+.chart-svg .req-bar { transition: filter 0.15s ease; cursor: pointer; }
+.chart-svg .req-bar:hover { filter: brightness(1.15); }
+.chart-svg .req-bar-label {
+  fill: var(--ink);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+.chart-svg .req-bar-value {
+  fill: var(--ink);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+@media (max-width: 719px) {
+  .req-chart-grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-svg .req-bar { transition: none; }
+}
