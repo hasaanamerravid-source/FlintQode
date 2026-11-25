@@ -218,6 +218,17 @@
         charged only to FlintQode.
       </p>
 
+      <p style="margin-top:var(--space-3); color:var(--ink-soft); font-size:0.9rem; max-width:80ch;">
+        A system monitor may show a separate <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">FlintQode-1.5.0</code>
+        process using only about 15–19 MiB. That is the AppImage mount helper, not the editor; it
+        mounts the image and exits with the app. The editor itself is the
+        <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">flintqode</code>
+        process plus its two WebKit children. CPU percentages in task managers are often averaged
+        over the whole lifetime of the process; the figures here are instantaneous 12-second
+        deltas, which is why a long-idle app can read near 0.01% there while still using about 6%
+        of one core at that moment.
+      </p>
+
       <p style="margin-top:var(--space-3); color:var(--muted); font-size:0.85rem; max-width:80ch;">
         Method: CPU was derived from <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">utime</code>/<code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">stime</code>
         deltas in <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">/proc/&lt;pid&gt;/stat</code> over 12 seconds; memory came from <code style="font-family:var(--font-mono); background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:0;">stat</code>
