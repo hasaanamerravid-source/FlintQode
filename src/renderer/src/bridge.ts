@@ -450,9 +450,12 @@ export function createApi(): FlintQodeApi {
 
     app: {
       checkUpdate: (currentVersion: string) =>
-        call<{ version: string; url: string; assetName: string } | null>('app_check_update', { currentVersion }),
-      downloadUpdate: (url: string, dest: string) => call<string>('app_download_update', { url, dest }),
-      installUpdate: (path: string) => call<string>('app_install_update', { path }),
+        call<{ version: string; url: string; assetName: string; sha256: string } | null>('app_check_update', {
+          currentVersion,
+        }),
+      downloadUpdate: (url: string, dest: string, sha256: string) =>
+        call<string>('app_download_update', { url, dest, sha256 }),
+      installUpdate: (path: string, sha256: string) => call<string>('app_install_update', { path, sha256 }),
     },
 
     onCommand: (cb: (id: string, payload?: unknown) => void) =>

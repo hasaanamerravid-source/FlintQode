@@ -550,5 +550,8 @@
   "settings.updatesDownloaded": "Downloaded. Ready to install.",
   "settings.updatesInstallPrompt": "Install the update now? (requires administrator privileges)",
   "settings.updatesInstalled": "Update installed. Restart FlintQode to use the new version.",
+  "settings.updatesChecksumMissing": "Für die Version ist keine Prüfsumme vorhanden; der Download wurde abgebrochen.",
+  "settings.updatesFailed": "Update fehlgeschlagen: {{error}}",
+  "settings.updatesFailedHint": "Prüfe Verbindung oder Speicherplatz und versuche es erneut.",
   "settings.checkForUpdates": "Check for updates"
 }

@@ -209,8 +209,8 @@ export function SettingsDialog(): JSX.Element {
       api: {
         info: () => window.api.info(),
         checkUpdate: (version) => window.api.app.checkUpdate(version),
-        downloadUpdate: (url, destination) => window.api.app.downloadUpdate(url, destination),
-        installUpdate: (path) => window.api.app.installUpdate(path),
+        downloadUpdate: (url, destination, sha256) => window.api.app.downloadUpdate(url, destination, sha256),
+        installUpdate: (path, sha256) => window.api.app.installUpdate(path, sha256),
       },
       confirm,
       text: t,

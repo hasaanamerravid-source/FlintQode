@@ -11,19 +11,20 @@ export interface UpdateCandidate {
   version: string
   url: string
   assetName: string
+  sha256: string
 }
 
 export interface UpdateApi {
   info: () => Promise<AppInfo>
   checkUpdate: (currentVersion: string) => Promise<UpdateCandidate | null>
-  downloadUpdate: (url: string, dest: string) => Promise<string>
-  installUpdate: (path: string) => Promise<string>
+  downloadUpdate: (url: string, dest: string, sha256: string) => Promise<string>
+  installUpdate: (path: string, sha256: string) => Promise<string>
 }
 
 export interface UpdateFlowDeps {
   api: UpdateApi
   confirm: (title: string, message: string, confirmLabel: string) => Promise<boolean>
-  text: (key: MessageKey, params?: { version: string }) => string
+  text: (key: MessageKey, params?: Record<string, string>) => string
   status: (message: string) => void
   busy: (busy: boolean) => void
 }
@@ -53,6 +54,9 @@ export async function runUpdateFlow(deps: UpdateFlowDeps): Promise<void> {
       return
     }
 
+    if (!update.sha256) {
+      throw new Error(text('settings.updatesChecksumMissing'))
+    }
     status(text('settings.updatesAvailable', { version: update.version }))
 
     // The user is choosing whether to download; the button is free while the
@@ -68,7 +72,7 @@ export async function runUpdateFlow(deps: UpdateFlowDeps): Promise<void> {
     busy(true)
     status(text('settings.updatesDownloading'))
     const destination = updateDestination(app.temp)
-    await api.downloadUpdate(update.url, destination)
+    await api.downloadUpdate(update.url, destination, update.sha256)
     status(text('settings.updatesDownloaded'))
 
     busy(false)
@@ -77,10 +81,11 @@ export async function runUpdateFlow(deps: UpdateFlowDeps): Promise<void> {
 
     busy(true)
     status(text('settings.updatesInstalling'))
-    await api.installUpdate(destination)
+    await api.installUpdate(destination, update.sha256)
     status(text('settings.updatesInstalled'))
   } catch (error) {
-    status(String(error))
+    const reason = error instanceof Error ? error.message : String(error)
+    status(`${text('settings.updatesFailed', { error: reason })} ${text('settings.updatesFailedHint')}`)
   } finally {
     busy(false)
   }

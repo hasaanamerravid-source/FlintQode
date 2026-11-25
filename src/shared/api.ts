@@ -151,9 +151,14 @@ export interface FlintQodeApi {
   info(): Promise<AppInfo>
 
   app: {
-    checkUpdate(currentVersion: string): Promise<{ version: string; url: string; assetName: string } | null>
-    downloadUpdate(url: string, dest: string): Promise<string>
-    installUpdate(path: string): Promise<string>
+    checkUpdate(currentVersion: string): Promise<{
+      version: string
+      url: string
+      assetName: string
+      sha256: string
+    } | null>
+    downloadUpdate(url: string, dest: string, sha256: string): Promise<string>
+    installUpdate(path: string, sha256: string): Promise<string>
   }
 
   fs: {

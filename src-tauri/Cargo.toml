@@ -27,6 +27,7 @@ encoding_rs = "0.8"
 notify = "7"
 portable-pty = "0.8"
 url = "2"
+sha2 = "0.10"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
