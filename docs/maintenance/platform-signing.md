@@ -9,10 +9,14 @@ assets remain unsigned; do not describe them as signed or notarized.
 
 - `.github/workflows/build.yml` runs the full frontend gate on every push and
   creates release installers only for `v*` tags.
-- Apple secrets are passed to the tagged build step. When they are present,
-  Tauri signs and notarizes the macOS bundle.
+- Optional secrets are exported to the build only when their values are
+  non-empty. GitHub represents an unset secret as an empty string, and Tauri
+  treats a present-but-empty `APPLE_CERTIFICATE` as a certificate to import,
+  which fails the macOS bundle. The workflow filters empty values before
+  exporting them.
+- When Apple secrets are present, Tauri signs and notarizes the macOS bundle.
 - The Windows certificate import step runs only on a tagged Windows job and
-  only when `WINDOWS_CERTIFICATE` is set.
+  exits early when `WINDOWS_CERTIFICATE` is not configured.
 - No crash-report endpoint, telemetry SDK or consent UI exists. Renderer
   errors go to a local log file in the application-data folder.
 - The in-app updater installs Linux `.deb` packages with `dpkg`. Windows and
