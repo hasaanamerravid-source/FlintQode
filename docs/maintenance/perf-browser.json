@@ -1,0 +1,32 @@
+{
+  "capturedAt": "2026-11-25T03:29:28.597Z",
+  "browser": "Chromium via OpenCode in-app browser",
+  "fixture": {
+    "file": "src/renderer/perf.html",
+    "lines": 10000,
+    "chars": 856769,
+    "term": "item"
+  },
+  "method": "100 in-page keystroke transactions per scenario; domSamples are measured to the first content MutationObserver callback, paintSamples to the next requestAnimationFrame. Real CDP keyboard presses were used as a sanity check before the stable in-page batches.",
+  "measurements": [
+    {
+      "name": "plain typing with indent guides",
+      "samples": 100,
+      "domMedianMs": 3.1,
+      "domP95Ms": 7.2,
+      "paintMedianMs": 16.6,
+      "paintP95Ms": 18.9,
+      "paintMaxMs": 27.8
+    },
+    {
+      "name": "typing with highlight-all active",
+      "samples": 100,
+      "domMedianMs": 4.0,
+      "domP95Ms": 8.0,
+      "paintMedianMs": 17.2,
+      "paintP95Ms": 22.7,
+      "paintMaxMs": 28.2
+    }
+  ],
+  "interpretation": "Application work is under one 60 Hz frame in both scenarios. The paint interval includes the wait for the next frame, so its p95 is frame-bound rather than work-bound."
+}

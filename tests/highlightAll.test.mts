@@ -18,6 +18,18 @@ test('an empty term creates no decorations', () => {
   assert.equal(buildHighlightDecorations('', docOf('abc')).size, 0)
 })
 
+test('only visible ranges are scanned', () => {
+  const doc = docOf(`needle ${'x'.repeat(200)} needle`)
+  const decorations = buildHighlightDecorations('needle', doc, [{ from: 0, to: 7 }])
+  assert.equal(decorations.size, 1)
+})
+
+test('a match crossing a range boundary is still highlighted once', () => {
+  const doc = docOf('needle tail')
+  const decorations = buildHighlightDecorations('needle', doc, [{ from: 3, to: 8 }])
+  assert.equal(decorations.size, 1)
+})
+
 test('a document with too many matches is capped', () => {
   const text = Array.from({ length: MAX_HIGHLIGHT_MATCHES + 50 }, () => 'needle').join(' ')
   const decorations = buildHighlightDecorations('needle', docOf(text))

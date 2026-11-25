@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Keystroke performance fixture</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #11151c;
+        color: #d7dae0;
+        font: 13px system-ui, sans-serif;
+        overflow: hidden;
+      }
+      #editor {
+        height: 100%;
+        overflow: auto;
+      }
+      .cm-editor {
+        height: 100%;
+      }
+      .cm-scroller {
+        height: 100%;
+        overflow: auto;
+      }
+      .cm-content {
+        caret-color: #61afef;
+      }
+      .cm-searchMatch {
+        background: #6a4b00;
+      }
+      .cm-indent-guides {
+        box-shadow: inset 1px 0 #2b303b;
+      }
+      .cm-activeLine {
+        background: #1b2028;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="editor"></div>
+    <script type="module" src="./perf.ts"></script>
+  </body>
+</html>
