@@ -16,7 +16,27 @@ let latestProblems: Problem[] = []
  * bottom panel, the sidebar and the status bar) and all of them ask for the
  * same check - it must only run once.
  */
-let lastKey = ''
+export interface CheckMemo {
+  /** True the first time a document (or rule set) is checked. */
+  shouldRun: (source: CheckSource) => boolean
+}
+
+/** A fresh dedupe memo. The match uses document identity, not its text. */
+export function createCheckMemo(): CheckMemo {
+  let lastKey = ''
+  let lastContent: string | null = null
+  return {
+    shouldRun(source) {
+      const key = problemsCheckKey(source)
+      if (key === lastKey && source.content === lastContent) return false
+      lastKey = key
+      lastContent = source.content
+      return true
+    },
+  }
+}
+
+const checkMemo = createCheckMemo()
 
 /** Everyone who wants to know the problems of the active file. */
 const listeners = new Set<(problems: Problem[]) => void>()
@@ -45,6 +65,15 @@ interface CheckSource {
   large: boolean
   path: string
   diagnostics: DiagnosticSettings | undefined
+}
+
+/**
+ * The stable part of the dedupe key. The document text is deliberately not
+ * included (copying a megabyte of HTML into a string on every debounce was
+ * measurable); it is compared by identity next to the key.
+ */
+export function problemsCheckKey(source: Pick<CheckSource, 'activeTabId' | 'language' | 'diagnostics'>): string {
+  return `${source.activeTabId}:${source.language}:${diagnosticsKey(source.diagnostics, source.language)}`
 }
 
 /**
@@ -90,13 +119,12 @@ export function useProblems(): Accessor<Problem[]> {
       const delay = useAppStore.getState().settings.powerSave ? 1200 : 350
       timer = window.setTimeout(() => {
         const run = ++generation
-        // Content, not just length: two edits of the same size must both run.
-        // The rule signature is part of the key so toggling a setting without
-        // touching the document still produces a fresh check immediately.
-        const key = `${source.activeTabId}:${source.language}:${diagnosticsKey(source.diagnostics, source.language)}:${source.content}`
-        // Another place already checked the same document.
-        if (key === lastKey) return
-        lastKey = key
+        // Keep the document out of the key: copying a megabyte of HTML into a
+        // string on every debounce was measurable. The rule signature is still
+        // part of the key so toggling a setting checks the file again, and the
+        // content string is compared by identity so two edits of the same size
+        // both run.
+        if (!checkMemo.shouldRun(source)) return
         const view = getView(source.activeTabId)
         if (!view) {
           if (run === generation) publish([])

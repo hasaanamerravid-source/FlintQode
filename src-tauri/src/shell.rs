@@ -75,14 +75,18 @@ fn open_terminal_at(directory: &Path) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn shell_open_terminal(cwd: Option<String>) -> Result<bool, String> {
-    let directory = cwd
-        .map(|value| PathBuf::from(value.trim().trim_matches('"')))
-        .filter(|path| path.is_dir())
-        .or_else(|| std::env::current_dir().ok().filter(|path| path.is_dir()))
-        .unwrap_or_else(home_dir);
-    open_terminal_at(&directory)?;
-    Ok(true)
+pub async fn shell_open_terminal(cwd: Option<String>) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let directory = cwd
+            .map(|value| PathBuf::from(value.trim().trim_matches('"')))
+            .filter(|path| path.is_dir())
+            .or_else(|| std::env::current_dir().ok().filter(|path| path.is_dir()))
+            .unwrap_or_else(home_dir);
+        open_terminal_at(&directory)?;
+        Ok(true)
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 /** The program that runs a file, picked by the extension. */
@@ -116,14 +120,18 @@ fn command_for(file_path: &str) -> Option<(String, Vec<String>)> {
 }
 
 #[tauri::command]
-pub fn shell_run(file_path: String) -> Result<Option<String>, String> {
-    let Some((command, args)) = command_for(&file_path) else {
-        return Ok(None);
-    };
-    let folder = Path::new(&file_path).parent().map(Path::to_path_buf);
-    // A failed spawn must be reported: the caller used to show the command
-    // string as if the program had started, which hid a missing interpreter.
-    spawn_detached(&command, &args, folder.as_deref())
-        .map_err(|error| format!("Could not start {command}: {error}"))?;
-    Ok(Some(format!("{command} {}", args.join(" "))))
+pub async fn shell_run(file_path: String) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some((command, args)) = command_for(&file_path) else {
+            return Ok(None);
+        };
+        let folder = Path::new(&file_path).parent().map(Path::to_path_buf);
+        // A failed spawn must be reported: the caller used to show the command
+        // string as if the program had started, which hid a missing interpreter.
+        spawn_detached(&command, &args, folder.as_deref())
+            .map_err(|error| format!("Could not start {command}: {error}"))?;
+        Ok(Some(format!("{command} {}", args.join(" "))))
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }

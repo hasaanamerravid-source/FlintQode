@@ -153,6 +153,19 @@ function dialogFilters(opts: {
     .filter((filter) => filter.extensions.length > 0)
 }
 
+/**
+ * The filters handed to the native picker for an open dialog. A "*" filter
+ * means "show everything"; passing it as a real extension is not portable
+ * (some Linux pickers then show only folders), so the filters are dropped and
+ * the dialog lists every file.
+ */
+export function openDialogFilters(opts: {
+  filters?: { name: string; extensions: string[] }[]
+}): { name: string; extensions: string[] }[] {
+  const wantsAll = (opts.filters ?? []).some((filter) => filter.extensions.includes('*'))
+  return wantsAll ? [] : dialogFilters(opts)
+}
+
 async function openDialog(opts: OpenDialogOptions): Promise<DialogResult> {
   if (!isTauri()) throw nativeOnly('The file dialog')
   const selection = await openNativeDialog({
@@ -160,7 +173,7 @@ async function openDialog(opts: OpenDialogOptions): Promise<DialogResult> {
     defaultPath: opts.defaultPath,
     multiple: opts.multiSelections,
     directory: opts.directory,
-    filters: dialogFilters(opts),
+    filters: openDialogFilters(opts),
   })
   const filePaths = Array.isArray(selection) ? selection : selection ? [selection] : []
   return { canceled: filePaths.length === 0, filePaths, filePath: filePaths[0] ?? null }
@@ -187,7 +200,7 @@ export function createApi(): FlintQodeApi {
     info: (): Promise<AppInfo> => {
       if (!isTauri()) {
         return Promise.resolve({
-          version: '1.5.0',
+          version: '1.5.1',
           build: 'dev',
           commit: 'browser',
           tauri: 'browser preview',

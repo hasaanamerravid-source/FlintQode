@@ -50,6 +50,7 @@ import { highlightAllExtension } from '../../core/highlightAll'
 import { bookmarkExtension } from '../../core/bookmarks'
 import { indentGuidesExtension } from '../../core/indentGuides'
 import { gitGutterExtension } from '../../core/gitGutter'
+import { applyExternalContent } from './editorSync'
 import { useSettings } from '../../state/solid'
 
 export interface CodeEditorProps {
@@ -438,18 +439,25 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
           }
           if (update.docChanged) {
             setTabDirty(tab.id, true)
-            const text = update.state.doc.toString()
-            // Read the prop when the change happens: Solid props are live getters,
-            // so the freshest callback is used without rebuilding the editor.
-            props.onContentChange?.(text)
+            // The markdown preview is the only consumer of onContentChange.
+            // Copying the whole document for every code keystroke is pure
+            // overhead and was the main cause of slow editing in large files.
+            if (tab.mode === 'markdown' && !tab.largeFile) {
+              props.onContentChange?.(update.state.doc.toString())
+            }
             // Keep the store in sync (tab switches, session restore) without
-            // re-rendering on every keystroke. Large files are skipped:
-            // copying megabytes per keystroke would freeze the editor.
+            // re-rendering on every keystroke. Read the document inside the
+            // timer: a burst of typing then copies the text once, not once per
+            // character. Large files are skipped entirely.
             if (tab.largeFile) return
-            if (text.length > 2_000_000) return
+            if (update.state.doc.length > 2_000_000) return
             if (syncTimer !== null) window.clearTimeout(syncTimer)
             syncTimer = window.setTimeout(() => {
-              useAppStore.getState().updateTab(tab.id, { content: text })
+              syncTimer = null
+              if (disposed) return
+              const latest = view.state.doc.toString()
+              if (latest.length > 2_000_000) return
+              useAppStore.getState().updateTab(tab.id, { content: latest })
             }, 400)
           }
           // Split view: the other pane shows the same document, so it gets the
@@ -694,6 +702,9 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
     ({ current, readonly }) => {
       const view = viewRef
       if (!view) return
+      // A tab switch briefly leaves the previous view mounted; reconfiguring
+      // it here wastes work and can race with the recreate effect below.
+      if (props.tab.id !== currentTabId) return
       view.dispatch({
         effects: [
           wrapCompartment.reconfigure(current.lineWrapping ? EditorView.lineWrapping : []),
@@ -725,7 +736,7 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
     () => ({ language: props.tab.language, largeFile: props.tab.largeFile }),
     ({ language, largeFile }) => {
       const view = viewRef
-      if (!view) return
+      if (!view || props.tab.id !== currentTabId) return
       view.dispatch({
         effects: langCompartment.reconfigure(largeFile ? [] : languageExtension(language)),
       })
@@ -736,13 +747,15 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
     () => ({ content: props.tab.content, id: props.tab.id }),
     ({ content, id }) => {
       const view = viewRef
+      // While the tab id is changing, the old view is still mounted. Writing
+      // the incoming tab's content into it copied one file into another and
+      // the teardown then flushed that text back into the wrong tab. The
+      // editor-recreation effect owns this window; skip it here.
       if (!view) return
-      const current = view.state.doc.toString()
       const state = useAppStore.getState()
-      const isDirty = state.tabs.find((t) => t.id === id)?.dirty
-      if (current !== (content ?? '') && !isDirty) {
+      const isDirty = state.tabs.find((t) => t.id === id)?.dirty ?? false
+      if (applyExternalContent(view, id, currentTabId, content, isDirty)) {
         // The file was reloaded from disk (or the tab was restored).
-        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content ?? '' } })
         state.setTabDirty(id, false)
       }
     },

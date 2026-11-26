@@ -296,10 +296,18 @@ pub fn write_atomic(path: &str, bytes: &[u8]) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn fs_read_file(path: String) -> Result<FilePayload, String> {
+pub async fn fs_read_file(path: String) -> Result<FilePayload, String> {
+    tauri::async_runtime::spawn_blocking(move || fs_read_file_blocking(&path))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+/// Reading, decoding and normalising a file can take megabytes of work. Keep
+/// it off the main thread so the window never stops painting while a file opens.
+fn fs_read_file_blocking(path: &str) -> Result<FilePayload, String> {
     // Canonicalize so that the same file opened with different casing always
     // resolves to the same path everywhere in the renderer.
-    let path = canonical_existing(&path);
+    let path = canonical_existing(path);
     let mut buffer = Vec::new();
     let mut size = 0u64;
     let mut limit = 0u64;
@@ -348,23 +356,43 @@ pub fn fs_read_file(path: String) -> Result<FilePayload, String> {
 }
 
 #[tauri::command]
-pub fn fs_write_file(
+pub async fn fs_write_file(
     path: String,
     content: String,
     encoding: String,
     eol: String,
 ) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        fs_write_file_blocking(&path, &content, &encoding, &eol)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+/// Encoding, the temporary file and `sync_all` can stall on a slow disk.
+fn fs_write_file_blocking(
+    path: &str,
+    content: &str,
+    encoding: &str,
+    eol: &str,
+) -> Result<(), String> {
     // The file may not exist yet: canonicalize the parent folder instead, so
     // mixed separators and casing still resolve to one consistent path.
-    let path = canonical_target(&path);
-    let payload = apply_eol(&normalize_eol(&content), &eol);
-    let bytes = encode_text(&payload, &encoding);
+    let path = canonical_target(path);
+    let payload = apply_eol(&normalize_eol(content), eol);
+    let bytes = encode_text(&payload, encoding);
     write_atomic(&path, &bytes)
 }
 
 #[tauri::command]
-pub fn fs_read_dir(path: String) -> Vec<DirEntry> {
-    let dir = Path::new(&path);
+pub async fn fs_read_dir(path: String) -> Vec<DirEntry> {
+    tauri::async_runtime::spawn_blocking(move || fs_read_dir_blocking(&path))
+        .await
+        .unwrap_or_default()
+}
+
+fn fs_read_dir_blocking(path: &str) -> Vec<DirEntry> {
+    let dir = Path::new(path);
     let Ok(entries) = fs::read_dir(dir) else {
         return Vec::new();
     };
@@ -384,7 +412,13 @@ pub fn fs_read_dir(path: String) -> Vec<DirEntry> {
 }
 
 #[tauri::command]
-pub fn fs_list_recursive(path: String, max_depth: Option<u32>) -> Vec<DirEntry> {
+pub async fn fs_list_recursive(path: String, max_depth: Option<u32>) -> Vec<DirEntry> {
+    tauri::async_runtime::spawn_blocking(move || fs_list_recursive_blocking(path, max_depth))
+        .await
+        .unwrap_or_default()
+}
+
+fn fs_list_recursive_blocking(path: String, max_depth: Option<u32>) -> Vec<DirEntry> {
     let limit = max_depth.unwrap_or(12);
     let mut result = Vec::new();
     let mut stack = vec![(PathBuf::from(path), 0u32)];
@@ -547,13 +581,19 @@ pub fn fs_unwatch(state: State<'_, Watchers>, path: String) -> Result<(), String
 }
 
 #[tauri::command]
-pub fn fs_search(request: crate::search::SearchRequest) -> crate::search::SearchResult {
-    crate::search::search_in_files(&request)
+pub async fn fs_search(request: crate::search::SearchRequest) -> crate::search::SearchResult {
+    tauri::async_runtime::spawn_blocking(move || crate::search::search_in_files(&request))
+        .await
+        .unwrap_or_else(|_| crate::search::SearchResult::default())
 }
 
 #[tauri::command]
-pub fn fs_replace_in_files(request: crate::search::SearchRequest) -> crate::search::ReplaceResult {
-    crate::search::replace_in_files(&request)
+pub async fn fs_replace_in_files(
+    request: crate::search::SearchRequest,
+) -> crate::search::ReplaceResult {
+    tauri::async_runtime::spawn_blocking(move || crate::search::replace_in_files(&request))
+        .await
+        .unwrap_or_else(|_| crate::search::ReplaceResult::default())
 }
 
 /// A tiny helper for the commands that take a path and only need the text of

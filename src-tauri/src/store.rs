@@ -167,18 +167,30 @@ pub fn settings_load(app: AppHandle) -> Result<Option<Value>, String> {
 }
 
 #[tauri::command]
-pub fn settings_save(app: AppHandle, settings: Value) -> Result<(), String> {
-    write_value(&store_path(&app, "settings.json")?, &settings)
+pub async fn settings_save(app: AppHandle, settings: Value) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        write_value(&store_path(&app, "settings.json")?, &settings)
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-pub fn session_load(app: AppHandle) -> Result<Option<Value>, String> {
-    Ok(read_value(&store_path(&app, "session.json")?))
+pub async fn session_load(app: AppHandle) -> Result<Option<Value>, String> {
+    tauri::async_runtime::spawn_blocking(move || Ok(read_value(&store_path(&app, "session.json")?)))
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-pub fn session_save(app: AppHandle, state: Value) -> Result<(), String> {
-    write_value(&store_path(&app, "session.json")?, &state)
+pub async fn session_save(app: AppHandle, state: Value) -> Result<(), String> {
+    // The crash trail can be several megabytes. Writing and syncing it on the
+    // main thread caused a visible stall every 15 seconds.
+    tauri::async_runtime::spawn_blocking(move || {
+        write_value(&store_path(&app, "session.json")?, &state)
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 fn recent_read(app: &AppHandle) -> Vec<String> {

@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-11-26
+
+### Fixed
+- **Typing in large HTML, Markdown and code files no longer freezes the window.** The editor stops copying the entire document on every character, writes the tab content back on a short debounce instead of per keystroke, and no longer bumps the global store version when a tab is already dirty.
+- **Switching tabs no longer copies one file's text into another.** The content-sync effect ignores the outgoing editor while a tab switch recreates the view, so the teardown cannot flush the incoming file into the previous tab.
+- **The git gutter no longer launches a native `git diff` for every keystroke.** Diffs are debounced by 600 ms, replies from an older request are discarded, and the process runs off the main thread.
+- **Open File lists files again.** An "All Files" (`*`) filter is passed to the native picker as no filter instead of as an extension, which some Linux dialogs interpreted as "folders only".
+- Language servers receive `didOpen` once per document instead of a full-text copy on every pause, and the diagnostics dedupe key no longer contains the whole document.
+
+### Changed
+- File read/write/search/listing, git history and diff commands, settings and session persistence, and terminal/shell launching now run on blocking worker threads instead of the Tauri main thread.
+- No-op store updates (same state object) skip listeners and reactive version bumps, cutting effect churn during typing.
+- Added regression tests for tab-switch content isolation, no-op dirty flags, LSP `didOpen`, the All Files filter and the diagnostics dedupe key, plus an HTML keystroke fixture in the performance baseline.
+
 ## [1.5.0] - 2026-11-25
 
 ### Added

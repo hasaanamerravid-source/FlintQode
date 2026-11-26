@@ -32,6 +32,10 @@ export function create<T>(initializer: (set: Setter<T>, get: () => T, api: Compa
   const set: Setter<T> = (partial, replace) => {
     const previous = state
     const value = typeof partial === 'function' ? (partial as (current: T) => T | Partial<T>)(previous) : partial
+    // Returning the current state is the supported way to say "nothing
+    // changed". Skipping the version bump keeps no-op updates from waking
+    // every store reader (diagnostics, LSP, minimap) on each keystroke.
+    if (value === previous) return
     state = (replace === true ? value : { ...(previous as object), ...(value as object) }) as T
     bump((current) => current + 1)
     for (const listener of listeners) listener(state, previous)

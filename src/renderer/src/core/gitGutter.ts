@@ -51,23 +51,50 @@ export function diffDecorations(diff: string, doc: Text): DecorationSet {
   return Decoration.set(marks, true)
 }
 
+/** Wait for a pause in typing before asking native code for a diff. */
+const REFRESH_DELAY_MS = 600
+
 /**
  * A ViewPlugin that decorates changed lines green/red based on a diff fetched
- * from the main process. It re-fetches when the document changes.
+ * from the main process. Diffs are debounced and stale replies are ignored:
+ * a native `git diff` is a process launch, so running one per keystroke made
+ * typing in large files unresponsive.
  */
 export function gitGutterExtension(getDiff: () => Promise<string>): Extension {
   class Plugin {
     decorations: DecorationSet = Decoration.set([], true)
+    private timer: number | undefined
+    private generation = 0
+    private disposed = false
+
     constructor(readonly view: EditorView) {
-      void this.refresh()
+      this.refresh(0)
     }
-    async refresh(): Promise<void> {
-      const diff = await getDiff().catch(() => null)
-      this.decorations = diff ? diffDecorations(diff, this.view.state.doc) : Decoration.set([], true)
-      this.view.dispatch({})
+
+    refresh(delay: number): void {
+      const run = ++this.generation
+      if (this.timer !== undefined) window.clearTimeout(this.timer)
+      const fetch = (): void => {
+        this.timer = undefined
+        void getDiff()
+          .catch(() => null)
+          .then((diff) => {
+            if (this.disposed || run !== this.generation) return
+            this.decorations = diff ? diffDecorations(diff, this.view.state.doc) : Decoration.set([], true)
+            this.view.dispatch({})
+          })
+      }
+      if (delay > 0) this.timer = window.setTimeout(fetch, delay)
+      else fetch()
     }
+
     update(update: ViewUpdate): void {
-      if (update.docChanged) void this.refresh()
+      if (update.docChanged) this.refresh(REFRESH_DELAY_MS)
+    }
+
+    destroy(): void {
+      this.disposed = true
+      if (this.timer !== undefined) window.clearTimeout(this.timer)
     }
   }
   return ViewPlugin.fromClass(Plugin, { decorations: (plugin) => plugin.decorations })

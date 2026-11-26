@@ -147,6 +147,9 @@ function call(fn: (() => unknown) | undefined): void {
 /** The language of every open document (the problems belong to it). */
 const uriLanguage: Record<string, string> = {}
 
+/** Documents the server already knows about; avoids repeated full-text didOpen. */
+const openedUris = new Set<string>()
+
 export const useLspStore = create<LspState>((set, get) => ({
   problems: {},
   status: {},
@@ -156,8 +159,15 @@ export const useLspStore = create<LspState>((set, get) => ({
     if (!language || !uri) return
     subscribe()
     uriLanguage[uri] = language
-    const bridge = lspBridge()
-    call(() => bridge?.didOpen?.({ language, uri, text }))
+    // The editor effect re-runs whenever the document mirror updates. Sending
+    // the whole file again as `didOpen` each time made the server re-parse it
+    // for every pause in typing; the first open is enough. Do not remember a
+    // document while the bridge is unavailable, so a later attempt can open it.
+    if (openedUris.has(uri)) return
+    const didOpen = lspBridge()?.didOpen
+    if (typeof didOpen !== 'function') return
+    openedUris.add(uri)
+    call(() => didOpen({ language, uri, text }))
   },
 
   change: (language, uri, text) => {
@@ -171,10 +181,11 @@ export const useLspStore = create<LspState>((set, get) => ({
   close: (language, uri) => {
     if (!uri) return
     subscribe()
+    openedUris.delete(uri)
     delete uriLanguage[uri]
     // The problems of a closed document are gone.
     set((s) => {
-      if (!s.problems[uri]) return {}
+      if (!s.problems[uri]) return s
       const problems = { ...s.problems }
       delete problems[uri]
       return { problems }
@@ -205,9 +216,12 @@ export const useLspStore = create<LspState>((set, get) => ({
     }
     // The server is stopped and the problems of its documents are dropped.
     const dropped = Object.keys(uriLanguage).filter((uri) => uriLanguage[uri] === language)
-    for (const uri of dropped) delete uriLanguage[uri]
+    for (const uri of dropped) {
+      openedUris.delete(uri)
+      delete uriLanguage[uri]
+    }
     set((s) => {
-      if (dropped.length === 0) return {}
+      if (dropped.length === 0) return s
       const problems = { ...s.problems }
       for (const uri of dropped) delete problems[uri]
       return { problems }

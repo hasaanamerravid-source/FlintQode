@@ -6,9 +6,6 @@ use std::path::Path;
 use std::process::Stdio;
 
 use serde::Serialize;
-use tauri::{AppHandle, Manager, WebviewWindow};
-
-use crate::process::home_dir;
 
 fn repo_root(path: &str) -> String {
     let dir = if Path::new(path).is_dir() {
@@ -57,8 +54,16 @@ pub struct GitStatus {
 }
 
 #[tauri::command]
-pub fn git_status(window: WebviewWindow, path: String) -> Result<GitStatus, String> {
-    let root = repo_root(&path);
+pub async fn git_status(path: String) -> Result<GitStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || git_status_blocking(&path))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+/// `git status` launches three processes and scans the whole repository. It
+/// must not run on the main thread of the webview.
+fn git_status_blocking(path: &str) -> Result<GitStatus, String> {
+    let root = repo_root(path);
     let mut status = GitRepoStatus {
         branch: String::new(),
         dirty: false,
@@ -135,7 +140,6 @@ pub fn git_status(window: WebviewWindow, path: String) -> Result<GitStatus, Stri
     }
 
     let repo_root = root;
-    let _ = window;
     Ok(GitStatus {
         repoRoot: repo_root,
         status: if status.branch.is_empty() {
@@ -147,18 +151,30 @@ pub fn git_status(window: WebviewWindow, path: String) -> Result<GitStatus, Stri
 }
 
 #[tauri::command]
-pub fn git_diff(app: AppHandle, path: String) -> Result<String, String> {
-    let root = repo_root(&path);
-    let _ = home_dir;
-    let _ = app.clone();
-    git_run(&root, &["diff", "HEAD", "--", &path])
-        .or_else(|| git_run(&root, &["diff", "--", &path]))
+pub async fn git_diff(path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || git_diff_blocking(&path))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+/// A diff is a process launch. Keep it off the main thread so typing never
+/// waits for git (the editor debounces these requests as well).
+fn git_diff_blocking(path: &str) -> Result<String, String> {
+    let root = repo_root(path);
+    git_run(&root, &["diff", "HEAD", "--", path])
+        .or_else(|| git_run(&root, &["diff", "--", path]))
         .ok_or_else(|| "No diff available".to_string())
 }
 
 #[tauri::command]
-pub fn git_log(path: String, limit: u32) -> Result<Vec<String>, String> {
-    let root = repo_root(&path);
+pub async fn git_log(path: String, limit: u32) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || git_log_blocking(&path, limit))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn git_log_blocking(path: &str, limit: u32) -> Result<Vec<String>, String> {
+    let root = repo_root(path);
     let limit = limit.max(1).min(100);
     let log = git_run(
         &root,
@@ -169,10 +185,16 @@ pub fn git_log(path: String, limit: u32) -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-pub fn git_blame(path: String) -> Result<Vec<String>, String> {
-    let root = repo_root(&path);
-    let blame = git_run(&root, &["blame", "--line-porcelain", &path])
-        .or_else(|| git_run(&root, &["blame", "-f", &path]))
+pub async fn git_blame(path: String) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || git_blame_blocking(&path))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn git_blame_blocking(path: &str) -> Result<Vec<String>, String> {
+    let root = repo_root(path);
+    let blame = git_run(&root, &["blame", "--line-porcelain", path])
+        .or_else(|| git_run(&root, &["blame", "-f", path]))
         .ok_or_else(|| "Could not blame file".to_string())?;
     // Extract the summary line of each blame chunk for the status bar preview.
     let mut out: Vec<String> = Vec::new();
@@ -190,42 +212,38 @@ pub fn git_blame(path: String) -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-pub fn git_commit(cwd: String, message: String) -> Result<String, String> {
-    let root = repo_root(&cwd);
-    let output = std::process::Command::new("git")
-        .args(["commit", "-m", &message])
-        .current_dir(&root)
-        .stdin(Stdio::null())
-        .output()
-        .map_err(|error| error.to_string())?;
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+pub async fn git_commit(cwd: String, message: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        run_git_output(&cwd, &["commit", "-m", &message], true)
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-pub fn git_stage(cwd: String) -> Result<String, String> {
-    let root = repo_root(&cwd);
-    let output = std::process::Command::new("git")
-        .args(["add", "."])
-        .current_dir(&root)
-        .output()
-        .map_err(|error| error.to_string())?;
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+pub async fn git_stage(cwd: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || run_git_output(&cwd, &["add", "."], false))
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-pub fn git_branch_rename(cwd: String, name: String) -> Result<String, String> {
-    let root = repo_root(&cwd);
-    let output = std::process::Command::new("git")
-        .args(["branch", "-m", &name])
-        .current_dir(&root)
-        .output()
-        .map_err(|error| error.to_string())?;
+pub async fn git_branch_rename(cwd: String, name: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        run_git_output(&cwd, &["branch", "-m", &name], false)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+fn run_git_output(cwd: &str, args: &[&str], null_stdin: bool) -> Result<String, String> {
+    let root = repo_root(cwd);
+    let mut command = std::process::Command::new("git");
+    command.args(args).current_dir(&root);
+    if null_stdin {
+        command.stdin(Stdio::null());
+    }
+    let output = command.output().map_err(|error| error.to_string())?;
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).to_string());
     }

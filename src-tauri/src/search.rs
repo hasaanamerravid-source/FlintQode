@@ -38,7 +38,7 @@ pub struct SearchMatch {
     pub text: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResult {
     pub matches: Vec<SearchMatch>,
@@ -50,7 +50,7 @@ pub struct SearchResult {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReplaceResult {
     pub changed: usize,

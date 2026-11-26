@@ -129,15 +129,15 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'FlintQode v__VERSION__'
           releaseBody: |
-            FlintQode v1.5.0 — configurable diagnostics, a verifiable update manifest and a more reliable release pipeline.
+            FlintQode v1.5.1 — a performance patch for typing, tab switches and the Open File dialog.
 
             Highlights:
-            - Line-length diagnostics are optional and off by default: set a limit in Settings, with per-language overrides. Problems can be filtered by severity without a rescan.
-            - Terminal sessions persist when the panel is hidden (opt out with `terminal.closeOnPanelHide`); app exit stops every PTY.
-            - The website and in-app updater use a generated Pages manifest with exact tag URLs and SHA-256 digests, with retries, cleanup and digest verification before install.
-            - Editor statistics and native search are faster on large workspaces.
-            - No Java or C++ runtime was added; ADR 0006 records the decision and the profiling gate for future native work.
-            - Includes all of v1.4.7: responsive updates, a quieter Problems panel and one terminal in the right folder.
+            - Typing in large HTML, Markdown and code files no longer freezes the window: no full-document copy per character, debounced store sync, and no global store bump for an already-dirty tab.
+            - Switching tabs no longer copies one file's text into another.
+            - The git gutter is debounced by 600 ms, discards stale replies and runs off the main thread instead of launching `git diff` for every keystroke.
+            - Open File lists files again: an "All Files" filter is passed to the native picker as no filter.
+            - Language servers get `didOpen` once per document, and the diagnostics key no longer contains the whole file.
+            - File IO, search, git, settings/session writes and shell launching run on worker threads instead of the Tauri main thread.
 
             Installers: Linux (.deb, .AppImage, .rpm), Windows (.exe, .msi) and macOS (.dmg).
             See CHANGELOG.md for the full release notes.

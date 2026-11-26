@@ -41,34 +41,28 @@
     <div class="section-inner">
       <div class="section-head">
         <span class="kicker">Release notes</span>
-        <h2>What's new in FlintQode 1.5.0</h2>
-        <p>Released 2026-11-24.</p>
+        <h2>What's new in FlintQode 1.5.1</h2>
+        <p>Released 2026-11-26.</p>
       </div>
       <div class="whats-new">
-        <h3>New in this release</h3>
+        <h3>Fixed in this release</h3>
         <ul>
-          <li><strong>Line-length diagnostics are opt-in.</strong> The 120-character warning no longer appears by default. Enable it in Settings with your own limit and per-language overrides; disabling it clears its problems immediately. The Problems severity filter is reactive and does not rescan the document.</li>
-          <li><strong>Terminals survive a hidden panel.</strong> Sessions stay alive when you hide the panel, closing one tab kills only its shell, and app exit stops every PTY. Set <code>terminal.closeOnPanelHide</code> to restore the old behaviour.</li>
-          <li><strong>Verifiable updates.</strong> The website and in-app updater use a generated Pages manifest with exact tag-qualified URLs and SHA-256 digests. Downloads are verified before install, transient failures are retried, and partial files are cleaned up.</li>
+          <li><strong>Typing in large files is fast again.</strong> The editor no longer copies the whole document for every character, writes tab content back on a 400 ms debounce, and skips the global store update when a tab is already marked dirty. In the 1 MB HTML fixture, the full-document copy that used to run on each edit measured 0.43–1.87 ms; the incremental statistics path now takes about 4 µs.</li>
+          <li><strong>Tab switches keep each file to itself.</strong> The outgoing editor is no longer fed the incoming tab's text during the switch, so a teardown cannot save one file's content into another.</li>
+          <li><strong>The git gutter waits for a pause.</strong> Native <code>git diff</code> calls are debounced by 600 ms, stale replies are ignored, and the process no longer blocks the window.</li>
+          <li><strong>Open File lists files again.</strong> An “All Files” (<code>*</code>) filter is passed to the native picker as no filter, instead of as an extension that some Linux dialogs read as “folders only”.</li>
+          <li><strong>Less repeated work.</strong> Language servers get <code>didOpen</code> once per document, the diagnostics dedupe key no longer contains the whole file, and no-op store updates skip listeners and reactive version bumps.</li>
         </ul>
-        <h3>Performance</h3>
+        <h3>Native work moved off the main thread</h3>
         <ul>
-          <li>Editor statistics update with incremental deltas after an edit instead of recounting the document. Native search compiles glob patterns once, precomputes line starts and prepares replacements in parallel.</li>
-          <li>ADR 0006 records why no Java or C++ runtime was added: Rust already owns the native hot paths, and the remaining renderer work belongs to CodeMirror and SolidJS.</li>
+          <li>File read, write, search and directory listing, git history and diff commands, settings and session persistence, and terminal/shell launching now run on blocking worker threads. The window keeps painting while they finish.</li>
         </ul>
-        <h3>Carried over from 1.4.7</h3>
+        <h3>Verification</h3>
         <ul>
-          <li>A responsive update button, a quieter Problems panel and one integrated terminal that starts in the workspace folder.</li>
-          <li>VS Code-style Extensions view with search, details, install, uninstall, enable, disable and local install from a plugin file.</li>
-          <li>Power save mode, interface scale, a minimal toolbar and editable code token colours.</li>
-        </ul>
-        <h3>Website</h3>
-        <ul>
-          <li>The <a href="stats.html">Stats tab</a> shows visitors, clones and installer downloads, refreshed from GitHub nightly and after each release.</li>
-          <li>Download links, release notes and installers now describe v1.5.0, with full OS installer coverage for Linux, Windows and macOS.</li>
+          <li>Regression tests cover tab-switch content isolation, no-op dirty flags, LSP <code>didOpen</code>, the All Files dialog filter and the diagnostics dedupe key. The full frontend gate, the Rust test suite and the production build pass.</li>
         </ul>
         <p style="margin-top:var(--space-4);">
-          <a href="downloads.html" class="btn btn-primary" data-download="primary">Download 1.5.0</a>
+          <a href="downloads.html" class="btn btn-primary" data-download="primary">Download 1.5.1</a>
           <a href="https://github.com/hasaanamerravid-source/FlintQode/blob/main/CHANGELOG.md" class="btn btn-ghost" target="_blank" rel="noopener">Full changelog</a>
         </p>
       </div>

@@ -610,8 +610,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   updateTab: (id, patch) => set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
 
-  setTabDirty: (id, dirty) =>
-    set((s) => ({ tabs: s.tabs.map((t) => (t.id === id && t.dirty !== dirty ? { ...t, dirty } : t)) })),
+  setTabDirty: (id, dirty) => {
+    // The editor calls this on every change. Once a tab is dirty the flag does
+    // not change again, so returning the same state avoids a global version
+    // bump and the effect churn that came with it.
+    const current = get().tabs.find((t) => t.id === id)
+    if (!current || current.dirty === dirty) return
+    set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, dirty } : t)) }))
+  },
 
   flushTab: (id) => {
     const editor = getEditor(id)
