@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2026-11-27
+
+### Fixed
+- **Typing with the Markdown preview open no longer parses on every keystroke.** Parsing runs only while the preview is visible and waits 180 ms after the last edit. The previous HTML stays visible while the new render is prepared.
+- **Split editors no longer replace the peer's whole state.** A document edit sends one change list to the peer; selection-only transactions do no peer work.
+- **Tab switching does less repeated work.** Returning to a tab reapplies diagnostics to the recreated editor, the git gutter waits for a pause before its first diff, and teardown skips `updateTab` when the text and cursor are unchanged.
+- **Cursor, zoom and shortcut handling are quieter.** Unchanged status patches emit no notifications, and shortcuts resolve through a cached map indexed by normalized chord.
+- **Search and Explorer stay responsive on large projects.** Search renders 200 hits at a time with a “More” control. Explorer computes one lowercase needle per query and caches each entry's lowercase name.
+- **Startup batches file checks.** Recent files and restored tabs share one `fs.existsMany` call, and the session is loaded once for both restore and crash recovery.
+- **Superseded searches are cancelled.** The renderer sends a generation token; the native scan checks it inside the worker loop and stops before serializing stale matches.
+- **More file and store commands run off the Tauri main thread.** Stats, existence checks, reads and writes, folder operations, settings, recent files, plugin listing and error logging use blocking workers. Text reads keep the existing 24 MB cap.
+
+### Changed
+- Rewrote user-facing copy across the app, website, release notes and documentation. Wording is now concrete and keeps the no-telemetry claim separate from opt-in update checks.
+- Updated all four locale catalogs to match the revised English strings, including update strings that were still untranslated. The About dialog now lists the current SolidJS renderer stack.
+
+### Added
+- Regression suites for editor/tab work (`tests/performanceEditor.test.mts`), search/Explorer limits (`tests/performanceSearch.test.mts`) and startup/native threading (`tests/performanceNative.test.mts`). The existing line-length setting and reactive Problems filtering remain unchanged.
+
 ## [1.5.1] - 2026-11-26
 
 ### Fixed

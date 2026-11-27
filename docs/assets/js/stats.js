@@ -228,7 +228,7 @@
     renderSpark(byId('sparkCloneUniques'), (clones.days || []).map((d) => d.uniques), 'var(--accent)');
 
     // downloads note
-    setText('kpiDownloadsNote', downloads.latest ? `${downloads.latest.tag} latest` : 'All releases');
+    setText('kpiDownloadsNote', 'All releases');
   }
 
   function computeTrend(arr) {
@@ -251,7 +251,7 @@
   function renderSeriesChart(container, days, series, opts = {}) {
     if (!container) return;
     const sliced = (Array.isArray(days) ? days : []).slice(-(opts.range || days.length));
-    if (sliced.length === 0) { showEmpty(container, opts.empty || 'No data for this period.'); return; }
+    if (sliced.length === 0) { showEmpty(container, opts.empty || 'No data.'); return; }
 
     // Keep the tooltip node inside the canvas; only redraw the SVG.
     container.querySelectorAll('svg.chart-svg').forEach((node) => node.remove());
@@ -405,7 +405,7 @@
     });
     list = list.filter((r) => r.total > 0 || true).slice(0, 12);
 
-    if (list.length === 0) { showEmpty(container, 'No releases match.'); return; }
+    if (list.length === 0) { showEmpty(container, 'No matches.'); return; }
 
     const max = Math.max(1, ...list.map((r) => r.total));
     container.replaceChildren();
@@ -439,8 +439,8 @@
     const legend = byId('platformLegend');
     const sub = byId('platformSub');
     const releases = DATA?.downloads?.releases ?? [];
-    if (releases.length === 0) { showEmpty(donut, 'No release data.'); return; }
-    if (sub) setText('platformSub', 'Installers people are downloading, across every release.');
+    if (releases.length === 0) { showEmpty(donut, 'No data.'); return; }
+    if (sub) setText('platformSub', 'Installer downloads by platform, across all releases.');
 
     // aggregate by platform across all releases
     const agg = new Map();
@@ -459,7 +459,7 @@
     legend.innerHTML = '';
 
     if (total === 0) {
-      showEmpty(donut, 'No downloads yet.');
+      showEmpty(donut, 'No downloads.');
       return;
     }
 
@@ -529,7 +529,7 @@
     if (state.assetSort === 'name-asc') list.sort((a, b) => a.label.localeCompare(b.label));
     else list.sort((a, b) => b.total - a.total);
     list = list.filter((r) => r.total > 0).slice(0, 10);
-    if (list.length === 0) { showEmpty(container, 'No download data yet.'); return; }
+    if (list.length === 0) { showEmpty(container, 'No data.'); return; }
 
     const max = Math.max(1, ...list.map((r) => r.total));
     container.replaceChildren();
@@ -559,7 +559,7 @@
     const container = byId('timelineChart');
     if (!container) return;
     const releases = [...(DATA?.downloads?.releases ?? [])].sort((a, b) => new Date(a.date) - new Date(b.date));
-    if (releases.length === 0) { showEmpty(container, 'No release data yet.'); return; }
+    if (releases.length === 0) { showEmpty(container, 'No data.'); return; }
 
     // cumulative
     let cum = 0;
@@ -701,11 +701,11 @@
   }
 
   function fail() {
-    setText('statsUpdated', 'Statistics are temporarily unavailable. Try reloading the page.');
+    setText('statsUpdated', 'Could not load statistics. Reload to try again.');
     ['kpiViews', 'kpiVisitors', 'kpiClones', 'kpiCloneUniques', 'kpiDownloads', 'kpiReleases', 'kpiPeakViews', 'kpiAvgViews'].forEach((id) => setText(id, '—'));
     ['trafficChart', 'visitorsChart', 'clonesChart', 'releaseChart', 'assetChart', 'platformDonut', 'timelineChart', 'ratioChart'].forEach((id) => {
       const c = byId(id);
-      if (c) showEmpty(c, 'Statistics could not be loaded.');
+      if (c) showEmpty(c, 'No data.');
     });
   }
 

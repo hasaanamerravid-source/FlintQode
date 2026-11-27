@@ -8,10 +8,38 @@ import { appActions } from '../../state/solid'
 import { useT } from '../../core/i18n'
 import { FileIcon } from '../../components/FileIcon'
 
+/** A lookup that lowercases each entry name at most once, even across queries. */
+export function createLowercaseNameLookup(): (entry: DirEntry) => string {
+  const cache = new WeakMap<DirEntry, string>()
+  return (entry) => {
+    let lower = cache.get(entry)
+    if (lower === undefined) {
+      lower = entry.name.toLowerCase()
+      cache.set(entry, lower)
+    }
+    return lower
+  }
+}
+
+/** `needle` is already lowercased by the parent, so nodes never re-case it. */
+export function matchesFilter(entry: DirEntry, needle: string, lowercase: (entry: DirEntry) => string): boolean {
+  return !needle || lowercase(entry).includes(needle)
+}
+
+/** Directories stay visible so their children can still be searched. */
+export function filterRootEntries(
+  entries: DirEntry[],
+  needle: string,
+  lowercase: (entry: DirEntry) => string,
+): DirEntry[] {
+  return entries.filter((entry) => entry.isDir || matchesFilter(entry, needle, lowercase))
+}
+
 interface NodeProps {
   entry: DirEntry
   depth: number
-  filter: Accessor<string>
+  needle: Accessor<string>
+  lowercase: (entry: DirEntry) => string
   expanded: Accessor<Set<string>>
   toggle: (path: string) => void
   childrenOf: (path: string) => DirEntry[] | undefined
@@ -23,11 +51,9 @@ interface NodeProps {
 function TreeNode(props: NodeProps): JSX.Element {
   const isOpen = createMemo(() => props.expanded().has(props.entry.path))
   const children = (): DirEntry[] | undefined => props.childrenOf(props.entry.path)
-  const matches = createMemo(
-    () => !props.filter() || props.entry.name.toLowerCase().includes(props.filter().toLowerCase()),
-  )
+  const matches = createMemo(() => matchesFilter(props.entry, props.needle(), props.lowercase))
   const childMatches = createMemo(() =>
-    (children() ?? []).some((child) => child.name.toLowerCase().includes(props.filter().toLowerCase())),
+    (children() ?? []).some((child) => matchesFilter(child, props.needle(), props.lowercase)),
   )
   const t = useT()
 
@@ -72,7 +98,8 @@ function TreeNode(props: NodeProps): JSX.Element {
                     <TreeNode
                       entry={child}
                       depth={props.depth + 1}
-                      filter={props.filter}
+                      needle={props.needle}
+                      lowercase={props.lowercase}
                       expanded={props.expanded}
                       toggle={props.toggle}
                       childrenOf={props.childrenOf}
@@ -158,9 +185,9 @@ export function ExplorerView(): JSX.Element {
     return folder
   }
 
-  const visible = createMemo(() =>
-    entries().filter((entry) => entry.isDir || !filter() || entry.name.toLowerCase().includes(filter().toLowerCase())),
-  )
+  const needle = createMemo(() => filter().toLowerCase())
+  const lowercase = createLowercaseNameLookup()
+  const visible = createMemo(() => filterRootEntries(entries(), needle(), lowercase))
   const extraRoots = createMemo(() => roots().filter((item) => item !== root()))
 
   return (
@@ -225,7 +252,8 @@ export function ExplorerView(): JSX.Element {
               <TreeNode
                 entry={entry}
                 depth={0}
-                filter={filter}
+                needle={needle}
+                lowercase={lowercase}
                 expanded={expanded}
                 toggle={toggle}
                 childrenOf={(path) => children()[path]}

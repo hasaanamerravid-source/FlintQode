@@ -1,7 +1,7 @@
 {
   "name": "flintqode",
-  "version": "1.5.1",
-  "description": "FlintQode - a fast, native all-in-one text editor",
+  "version": "1.5.2",
+  "description": "FlintQode - a desktop editor for text, Markdown and code",
   "author": "FlintQode",
   "license": "MIT",
   "private": true,

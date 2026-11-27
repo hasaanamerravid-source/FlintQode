@@ -5,9 +5,10 @@ import type { JSX } from '@solidjs/web'
  * The markdown is rendered with `marked` and sanitised with DOMPurify.
  */
 
-import { createMemo, onSettled } from 'solid-js'
+import { createEffect, createSignal, onSettled } from 'solid-js'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import { createDebouncedRenderer, type DebounceScheduler } from '../../state/compat'
 
 export interface MarkdownPreviewProps {
   /** Markdown source. */
@@ -44,9 +45,34 @@ export function renderMarkdown(source: string): string {
   }
 }
 
+/** How long to wait for a pause in typing before rendering the preview. */
+export const MARKDOWN_RENDER_DELAY_MS = 180
+
+/** The real timer used by the preview. */
+const windowMarkdownScheduler: DebounceScheduler = {
+  schedule: (task, delayMs) => window.setTimeout(task, delayMs),
+  cancel: (handle) => window.clearTimeout(handle),
+}
+
 /** Read-only markdown preview with clickable links. */
 export function MarkdownPreview(props: MarkdownPreviewProps): JSX.Element {
-  const html = createMemo(() => renderMarkdown(props.source))
+  const [html, setHtml] = createSignal('')
+  const preview = createDebouncedRenderer(renderMarkdown, windowMarkdownScheduler, MARKDOWN_RENDER_DELAY_MS, setHtml)
+  let firstRender = true
+
+  // The preview is mounted only while it is visible, so the first render is
+  // immediate; the rest of a typing burst is debounced.
+  createEffect(
+    () => props.source,
+    (source) => {
+      preview.update(source, firstRender)
+      firstRender = false
+    },
+  )
+  onSettled(() => {
+    return () => preview.dispose()
+  })
+
   let host!: HTMLDivElement
 
   onSettled(() => {

@@ -43,8 +43,19 @@ const initial = {
   gitDirty: false,
 }
 
-export const useStatusStore = create<StatusState>((set) => ({
+export const useStatusStore = create<StatusState>((set, get) => ({
   ...initial,
-  set: (patch) => set(patch),
+  set: (patch) => {
+    // Cursor, zoom and the other status fields are written from several
+    // listeners on every keystroke. A shallow comparison here keeps an
+    // unchanged patch from waking every store reader.
+    const current = get()
+    for (const key of Object.keys(patch) as (keyof StatusState)[]) {
+      if (patch[key] !== current[key]) {
+        set(patch)
+        return
+      }
+    }
+  },
   reset: () => set({ ...initial }),
 }))

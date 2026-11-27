@@ -4,17 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>System Requirements &amp; Resource Use — FlintQode</title>
-  <meta name="description" content="FlintQode system requirements, installer sizes, and measured CPU/RAM use for v1.5.0 on Windows, Linux and macOS, compared to other popular code editors." />
+  <meta name="description" content="FlintQode system requirements, installer sizes, and measured CPU/RAM use for v1.5.0 on Windows, Linux and macOS, with a comparison table for other editors." />
   <link rel="canonical" href="https://hasaanamerravid-source.github.io/FlintQode/requirements.html" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://hasaanamerravid-source.github.io/FlintQode/requirements.html" />
   <meta property="og:title" content="System Requirements &amp; Resource Use — FlintQode" />
-  <meta property="og:description" content="FlintQode system requirements, installer sizes, and measured CPU/RAM use for v1.5.0 compared to other popular code editors." />
+  <meta property="og:description" content="FlintQode system requirements, installer sizes, and measured CPU/RAM use for v1.5.0, with a comparison table for other editors." />
   <meta property="og:image" content="https://hasaanamerravid-source.github.io/FlintQode/assets/img/logo.png" />
   <meta property="og:site_name" content="FlintQode" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="System Requirements &amp; Resource Use — FlintQode" />
-  <meta name="twitter:description" content="FlintQode system requirements, installer sizes, and measured CPU/RAM use compared to other popular code editors." />
+  <meta name="twitter:description" content="FlintQode system requirements, installer sizes, and measured CPU/RAM use, with a comparison table for other editors." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
@@ -31,7 +31,7 @@
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "headline": "System Requirements &amp; Resource Use — FlintQode",
-    "description": "FlintQode system requirements, installer sizes, and measured CPU/RAM use for v1.5.0 compared to other popular code editors.",
+    "description": "FlintQode system requirements, installer sizes, and measured CPU/RAM use for v1.5.0, with a comparison table for other editors.",
     "url": "https://hasaanamerravid-source.github.io/FlintQode/requirements.html",
     "image": "https://hasaanamerravid-source.github.io/FlintQode/assets/img/logo.png",
     "author": { "@type": "Organization", "name": "FlintQode" },
@@ -69,20 +69,20 @@
   <section class="section" id="main">
     <div class="section-inner">
       <div class="section-head">
-        <span class="kicker">System fit</span>
+        <span class="kicker">Overview</span>
         <h1>Requirements &amp; resource use</h1>
-        <p class="note">What FlintQode needs to run, how large the installers are, and how its CPU and RAM use compares with other popular code editors.</p>
+        <p class="note">What FlintQode needs to run, the installer sizes, and measured CPU and RAM use. The tables below list other editors for reference.</p>
       </div>
 
       <div class="feature-grid">
         <div class="feature-card">
           <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
           <div class="card-title">Uses your system webview</div>
-          <p>Built with Tauri 2. It uses WebView2 on Windows, WebKitGTK on Linux and WKWebView on macOS instead of shipping another Chromium runtime.</p>
+          <p>Built with Tauri 2. It uses WebView2 on Windows, WebKitGTK on Linux and WKWebView on macOS. No Chromium runtime is bundled.</p>
         </div>
         <div class="feature-card">
           <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-          <div class="card-title">No runtime to install</div>
+          <div class="card-title">No bundled language runtime</div>
           <p>Node.js, Rust, Java and a C++ runtime are needed only to build from source. The installed app runs without them.</p>
         </div>
         <div class="feature-card">
@@ -174,8 +174,8 @@
     <div class="section-inner">
       <div class="section-head">
         <span class="kicker">Comparison</span>
-        <h2>How it compares to other popular editors</h2>
-        <p class="note">These are approximate, real-world figures gathered from each editor’s own documentation and common community measurements. Your actual numbers will vary by machine, extensions, open projects and language servers.</p>
+        <h2>Editor comparison</h2>
+        <p class="note">Approximate figures from each editor’s own documentation and common community measurements.</p>
 
         <table class="versions-table">
           <thead>
@@ -243,7 +243,7 @@
           <div class="chart-head">
             <div>
               <h3>Download size by editor</h3>
-              <p>Typical installer size. FlintQode's native packages are the small ones; its portable AppImage is the outlier.</p>
+              <p>Typical installer size. The native packages are around 3 MiB; the portable AppImage is the outlier.</p>
             </div>
           </div>
           <div class="req-chart-wrap">
@@ -252,16 +252,16 @@
           </div>
         </article>
 
-        <p class="note">VS Code and Sublime Text figures are widely cited community estimates. IntelliJ IDEA uses JetBrains’ published <a href="https://blog.jetbrains.com/idea/2026/11/where-did-the-saved-bytes-go-compact-object-headers-in-intellij-idea/" rel="noopener">welcome-screen RSS measurement</a> and <a href="https://data.services.jetbrains.com/products/releases?code=IIC&amp;latest=true&amp;type=release&amp;platform=linux" rel="noopener">Windows installer size</a>. Terminal editors like Vim use almost no GUI memory. FlintQode’s measured number comes from a real Linux session sampled over 12 seconds, and is higher than a terminal editor because it includes a GUI webview process — the trade-off for a modern, graphical editor that still stays well below Electron’s footprint.</p>
+        <p class="note">VS Code and Sublime Text figures are widely cited community estimates. IntelliJ IDEA uses JetBrains’ published <a href="https://blog.jetbrains.com/idea/2026/11/where-did-the-saved-bytes-go-compact-object-headers-in-intellij-idea/" rel="noopener">welcome-screen RSS measurement</a> and <a href="https://data.services.jetbrains.com/products/releases?code=IIC&amp;latest=true&amp;type=release&amp;platform=linux" rel="noopener">Windows installer size</a>. Terminal editors like Vim use almost no GUI memory. FlintQode’s measured number comes from a real Linux session sampled over 12 seconds. It is higher than a terminal editor because it includes a GUI webview process, and well below Electron’s footprint.</p>
       </div>
     </section>
 
   <section class="section">
     <div class="section-inner">
       <div class="section-head">
-        <span class="kicker">While you work</span>
-        <h2>How resource use is kept in check</h2>
-        <p class="note">FlintQode protects large files from expensive work and keeps editor updates inside a single 60&nbsp;Hz frame on a 10,000-line test document.</p>
+        <span class="kicker">Large-file handling</span>
+        <h2>Limits for large files</h2>
+        <p class="note">Large files skip expensive work. Editor updates stayed inside one 60&nbsp;Hz frame on a 10,000-line test document.</p>
       </div>
 
       <table class="versions-table">
@@ -286,7 +286,7 @@
     <div class="section-inner">
       <div class="section-head">
         <span class="kicker">Measured resource use</span>
-        <h2>Real numbers from the Linux app</h2>
+        <h2>Measured on Linux</h2>
         <p class="note">The actual v1.5.0 AppImage was opened on a 4-logical-CPU Intel Core i3-2350M with X11 and WebKitGTK 4.1. Each figure is a 12-second sample of the whole FlintQode process tree, including the Rust shell, WebKit network helper and WebKit web process.</p>
       </div>
 

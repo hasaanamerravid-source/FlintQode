@@ -57,7 +57,7 @@ export const MARKETPLACE: MarketplacePlugin[] = [
     publisher: 'FlintQode',
     version: '1.1.0',
     description: 'Copy the current timestamp to the clipboard.',
-    detail: 'A tiny utility command that puts an ISO timestamp on the clipboard for pasting into notes.',
+    detail: 'Adds a command that copies an ISO timestamp to the clipboard.',
     category: 'Snippets',
     icon: 'TS',
     source: `export default {
@@ -79,8 +79,8 @@ export const MARKETPLACE: MarketplacePlugin[] = [
     name: 'Sort Lines',
     publisher: 'FlintQode',
     version: '1.0.2',
-    description: 'One-click ascending and descending line sorting.',
-    detail: 'Wraps the built-in text transforms so sorting is available straight from the command palette.',
+    description: 'Sort lines ascending or descending.',
+    detail: 'Adds two commands that run the built-in sort transforms.',
     category: 'Formatting',
     icon: 'AB',
     source: `export default {
@@ -105,8 +105,8 @@ export const MARKETPLACE: MarketplacePlugin[] = [
     name: 'Focus Mode',
     publisher: 'FlintQode',
     version: '1.0.0',
-    description: 'Hide the chrome with a single command.',
-    detail: 'Adds a command for distraction-free editing, handy when you want a quiet, full-screen document.',
+    description: 'Hide the panels and toolbars while editing.',
+    detail: 'Adds a command that hides the panels and toolbars for a full-screen editor.',
     category: 'Productivity',
     icon: 'FM',
     source: `export default {

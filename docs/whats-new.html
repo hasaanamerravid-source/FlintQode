@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>What's new — FlintQode</title>
-  <meta name="description" content="What's new in the latest FlintQode release." />
+  <meta name="description" content="Fixes and changes in FlintQode v1.5.2." />
   <link rel="canonical" href="https://hasaanamerravid-source.github.io/FlintQode/whats-new.html" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -41,28 +41,32 @@
     <div class="section-inner">
       <div class="section-head">
         <span class="kicker">Release notes</span>
-        <h2>What's new in FlintQode 1.5.1</h2>
-        <p>Released 2026-11-26.</p>
+        <h2>What's new in FlintQode 1.5.2</h2>
+        <p>Released 2026-11-27.</p>
       </div>
       <div class="whats-new">
         <h3>Fixed in this release</h3>
         <ul>
-          <li><strong>Typing in large files is fast again.</strong> The editor no longer copies the whole document for every character, writes tab content back on a 400 ms debounce, and skips the global store update when a tab is already marked dirty. In the 1 MB HTML fixture, the full-document copy that used to run on each edit measured 0.43–1.87 ms; the incremental statistics path now takes about 4 µs.</li>
-          <li><strong>Tab switches keep each file to itself.</strong> The outgoing editor is no longer fed the incoming tab's text during the switch, so a teardown cannot save one file's content into another.</li>
-          <li><strong>The git gutter waits for a pause.</strong> Native <code>git diff</code> calls are debounced by 600 ms, stale replies are ignored, and the process no longer blocks the window.</li>
-          <li><strong>Open File lists files again.</strong> An “All Files” (<code>*</code>) filter is passed to the native picker as no filter, instead of as an extension that some Linux dialogs read as “folders only”.</li>
-          <li><strong>Less repeated work.</strong> Language servers get <code>didOpen</code> once per document, the diagnostics dedupe key no longer contains the whole file, and no-op store updates skip listeners and reactive version bumps.</li>
+          <li><strong>Markdown preview stops competing with typing.</strong> Parsing runs only while the preview is visible and waits 180 ms after the last edit. The previous render stays on screen while the new one is prepared.</li>
+          <li><strong>Split views sync changed text only.</strong> A keystroke sends one small document change to the peer editor. Moving the cursor does no peer work, and the peer state is no longer replaced on every transaction.</li>
+          <li><strong>Returning to a tab restores its problems.</strong> Recreated editors get a fresh diagnostics check, the git gutter waits for a pause before its first diff, and teardown skips writes when the text and cursor have not changed.</li>
+          <li><strong>The status bar and shortcuts do less work.</strong> Unchanged cursor and zoom values are ignored, and key presses resolve through a cached shortcut map instead of scanning every binding.</li>
+          <li><strong>Search and Explorer stay responsive on large projects.</strong> Search shows 200 hits at a time with a “More” control. Explorer lowercases each entry name once, then reuses that value for later filter changes.</li>
+          <li><strong>Startup makes one existence check.</strong> Recent files and restored tabs are checked in a single native call, and the session is loaded once for both restore and crash recovery.</li>
+          <li><strong>Superseded searches are cancelled.</strong> A newer query sends a generation token to the native scan, which stops before serializing results from the older query.</li>
+          <li><strong>More native work runs off the main thread.</strong> File stats, existence checks, reads and writes, folder operations, settings, recent files, plugin listing and error logging use blocking worker threads. Text reads keep the existing 24 MB cap.</li>
         </ul>
-        <h3>Native work moved off the main thread</h3>
+        <h3>Changed</h3>
         <ul>
-          <li>File read, write, search and directory listing, git history and diff commands, settings and session persistence, and terminal/shell launching now run on blocking worker threads. The window keeps painting while they finish.</li>
+          <li>User-facing copy in the app, website, release notes and documentation now uses plain, specific descriptions. Translations were updated to match, including the update strings that were still in English.</li>
+          <li>The About dialog lists the current renderer stack. The welcome and settings text no longer claims that update checks are disabled; checks stay opt-in in Settings.</li>
         </ul>
         <h3>Verification</h3>
         <ul>
-          <li>Regression tests cover tab-switch content isolation, no-op dirty flags, LSP <code>didOpen</code>, the All Files dialog filter and the diagnostics dedupe key. The full frontend gate, the Rust test suite and the production build pass.</li>
+          <li>New regression tests cover the preview scheduler, split sync, status no-ops, diagnostics after tab switches, the git gutter delay, search result limits, Explorer filtering, startup batching and native threading. The full frontend gate and Rust checks pass.</li>
         </ul>
         <p style="margin-top:var(--space-4);">
-          <a href="downloads.html" class="btn btn-primary" data-download="primary">Download 1.5.1</a>
+          <a href="downloads.html" class="btn btn-primary" data-download="primary">Download 1.5.2</a>
           <a href="https://github.com/hasaanamerravid-source/FlintQode/blob/main/CHANGELOG.md" class="btn btn-ghost" target="_blank" rel="noopener">Full changelog</a>
         </p>
       </div>

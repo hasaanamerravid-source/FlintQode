@@ -194,13 +194,23 @@ async function saveDialog(opts: SaveDialogOptions): Promise<DialogResult> {
  * The API
  * ------------------------------------------------------------------ */
 
+/**
+ * `existsMany` is not in the legacy shared interface yet: the startup path
+ * casts `window.api.fs` to this shape. Keeping the extension local avoids
+ * touching the API contract owned by the compatibility layer.
+ */
+type FsApiWithBatch = FlintQodeApi['fs'] & {
+  existsMany(paths: string[]): Promise<boolean[]>
+}
+type NativeApi = Omit<FlintQodeApi, 'fs'> & { fs: FsApiWithBatch }
+
 /** Build the object that is installed as `window.api`. */
 export function createApi(): FlintQodeApi {
-  return {
+  const api: NativeApi = {
     info: (): Promise<AppInfo> => {
       if (!isTauri()) {
         return Promise.resolve({
-          version: '1.5.1',
+          version: '1.5.2',
           build: 'dev',
           commit: 'browser',
           tauri: 'browser preview',
@@ -226,6 +236,7 @@ export function createApi(): FlintQodeApi {
         call<DirEntry[]>('fs_list_recursive', { path, maxDepth: maxDepth ?? 12 }),
       stat: (path: string) => call<DirEntry | null>('fs_stat', { path }),
       exists: (path: string) => call<boolean>('fs_exists', { path }),
+      existsMany: (paths: string[]) => call<boolean[]>('fs_exists_many', { paths }),
       makeDir: (path: string) => call<void>('fs_make_dir', { path }),
       remove: (path: string) => call<void>('fs_remove', { path }),
       rename: (from: string, to: string) => call<void>('fs_rename', { from, to }),
@@ -512,6 +523,7 @@ export function createApi(): FlintQodeApi {
 
     pathForFile: (file: File): string => (file as File & { path?: string }).path ?? file.name,
   }
+  return api
 }
 
 /** Install the bridge as `window.api` (the renderer expects that name). */

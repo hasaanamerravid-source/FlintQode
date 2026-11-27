@@ -115,6 +115,31 @@ interface CrashTrailTab {
   content: string
 }
 
+type SessionWithTrail = (SessionState & { crashTrail?: CrashTrailTab[] }) | null
+
+/** Recover unsaved buffers from a session that has already been loaded. */
+function applyCrashTrail(session: SessionWithTrail, tabs: Tab[], set: (partial: Partial<AppState>) => void): void {
+  let current = tabs
+  for (const entry of session?.crashTrail ?? []) {
+    if (current.some((tab) => tab.path?.toLowerCase() === entry.path?.toLowerCase())) continue
+    const tab: Tab = {
+      id: nextTabId(),
+      path: entry.path,
+      name: entry.name,
+      mode: entry.mode,
+      language: entry.language,
+      content: entry.content,
+      dirty: entry.dirty,
+      encoding: DEFAULT_SETTINGS.defaultEncoding,
+      eol: DEFAULT_SETTINGS.defaultEol,
+      readonly: false,
+      view: 'source',
+    }
+    current = [...current, tab]
+    set({ tabs: current, activeTabId: tab.id })
+  }
+}
+
 /** File watchers, one per open file, used to detect external changes. */
 const watchers = new Map<string, Promise<() => void>>()
 
@@ -456,13 +481,31 @@ export const useAppStore = create<AppState>((set, get) => ({
     // The note taking profiles were retired: FlintQode is a code workspace.
     settings.profile = 'coding'
 
+    // One read feeds both tab restoration and crash recovery. The old startup
+    // loaded the session twice and awaited one `exists` call per path.
+    let session: SessionWithTrail = null
+    let sessionFailed = false
+    let sessionError: unknown = null
+    try {
+      session = (await window.api.session.load()) as SessionWithTrail
+    } catch (error) {
+      sessionFailed = true
+      sessionError = error
+    }
+    if (sessionFailed && settings.restoreSession) throw sessionError
+    if (sessionFailed) session = null
+
+    const recentPaths = settings.recentFiles ?? []
+    const restoreTabs = settings.restoreSession ? (session?.tabs ?? []) : []
+    const pathsToCheck = [
+      ...recentPaths,
+      ...restoreTabs.map((tab) => tab.path).filter((path): path is string => Boolean(path)),
+    ]
+    const fs = window.api.fs as typeof window.api.fs & { existsMany(paths: string[]): Promise<boolean[]> }
+    const present = pathsToCheck.length ? await fs.existsMany(pathsToCheck) : []
     // Drop every recent entry that points at a missing file: a deleted recent
     // file must never break the start-up.
-    const stillThere: string[] = []
-    for (const file of settings.recentFiles ?? []) {
-      if (await window.api.fs.exists(file)) stillThere.push(file)
-    }
-    settings.recentFiles = stillThere.slice(0, 20)
+    settings.recentFiles = recentPaths.filter((_, index) => present[index]).slice(0, 20)
     if (!settings.syntaxTheme) settings.syntaxTheme = DEFAULT_SETTINGS.syntaxTheme
 
     set({
@@ -474,28 +517,28 @@ export const useAppStore = create<AppState>((set, get) => ({
     window.api.recent.list().then((files) => {
       set((s) => ({ settings: { ...s.settings, recentFiles: files } }))
     })
-    if (settings.restoreSession) {
-      const session = await window.api.session.load()
-      if (session?.tabs?.length) {
-        // Only restore tabs whose file still exists — a deleted file would
-        // otherwise show up as an empty, broken editor.
-        const tabs: Tab[] = []
-        for (const tab of session.tabs) {
-          if (!tab.path) {
-            tabs.push(tab)
-            continue
-          }
-          if (await window.api.fs.exists(tab.path)) tabs.push(tab)
+    if (restoreTabs.length) {
+      // Only restore tabs whose file still exists — a deleted file would
+      // otherwise show up as an empty, broken editor.
+      const tabs: Tab[] = []
+      let index = recentPaths.length
+      for (const tab of restoreTabs) {
+        if (!tab.path) {
+          tabs.push(tab)
+          continue
         }
-        if (tabs.length) {
-          const active = tabs.find((t) => t.id === session.activeTabId) ?? tabs[0]
-          set({ tabs, activeTabId: active.id })
-        }
+        if (present[index]) tabs.push(tab)
+        index += 1
+      }
+      if (tabs.length) {
+        const active = tabs.find((t) => t.id === session?.activeTabId) ?? tabs[0]
+        set({ tabs, activeTabId: active.id })
       }
     }
     set({ ready: true })
-    // Recover unsaved buffers that were saved before a crash or exit.
-    void get().loadCrashTrail()
+    // Recover unsaved buffers that were saved before a crash or exit. This uses
+    // the session we already read instead of loading it a second time.
+    applyCrashTrail(session, get().tabs, set)
   },
 
   newTab: (opts) => {
@@ -836,26 +879,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   /** Re-open any tabs that exist in the crash trail but not in the session. */
   loadCrashTrail: async () => {
-    const session = (await window.api.session.load()) as (SessionState & { crashTrail?: CrashTrailTab[] }) | null
-    const trail = session?.crashTrail ?? []
-    for (const entry of trail) {
-      const existing = get().tabs.find((t) => t.path?.toLowerCase() === entry.path?.toLowerCase())
-      if (existing) continue
-      const tab: Tab = {
-        id: nextTabId(),
-        path: entry.path,
-        name: entry.name,
-        mode: entry.mode,
-        language: entry.language,
-        content: entry.content,
-        dirty: entry.dirty,
-        encoding: DEFAULT_SETTINGS.defaultEncoding,
-        eol: DEFAULT_SETTINGS.defaultEol,
-        readonly: false,
-        view: 'source',
-      }
-      set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }))
-    }
+    const session = (await window.api.session.load()) as SessionWithTrail
+    applyCrashTrail(session, get().tabs, set)
   },
 }))
 

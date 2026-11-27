@@ -1,16 +1,16 @@
 # FlintQode
 
-A fast, native desktop editor for code, Markdown and plain text. FlintQode is built
-with **Tauri 2**, a small **Rust** backend and a **SolidJS 2 + CodeMirror 6** interface.
+FlintQode is a desktop editor for code, Markdown and plain text. It uses
+**Tauri 2**, a small **Rust** backend and a **SolidJS 2 + CodeMirror 6** interface.
 
-| Inspiration | What FlintQode brings |
+| Inspired by | What it includes |
 | --- | --- |
-| **Windows Notepad** | Instant start, no clutter, word wrap, zoom, status bar, go-to-line, encodings, session restore |
+| **Windows Notepad** | Quick start; word wrap, zoom, status bar, go-to-line, encodings, session restore |
 | **Notepad++** | Tabs, syntax highlighting for 100+ languages, code folding, minimap, Markdown preview, find & replace with regex, bookmarks, line tools, sort/trim/join transforms, character map, compare documents |
-| **Modern editors** | Project search, language servers (LSP), an integrated shell, run-file support, a command palette and a quiet, native-looking shell |
+| **Other editors** | Project search, language servers (LSP), an integrated shell, run-file support, a command palette and a native-looking window |
 
-The interface speaks **five languages** — English, German, Spanish, Russian and
-Simplified Chinese. See [docs/i18n.md](docs/i18n.md).
+The interface is available in **five languages** — English, German, Spanish, Russian
+and Simplified Chinese. See [docs/i18n.md](docs/i18n.md).
 
 ## Requirements
 
@@ -160,8 +160,8 @@ JSON files in `src/shared/i18n/locales/`.
 | | |
 | --- | --- |
 | **Five languages** | English, German, Spanish, Russian, Simplified Chinese |
-| **Never broken** | A key that is not translated yet falls back to English |
-| **Checked** | `npm run i18n:check` proves that every language file matches the catalogue, that no value is empty and that no placeholder was lost |
+| **Fallback** | A key that is not translated yet falls back to English |
+| **Validation** | `npm run i18n:check` checks that every language file matches the catalogue, that no value is empty and that no placeholder was lost |
 
 The language is chosen in **Settings → General**, and the settings show how much
 of it is translated.
@@ -192,7 +192,7 @@ an existing profile keeps working.
 ## Known limitations
 
 - The integrated terminal is a PTY with resize support and multiple sessions;
-  macOS builds are unsigned and may need the usual Gatekeeper step.
+  macOS builds are unsigned and may be blocked by Gatekeeper; use Open Anyway in System Settings.
 - Opening the same editor in several windows shares a single Rust state
   (terminals, language servers, run state and settings). Treat multi-window
   use as experimental.

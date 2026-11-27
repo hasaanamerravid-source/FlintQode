@@ -1,19 +1,18 @@
 # Platform signing and release checks
 
-This page records the distribution work that cannot be proven from a Linux
-checkout alone. The CI workflow wires every supported secret, but a build is
-only signed when the corresponding secret and configuration exist. The v1.4.7
+This page tracks the signing and release checks that cannot be verified from a
+Linux checkout. The workflow has entries for every supported secret, but a build
+is signed only when the matching secret and configuration are present. The v1.4.7
 assets remain unsigned; do not describe them as signed or notarized.
 
 ## Current state
 
 - `.github/workflows/build.yml` runs the full frontend gate on every push and
   creates release installers only for `v*` tags.
-- Optional secrets are exported to the build only when their values are
-  non-empty. GitHub represents an unset secret as an empty string, and Tauri
-  treats a present-but-empty `APPLE_CERTIFICATE` as a certificate to import,
-  which fails the macOS bundle. The workflow filters empty values before
-  exporting them.
+- Optional secrets are exported only when non-empty. GitHub returns an empty
+  string for an unset secret, and Tauri would try to import an empty
+  `APPLE_CERTIFICATE` and fail the macOS bundle. The workflow filters those
+  values out.
 - When Apple secrets are present, Tauri signs and notarizes the macOS bundle.
 - The Windows certificate import step runs only on a tagged Windows job and
   exits early when `WINDOWS_CERTIFICATE` is not configured.

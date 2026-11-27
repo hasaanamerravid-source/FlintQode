@@ -8,6 +8,7 @@
 use std::collections::VecDeque;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Instant;
 
 use rayon::prelude::*;
@@ -27,6 +28,8 @@ pub struct SearchRequest {
     pub include: Option<String>,
     pub max_results: Option<usize>,
     pub replacement: Option<String>,
+    /// Renderer-side sequence number. A newer scan supersedes this one.
+    pub generation: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -46,6 +49,8 @@ pub struct SearchResult {
     pub skipped: usize,
     pub truncated: bool,
     pub took: u64,
+    /// Set when a newer query superseded this scan before it finished.
+    pub cancelled: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
@@ -101,6 +106,10 @@ const MAX_FILE_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_FILES: usize = 20_000;
 const MAX_RESULTS: usize = 2_000;
 const MAX_PER_FILE: usize = 200;
+
+/// The newest generation started by the renderer. Scans with a lower number
+/// stop reading files and report `cancelled` instead of serialising stale hits.
+static SEARCH_GENERATION: AtomicU64 = AtomicU64::new(0);
 
 /// An include rule compiled once per search instead of once per file.
 enum Glob {
@@ -248,6 +257,11 @@ fn line_at(text: &str, starts: &[usize], offset: usize) -> String {
 /// Search the files of a folder.
 pub fn search_in_files(request: &SearchRequest) -> SearchResult {
     let started = Instant::now();
+    let generation = request.generation.unwrap_or(0);
+    if generation > 0 {
+        SEARCH_GENERATION.store(generation, Ordering::SeqCst);
+    }
+    let superseded = || generation > 0 && SEARCH_GENERATION.load(Ordering::SeqCst) > generation;
     let Some(matcher) = matcher_of(request) else {
         return SearchResult {
             matches: Vec::new(),
@@ -255,6 +269,7 @@ pub fn search_in_files(request: &SearchRequest) -> SearchResult {
             skipped: 0,
             truncated: false,
             took: started.elapsed().as_millis() as u64,
+            cancelled: false,
             error: None,
         };
     };
@@ -265,6 +280,7 @@ pub fn search_in_files(request: &SearchRequest) -> SearchResult {
             skipped: 0,
             truncated: false,
             took: started.elapsed().as_millis() as u64,
+            cancelled: false,
             error: None,
         };
     }
@@ -273,10 +289,18 @@ pub fn search_in_files(request: &SearchRequest) -> SearchResult {
     let glob = Glob::from_pattern(request.include.as_deref().unwrap_or(""));
     let files = collect_files(&request.folder, &glob, MAX_FILES);
     let scanned = files.len();
+    let cancelled = AtomicBool::new(false);
 
     let per_file: Vec<(bool, Vec<SearchMatch>)> = files
         .par_iter()
         .map(|path| {
+            // A newer query only has to arrive; this worker stops before
+            // reading the next file, so a large scan cannot waste I/O on hits
+            // the renderer will throw away anyway.
+            if superseded() {
+                cancelled.store(true, Ordering::Relaxed);
+                return (false, Vec::new());
+            }
             let Ok(bytes) = fs::read(path) else {
                 return (true, Vec::new());
             };
@@ -302,6 +326,16 @@ pub fn search_in_files(request: &SearchRequest) -> SearchResult {
         })
         .collect();
 
+    // Check again before serialising: a newer scan may have arrived while the
+    // last batch of files was being read.
+    if cancelled.load(Ordering::Relaxed) || superseded() {
+        return SearchResult {
+            cancelled: true,
+            took: started.elapsed().as_millis() as u64,
+            ..SearchResult::default()
+        };
+    }
+
     let mut matches = Vec::new();
     let mut skipped = 0usize;
     for (was_skipped, found) in per_file {
@@ -323,6 +357,7 @@ pub fn search_in_files(request: &SearchRequest) -> SearchResult {
         files: scanned,
         skipped,
         took: started.elapsed().as_millis() as u64,
+        cancelled: false,
         error: None,
     }
 }

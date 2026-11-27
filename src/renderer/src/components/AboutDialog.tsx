@@ -7,12 +7,12 @@ import { LOCALES, translationProgress } from '../core/i18n'
 import type { AppInfo } from '@shared/types'
 
 /** The libraries the application is built with. */
-const BUILT_WITH = ['Tauri 2', 'Rust', 'React', 'CodeMirror 6', 'Zustand', 'marked', 'diff', 'DOMPurify']
+const BUILT_WITH = ['Tauri 2', 'Rust', 'SolidJS 2', 'CodeMirror 6', 'marked', 'diff', 'DOMPurify']
 
 /** The applications the idea comes from. */
 const INSPIRED_BY = [
-  { name: 'Windows Notepad', what: 'the simplicity of a text editor' },
-  { name: 'Notepad++', what: 'the power of a code editor' },
+  { name: 'Windows Notepad', what: 'simple text editing' },
+  { name: 'Notepad++', what: 'code editing' },
 ]
 
 export function AboutDialog(): JSX.Element {

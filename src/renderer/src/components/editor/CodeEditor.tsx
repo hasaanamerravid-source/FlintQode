@@ -52,6 +52,7 @@ import { indentGuidesExtension } from '../../core/indentGuides'
 import { gitGutterExtension } from '../../core/gitGutter'
 import { applyExternalContent } from './editorSync'
 import { useSettings } from '../../state/solid'
+import { dispatchSplitChanges, needsEditorFlush, type DocChange, type EditorFlushState } from '../../state/compat'
 
 export interface CodeEditorProps {
   tab: Tab
@@ -61,6 +62,8 @@ export interface CodeEditorProps {
   onContentChange?: (content: string) => void
   /** Called with the underlying CodeMirror view (for the minimap). */
   onViewReady?: (view: EditorView | null) => void
+  /** The markdown preview is mounted; send it the source only while visible. */
+  previewVisible?: boolean
 }
 
 function buildTheme(settings: {
@@ -348,6 +351,7 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
     // Status counters are seeded once and then updated from the local change.
     // The common keystroke path never scans the whole document again.
     let stats = countStats(tab.content ?? '')
+    let lastFlushed: EditorFlushState = { text: tab.content ?? '', cursor: 0 }
     const stateNow = useAppStore.getState()
     const settingsNow = stateNow.settings
     // Same one-time snapshot as the old editor: the group is decided when the
@@ -424,8 +428,10 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
             : [],
         ),
         EditorView.updateListener.of((update) => {
+          // The same change list drives the incremental stats and the split
+          // sync. A selection-only transaction leaves it empty.
+          const changes: DocChange[] = []
           if (update.docChanged) {
-            const changes: Array<{ from: number; to: number; insert: string }> = []
             update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
               changes.push({ from: fromA, to: toA, insert: inserted.toString() })
             })
@@ -440,9 +446,9 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
           if (update.docChanged) {
             setTabDirty(tab.id, true)
             // The markdown preview is the only consumer of onContentChange.
-            // Copying the whole document for every code keystroke is pure
-            // overhead and was the main cause of slow editing in large files.
-            if (tab.mode === 'markdown' && !tab.largeFile) {
+            // Copying the whole document for every code keystroke - and for a
+            // hidden preview - is pure overhead.
+            if (tab.mode === 'markdown' && !tab.largeFile && props.previewVisible !== false) {
               props.onContentChange?.(update.state.doc.toString())
             }
             // Keep the store in sync (tab switches, session restore) without
@@ -458,23 +464,19 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
               const latest = view.state.doc.toString()
               if (latest.length > 2_000_000) return
               useAppStore.getState().updateTab(tab.id, { content: latest })
+              lastFlushed.text = latest
             }, 400)
           }
-          // Split view: the other pane shows the same document, so it gets the
-          // very same state (contents, selection and configuration).
-          if (syncGroup && update.transactions.length > 0 && !forwarding) {
-            const peers = peersOf(syncGroup, update.view)
-            if (peers.length) {
-              forwarding = true
-              try {
-                for (const peer of peers) {
-                  if (peer.state !== update.state) peer.setState(update.state)
-                }
-              } catch {
-                /* a pane that was closed in the meantime */
-              } finally {
-                forwarding = false
-              }
+          // Split view: peers share the buffer, but never the EditorState.
+          // Send only the document edits; a cursor move needs no peer work.
+          if (syncGroup && changes.length > 0 && !forwarding) {
+            forwarding = true
+            try {
+              dispatchSplitChanges(changes, peersOf(syncGroup, update.view))
+            } catch {
+              /* a pane that was closed in the meantime */
+            } finally {
+              forwarding = false
             }
           }
           if (update.selectionSet || update.docChanged) {
@@ -522,6 +524,7 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
     if (typeof tab.cursor === 'number' && tab.cursor > 0) {
       const pos = Math.min(tab.cursor, view.state.doc.length)
       view.dispatch({ selection: { anchor: pos } })
+      lastFlushed.cursor = pos
     }
     {
       const { words, chars } = stats
@@ -658,10 +661,14 @@ export function CodeEditor(props: CodeEditorProps): JSX.Element {
         syncTimer = null
       }
       // Flush the final content and cursor position back into the store so the
-      // tab can be re-created without losing anything.
-      const currentState = useAppStore.getState()
+      // tab can be re-created without losing anything. An unchanged flush
+      // would only bump the store for no reason.
+      const text = view.state.doc.toString()
       const cursor = view.state.selection.main.head
-      currentState.updateTab(tab.id, { content: view.state.doc.toString(), cursor })
+      if (needsEditorFlush(lastFlushed, { text, cursor })) {
+        useAppStore.getState().updateTab(tab.id, { content: text, cursor })
+        lastFlushed = { text, cursor }
+      }
       unregister()
       unregisterView()
       leaveGroup?.()

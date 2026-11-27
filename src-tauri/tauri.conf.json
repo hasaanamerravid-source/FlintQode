@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "FlintQode",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "identifier": "dev.flintqode.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -34,8 +34,8 @@
     "active": true,
     "targets": "all",
     "category": "Utility",
-    "shortDescription": "A fast, native all-in-one text editor",
-    "longDescription": "FlintQode is a lightweight desktop editor for code, markdown and plain text. It combines tabbed editing, project search, language servers, an integrated terminal and a modern, quiet interface.",
+    "shortDescription": "Desktop editor for text, Markdown and code",
+    "longDescription": "FlintQode is a desktop editor for code, Markdown and plain text. It combines tabbed editing, project search, language servers and an integrated terminal in one window.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -60,3 +60,103 @@ export function create<T>(initializer: (set: Setter<T>, get: () => T, api: Compa
   }) as CompatStore<T>
   return Object.assign(useStore, api)
 }
+
+/* ------------------------------------------------------------------ *
+ * Framework-agnostic editor helpers                                   *
+ * ------------------------------------------------------------------ */
+
+/** A timer that can be injected in tests instead of a real clock. */
+export interface DebounceScheduler {
+  schedule: (task: () => void, delayMs: number) => number
+  cancel: (handle: number) => void
+}
+
+export interface DebouncedRenderer {
+  /** Result of the last completed render; unchanged while an update is pending. */
+  html: () => string
+  /** Queue a source update. `immediate` is used for the first visible render. */
+  update: (source: string, immediate?: boolean) => void
+  /** Cancel a pending render. */
+  dispose: () => void
+}
+
+/**
+ * Debounce a pure renderer. Only the newest source of a typing burst is
+ * rendered and the previous HTML stays visible until that render finishes.
+ */
+export function createDebouncedRenderer(
+  render: (source: string) => string,
+  scheduler: DebounceScheduler,
+  delayMs: number,
+  onRender?: (html: string) => void,
+): DebouncedRenderer {
+  let rendered = ''
+  let pending: string | null = null
+  let timer: number | undefined
+
+  const flush = (): void => {
+    timer = undefined
+    if (pending === null) return
+    const source = pending
+    pending = null
+    rendered = render(source)
+    onRender?.(rendered)
+  }
+
+  return {
+    html: () => rendered,
+    update(source, immediate = false) {
+      pending = source
+      if (timer !== undefined) scheduler.cancel(timer)
+      if (immediate) flush()
+      else timer = scheduler.schedule(flush, delayMs)
+    },
+    dispose() {
+      if (timer !== undefined) scheduler.cancel(timer)
+      timer = undefined
+      pending = null
+    },
+  }
+}
+
+/** One document edit, in the coordinates of the document before the change. */
+export interface DocChange {
+  from: number
+  to: number
+  insert: string
+}
+
+export interface SplitSyncSpec {
+  changes: DocChange[]
+}
+
+/** The smallest thing a peer editor needs to catch up with a document edit. */
+export function splitSyncSpec(changes: readonly DocChange[]): SplitSyncSpec | null {
+  return changes.length ? { changes: [...changes] } : null
+}
+
+interface SplitPeer {
+  dispatch: (spec: SplitSyncSpec) => void
+}
+
+/**
+ * Dispatch one changes object to each peer. Selection-only updates produce no
+ * changes, so they do no peer work at all.
+ */
+export function dispatchSplitChanges(changes: readonly DocChange[], peers: readonly SplitPeer[]): number {
+  const spec = splitSyncSpec(changes)
+  if (!spec) return 0
+  for (const peer of peers) peer.dispatch(spec)
+  return peers.length
+}
+
+/** The text and cursor last written back into the tab store. */
+export interface EditorFlushState {
+  text: string
+  cursor: number
+}
+
+/** Only flush the editor on teardown when the tab would actually change. */
+export function needsEditorFlush(last: EditorFlushState, next: EditorFlushState): boolean {
+  return last.text !== next.text || last.cursor !== next.cursor
+}

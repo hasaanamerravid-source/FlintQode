@@ -1,4 +1,5 @@
 import type { DiagnosticSettings } from '@shared/types'
+import type { EditorView } from '@codemirror/view'
 import { createEffect, createMemo, createSignal, onSettled, type Accessor } from 'solid-js'
 import { useAppStore } from '../store/app'
 import { getView } from './views'
@@ -65,15 +66,37 @@ interface CheckSource {
   large: boolean
   path: string
   diagnostics: DiagnosticSettings | undefined
+  /** Increments when the editor view of the tab is recreated. */
+  viewGeneration?: number
+}
+
+const viewGenerations = new WeakMap<object, number>()
+let nextViewGeneration = 1
+
+/** A stable token per editor view, so a recreated view is always checked again. */
+export function generationOfView(view: EditorView | undefined): number {
+  if (!view) return 0
+  let generation = viewGenerations.get(view)
+  if (generation === undefined) {
+    generation = nextViewGeneration++
+    viewGenerations.set(view, generation)
+  }
+  return generation
 }
 
 /**
  * The stable part of the dedupe key. The document text is deliberately not
  * included (copying a megabyte of HTML into a string on every debounce was
- * measurable); it is compared by identity next to the key.
+ * measurable); it is compared by identity next to the key. The view generation
+ * makes A -> B -> A with a recreated A view a fresh check.
  */
-export function problemsCheckKey(source: Pick<CheckSource, 'activeTabId' | 'language' | 'diagnostics'>): string {
-  return `${source.activeTabId}:${source.language}:${diagnosticsKey(source.diagnostics, source.language)}`
+export function problemsCheckKey(
+  source: Pick<CheckSource, 'activeTabId' | 'language' | 'diagnostics' | 'viewGeneration'>,
+): string {
+  return `${source.activeTabId}:${source.language}:${source.viewGeneration ?? 0}:${diagnosticsKey(
+    source.diagnostics,
+    source.language,
+  )}`
 }
 
 /**
@@ -124,12 +147,12 @@ export function useProblems(): Accessor<Problem[]> {
         // part of the key so toggling a setting checks the file again, and the
         // content string is compared by identity so two edits of the same size
         // both run.
-        if (!checkMemo.shouldRun(source)) return
         const view = getView(source.activeTabId)
         if (!view) {
           if (run === generation) publish([])
           return
         }
+        if (!checkMemo.shouldRun({ ...source, viewGeneration: generationOfView(view) })) return
         const found = collectProblems(view, source.language, source.diagnostics)
         // A newer debounce (or the tab changing) owns the result now.
         if (run !== generation) return

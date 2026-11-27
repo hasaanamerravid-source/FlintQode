@@ -43,12 +43,12 @@
   <section class="section" id="main">
     <div class="section-inner">
       <div class="section-head">
-        <span class="kicker">Project insights</span>
-        <h2>FlintQode in numbers</h2>
-        <p>Visitors, repository clones and installer downloads, generated straight from GitHub's own statistics. Hover any chart for details, toggle metrics and ranges, filter and sort the release table.</p>
+        <span class="kicker">Repository stats</span>
+        <h2>Traffic, clones and downloads</h2>
+        <p>Page views, unique visitors, repository clones and installer downloads from GitHub traffic and release data. Hover a chart for exact values; the controls switch metrics, chart type and range, and filter or sort the release table.</p>
       </div>
 
-      <p class="stats-updated" id="statsUpdated">Loading the latest numbers…</p>
+      <p class="stats-updated" id="statsUpdated">Loading statistics…</p>
 
       <div class="kpi-grid" id="kpiGrid">
         <div class="kpi-card">
@@ -174,7 +174,7 @@
           </div>
         </div>
         <div class="download-list" id="releaseChart">
-          <p class="chart-empty">Waiting for release data…</p>
+          <p class="chart-empty">Loading releases…</p>
         </div>
       </article>
 
@@ -183,7 +183,7 @@
           <div class="chart-head">
             <div>
               <h3>Platforms</h3>
-              <p id="platformSub">Installers people are downloading for the latest release.</p>
+              <p id="platformSub">Installer downloads by platform, across all releases.</p>
             </div>
           </div>
           <div class="platform-layout">
@@ -195,7 +195,7 @@
           <div class="chart-head">
             <div>
               <h3>Top assets</h3>
-              <p id="assetHeading">Installers across every release.</p>
+              <p id="assetHeading">Installer downloads across all releases.</p>
             </div>
             <div class="chart-controls">
               <select id="assetSort" class="chart-select" aria-label="Sort assets">
@@ -205,7 +205,7 @@
             </div>
           </div>
           <div class="download-list" id="assetChart">
-            <p class="chart-empty">Waiting for release data…</p>
+            <p class="chart-empty">Loading releases…</p>
           </div>
         </article>
       </div>

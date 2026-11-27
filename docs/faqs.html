@@ -53,7 +53,7 @@
             <span style="font-size:1.2rem;">▾</span>
           </div>
           <div class="faq-answer">
-            FlintQode is a lightweight, native desktop editor for code, Markdown and plain text. It is built with Tauri 2 (a small Rust backend plus your system's webview) and a SolidJS 2 + CodeMirror 6 interface. It avoids the Electron bloat of shipping a whole Chromium runtime.
+            FlintQode is a lightweight, native desktop editor for code, Markdown and plain text. It is built with Tauri 2 (a small Rust backend plus your system's webview) and a SolidJS 2 + CodeMirror 6 interface. It uses the system webview instead of bundling Chromium.
           </div>
         </div>
         <div class="faq-item">
@@ -71,7 +71,7 @@
             <span style="font-size:1.2rem;">▾</span>
           </div>
           <div class="faq-answer">
-            Correct. The first FlintQode releases were Electron, but FlintQode 2 replaced Electron with Tauri 2. The renderer is now SolidJS 2 + CodeMirror 6, while the native layer is Rust. There is no Node.js runtime in the webview.
+            Correct. The first releases used Electron; the app now uses Tauri 2. The renderer is SolidJS 2 + CodeMirror 6, and the native layer is Rust. There is no Node.js runtime in the webview.
           </div>
         </div>
         <div class="faq-item">
@@ -107,7 +107,7 @@
             <span style="font-size:1.2rem;">▾</span>
           </div>
           <div class="faq-answer">
-            Yes. Plugins are JavaScript files placed in the plugins folder of your user-data directory. They can register commands, read the editor, show toasts and use the window.api bridge.
+            Yes. Open the Extensions view to see what is installed. Plugins are JavaScript files placed in the plugins folder of your user-data directory; they can register commands, read the editor, show toasts and use the window.api bridge.
           </div>
         </div>
         <div class="faq-item">

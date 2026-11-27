@@ -9,6 +9,40 @@ import { folderOfPath } from '../../core/projectConfig'
 import { getEditor } from '../../core/editors'
 import { useT } from '../../core/i18n'
 
+/** Hits of one file, in the order the native search returned them. */
+export type SearchGroup = [path: string, hits: ProjectMatch[]]
+
+/** Hits rendered before the "more" action is used. */
+export const SEARCH_RESULT_PAGE_SIZE = 200
+
+/** Group matches by file without changing their order. */
+export function groupMatches(matches: ProjectMatch[]): SearchGroup[] {
+  const map = new Map<string, ProjectMatch[]>()
+  for (const hit of matches) {
+    const list = map.get(hit.path) ?? []
+    list.push(hit)
+    map.set(hit.path, list)
+  }
+  return [...map.entries()]
+}
+
+/**
+ * Keep at most `limit` hits, walking the files in order. Grouping and the
+ * order of the hits inside a group are unchanged; later hits are withheld
+ * until the caller raises the limit.
+ */
+export function limitGroups(groups: SearchGroup[], limit: number): SearchGroup[] {
+  const visible: SearchGroup[] = []
+  let remaining = Math.max(0, limit)
+  for (const [path, hits] of groups) {
+    if (remaining === 0) break
+    const shown = hits.slice(0, remaining)
+    visible.push([path, shown])
+    remaining -= shown.length
+  }
+  return visible
+}
+
 export function SearchView(): JSX.Element {
   const query = createMemo(() => useProjectSearchStore().query)
   const replacement = createMemo(() => useProjectSearchStore().replacement)
@@ -24,6 +58,7 @@ export function SearchView(): JSX.Element {
   const activePath = useActivePath()
   const settings = useSettings()
   const [replaceOpen, setReplaceOpen] = createSignal(false)
+  const [visibleLimit, setVisibleLimit] = createSignal(SEARCH_RESULT_PAGE_SIZE)
   const t = useT()
 
   const folder = createMemo(() => root() ?? settings().projectFolder ?? folderOfPath(activePath()) ?? '')
@@ -31,21 +66,17 @@ export function SearchView(): JSX.Element {
   createEffect(
     () => ({ query: query(), options: options(), folder: folder() }),
     (source) => {
+      setVisibleLimit(SEARCH_RESULT_PAGE_SIZE)
       if (!source.query.trim() || !source.folder) return
       const timer = window.setTimeout(() => void searchActions.search(source.folder), 250)
       return () => window.clearTimeout(timer)
     },
   )
 
-  const groups = createMemo(() => {
-    const map = new Map<string, ProjectMatch[]>()
-    for (const hit of matches()) {
-      const list = map.get(hit.path) ?? []
-      list.push(hit)
-      map.set(hit.path, list)
-    }
-    return [...map.entries()]
-  })
+  const groups = createMemo(() => groupMatches(matches()))
+  const totals = createMemo(() => new Map(groups().map(([path, hits]) => [path, hits.length])))
+  const visibleGroups = createMemo(() => limitGroups(groups(), visibleLimit()))
+  const visibleCount = createMemo(() => Math.min(matches().length, visibleLimit()))
 
   const jump = async (path: string, line: number): Promise<void> => {
     await openPath(path)
@@ -137,12 +168,12 @@ export function SearchView(): JSX.Element {
             <div class="empty-state">{t('panel.searchNoResults')}</div>
           </Match>
           <Match when={true}>
-            <For each={groups()}>
+            <For each={visibleGroups()}>
               {([path, hits]) => (
                 <div class="search-group">
                   <div class="search-file" title={path}>
                     <span>{path.split(/[\\/]/).pop()}</span>
-                    <span class="hint">{hits.length}</span>
+                    <span class="hint">{totals().get(path) ?? hits.length}</span>
                   </div>
                   <For each={hits}>
                     {(hit) => (
@@ -161,6 +192,11 @@ export function SearchView(): JSX.Element {
       <Show when={matches().length > 0}>
         <div class="hint search-footer">
           {t('panel.searchDuration', { files: files(), ms: took() })}
+          <Show when={visibleCount() < matches().length}>
+            <button class="chip" onClick={() => setVisibleLimit((limit) => limit + SEARCH_RESULT_PAGE_SIZE)}>
+              {t('common.more')}
+            </button>
+          </Show>
           <button class="chip" onClick={() => searchActions.clear()}>
             {t('common.clear')}
           </button>

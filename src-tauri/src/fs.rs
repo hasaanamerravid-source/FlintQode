@@ -448,25 +448,55 @@ fn fs_list_recursive_blocking(path: String, max_depth: Option<u32>) -> Vec<DirEn
 }
 
 #[tauri::command]
-pub fn fs_stat(path: String) -> Option<DirEntry> {
-    let full = Path::new(&path);
+pub async fn fs_stat(path: String) -> Option<DirEntry> {
+    tauri::async_runtime::spawn_blocking(move || fs_stat_blocking(&path))
+        .await
+        .unwrap_or_default()
+}
+
+fn fs_stat_blocking(path: &str) -> Option<DirEntry> {
+    let full = Path::new(path);
     let metadata = fs::metadata(full).ok()?;
     Some(to_entry(full, &metadata))
 }
 
 #[tauri::command]
-pub fn fs_exists(path: String) -> bool {
-    Path::new(&path).exists()
+pub async fn fs_exists(path: String) -> bool {
+    tauri::async_runtime::spawn_blocking(move || Path::new(&path).exists())
+        .await
+        .unwrap_or(false)
+}
+
+/// Check many paths in one blocking job. Startup used to wait for one IPC
+/// round trip per recent file and session tab, which dominated cold starts on
+/// slow disks.
+#[tauri::command]
+pub async fn fs_exists_many(paths: Vec<String>) -> Vec<bool> {
+    tauri::async_runtime::spawn_blocking(move || {
+        paths.iter().map(|path| Path::new(path).exists()).collect()
+    })
+    .await
+    .unwrap_or_default()
 }
 
 #[tauri::command]
-pub fn fs_make_dir(path: String) -> Result<(), String> {
-    fs::create_dir_all(&path).map_err(|error| error.to_string())
+pub async fn fs_make_dir(path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        fs::create_dir_all(&path).map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-pub fn fs_remove(path: String) -> Result<(), String> {
-    let target = Path::new(&path);
+pub async fn fs_remove(path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || fs_remove_blocking(&path))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn fs_remove_blocking(path: &str) -> Result<(), String> {
+    let target = Path::new(path);
     if target.is_dir() {
         fs::remove_dir_all(target).map_err(|error| error.to_string())
     } else {
@@ -479,25 +509,43 @@ pub fn fs_remove(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn fs_rename(from: String, to: String) -> Result<(), String> {
+pub async fn fs_rename(from: String, to: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || fs_rename_blocking(&from, &to))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn fs_rename_blocking(from: &str, to: &str) -> Result<(), String> {
     // Canonical paths keep watcher keys and the renderer's tab paths in sync.
-    let from = canonical_existing(&from);
-    let to = canonical_target(&to);
+    let from = canonical_existing(from);
+    let to = canonical_target(to);
     fs::rename(&from, &to).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-pub fn fs_copy_file(from: String, to: String) -> Result<(), String> {
-    let from = canonical_existing(&from);
-    let to = canonical_target(&to);
+pub async fn fs_copy_file(from: String, to: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || fs_copy_file_blocking(&from, &to))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn fs_copy_file_blocking(from: &str, to: &str) -> Result<(), String> {
+    let from = canonical_existing(from);
+    let to = canonical_target(to);
     fs::copy(&from, &to)
         .map(|_| ())
         .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-pub fn fs_show_in_folder(path: String) -> Result<(), String> {
-    let target = Path::new(&path);
+pub async fn fs_show_in_folder(path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || fs_show_in_folder_blocking(&path))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn fs_show_in_folder_blocking(path: &str) -> Result<(), String> {
+    let target = Path::new(path);
     #[cfg(target_os = "windows")]
     {
         crate::process::spawn_detached("explorer", &[format!("/select,{}", target.display())], None)
@@ -521,13 +569,47 @@ pub fn fs_show_in_folder(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn fs_read_text_file(path: String) -> Result<String, String> {
-    fs::read_to_string(&path).map_err(|error| error.to_string())
+pub async fn fs_read_text_file(path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || fs_read_text_file_blocking(&path))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+/// Read a settings-like text file, applying the same 24 MB cap as the editor.
+fn fs_read_text_file_blocking(path: &str) -> Result<String, String> {
+    let file = File::open(path).map_err(|error| error.to_string())?;
+    let size = file.metadata().map(|metadata| metadata.len()).unwrap_or(0);
+    let limit = size.min(MAX_EDIT_BYTES);
+    let mut buffer = Vec::with_capacity(limit as usize);
+    file.take(limit)
+        .read_to_end(&mut buffer)
+        .map_err(|error| error.to_string())?;
+    match String::from_utf8(buffer) {
+        Ok(text) => Ok(text),
+        Err(error) => {
+            let valid_up_to = error.utf8_error().valid_up_to();
+            let incomplete_tail = error.utf8_error().error_len().is_none();
+            // The cap can cut a multi-byte character in half. That is not a
+            // corrupt file, so drop the incomplete tail instead of failing.
+            if size > MAX_EDIT_BYTES && incomplete_tail {
+                let bytes = error.into_bytes();
+                Ok(String::from_utf8_lossy(&bytes[..valid_up_to]).into_owned())
+            } else {
+                Err(error.to_string())
+            }
+        }
+    }
 }
 
 #[tauri::command]
-pub fn fs_write_text_file(path: String, text: String) -> Result<(), String> {
-    write_atomic(&canonical_target(&path), text.as_bytes())
+pub async fn fs_write_text_file(path: String, text: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || fs_write_text_file_blocking(&path, &text))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn fs_write_text_file_blocking(path: &str, text: &str) -> Result<(), String> {
+    write_atomic(&canonical_target(path), text.as_bytes())
 }
 
 #[tauri::command]

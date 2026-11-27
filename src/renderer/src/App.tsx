@@ -11,10 +11,11 @@ import { useLspConfiguration } from './core/useProblems'
 import { useLspSync } from './core/lspIntegration'
 import {
   loadKeybindings,
-  matchesShortcut,
+  parseShortcut,
   readKeybindingsSync,
   setKeybindings,
   setUserDataFolder,
+  shortcutOf,
   useKeybindings,
 } from './core/keybindings'
 import { EditorPane } from './components/editor/EditorPane'
@@ -25,7 +26,15 @@ import { WelcomeDialog } from './components/WelcomeDialog'
 import { Toasts } from './components/Toasts'
 import { PromptHost } from './components/PromptHost'
 import { registerBuiltinCommands } from './core/builtinCommands'
-import { runCommand, setMenuAccelerators, handledByMenu, getShortcutMap } from './core/commands'
+import {
+  buildShortcutLookup,
+  getShortcutMap,
+  handledByMenu,
+  onCommandsChanged,
+  runCommand,
+  setMenuAccelerators,
+} from './core/commands'
+import { useStatusStore } from './store/status'
 import { activateEnabledPlugins } from './core/plugins'
 import { applyAppearance } from './core/appearance'
 import { applyDocumentLocale, useT } from './core/i18n'
@@ -44,6 +53,21 @@ const LazyCharacterMap = lazy(() =>
  * keyboard handler reads them.
  */
 registerBuiltinCommands()
+
+/** Canonical chord of a binding, in the same shape as `shortcutOf(event)`. */
+function chordOf(shortcut: string): string | null {
+  const parsed = parseShortcut(shortcut)
+  if (!parsed) return null
+  return [
+    parsed.ctrl ? 'ctrl' : '',
+    parsed.shift ? 'shift' : '',
+    parsed.alt ? 'alt' : '',
+    parsed.meta ? 'meta' : '',
+    parsed.key.toLowerCase(),
+  ]
+    .filter(Boolean)
+    .join('+')
+}
 
 export default function App(): JSX.Element {
   const ready = () => useAppStore().ready
@@ -69,6 +93,16 @@ export default function App(): JSX.Element {
   const status = statusActions()
   const keybindings = useKeybindings()
 
+  // The global keydown handler used to scan every binding and every default
+  // shortcut on each key. The lookup is rebuilt only when the bindings or the
+  // command registry change.
+  let userLookup = new Map<string, string>()
+  let defaultLookup = new Map<string, string>()
+  const rebuildShortcutLookup = (bindings: Record<string, string>): void => {
+    userLookup = buildShortcutLookup(bindings, {}, chordOf)
+    defaultLookup = buildShortcutLookup({}, getShortcutMap(), chordOf)
+  }
+
   /* ---------------------------- bootstrap --------------------------- */
   onSettled(() => {
     void appActions()
@@ -88,11 +122,19 @@ export default function App(): JSX.Element {
       .then(setMenuAccelerators)
       .catch(() => undefined)
     const stop = window.api.onMenuAccelerators(setMenuAccelerators)
-    return stop
+    const stopCommands = onCommandsChanged(() => rebuildShortcutLookup(readKeybindingsSync()))
+    rebuildShortcutLookup(readKeybindingsSync())
+    return () => {
+      stop()
+      stopCommands()
+    }
   })
 
   // The shortcuts of the user are kept in the keyboard handler.
-  createEffect(keybindings, setKeybindings)
+  createEffect(keybindings, (bindings) => {
+    setKeybindings(bindings)
+    rebuildShortcutLookup(bindings)
+  })
 
   // Panel visibility owns the terminal lifecycle. Hiding unmounts the xterm
   // views; the store closes their PTYs only when the user asked for that.
@@ -215,16 +257,17 @@ export default function App(): JSX.Element {
         return
       }
 
-      // The shortcuts of the user come first: they can replace any shortcut.
-      const bindings = readKeybindingsSync()
-      for (const [command, shortcut] of Object.entries(bindings)) {
-        if (!matchesShortcut(e, shortcut)) continue
+      const chord = shortcutOf(e)
+      // User bindings win over the defaults. Both are cached by chord, so a
+      // key press is two map reads instead of two scans of every shortcut.
+      const userCommand = userLookup.get(chord)
+      if (userCommand) {
         // The native menu handles some of the keys itself: the command must
         // not run a second time.
-        if (handledByMenu(command)) return
+        if (handledByMenu(userCommand)) return
         e.preventDefault()
         e.stopPropagation()
-        void runCommand(command)
+        void runCommand(userCommand)
         return
       }
 
@@ -233,12 +276,12 @@ export default function App(): JSX.Element {
       if (e.defaultPrevented) return
 
       // The shortcuts of the commands are the default bindings.
-      for (const [command, shortcut] of Object.entries(getShortcutMap())) {
-        if (!matchesShortcut(e, shortcut)) continue
-        if (handledByMenu(command)) return
+      const defaultCommand = defaultLookup.get(chord)
+      if (defaultCommand) {
+        if (handledByMenu(defaultCommand)) return
         e.preventDefault()
         e.stopPropagation()
-        void runCommand(command)
+        void runCommand(defaultCommand)
         return
       }
 
@@ -356,7 +399,8 @@ export default function App(): JSX.Element {
           void window.api.win
             .getZoom()
             .then((zoom) => {
-              if (typeof zoom === 'number') status.set({ zoom })
+              if (typeof zoom !== 'number' || useStatusStore.getState().zoom === zoom) return
+              status.set({ zoom })
             })
             .catch(() => undefined)
         },

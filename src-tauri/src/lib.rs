@@ -119,6 +119,7 @@ pub fn run() {
             fs::fs_list_recursive,
             fs::fs_stat,
             fs::fs_exists,
+            fs::fs_exists_many,
             git::git_status,
             git::git_diff,
             git::git_log,

@@ -67,6 +67,11 @@ export function EditorPane(): JSX.Element {
   )
 
   const handleContentChange = (text: string): void => {
+    // Hidden previews do not need a new source signal; the parse happens only
+    // while the preview is mounted.
+    const state = useAppStore.getState()
+    const current = state.tabs.find((entry) => entry.id === state.activeTabId)
+    if (current?.view === 'source') return
     setSource(text)
   }
 
@@ -124,6 +129,17 @@ export function EditorPane(): JSX.Element {
         const showSource = (): boolean => tab().view !== 'preview'
         const showPreview = (): boolean => tab().view !== 'source' && tab().mode === 'markdown'
 
+        // The preview only receives a source while it is visible. When it is
+        // switched back on, seed it from the live editor (or the flushed tab).
+        createEffect(
+          () => tab().view,
+          (view) => {
+            if (view === 'source' || tab().mode !== 'markdown') return
+            const stored = useAppStore.getState().tabs.find((entry) => entry.id === tab().id)?.content ?? ''
+            setSource(editorView?.state.doc.toString() ?? stored)
+          },
+        )
+
         /** Resolve a relative link of the preview against the folder of the file. */
         const openRelativeLink = (target: string): void => {
           const clean = target.replace(/^#.*$/, '')
@@ -168,6 +184,7 @@ export function EditorPane(): JSX.Element {
                     onViewReady={(view) => {
                       editorView = view
                     }}
+                    previewVisible={showPreview()}
                   />
                   <Show when={settings().showMinimap && !settings().lowMemory}>
                     <Loading fallback={null}>
@@ -181,7 +198,7 @@ export function EditorPane(): JSX.Element {
               </Show>
               <Show when={showSource() && splitView()}>
                 <div class="editor-pane">
-                  <CodeEditor tab={tab()} onContentChange={handleContentChange} />
+                  <CodeEditor tab={tab()} onContentChange={handleContentChange} previewVisible={showPreview()} />
                 </div>
               </Show>
               <Show when={showSource() && showPreview()}>

@@ -52,7 +52,13 @@ export interface ProjectSearchState {
 
 /** The bridge to the main process. */
 interface SearchBridge {
-  search?: (request: unknown) => Promise<{ matches?: ProjectMatch[]; files?: number; took?: number; error?: string }>
+  search?: (request: unknown) => Promise<{
+    matches?: ProjectMatch[]
+    files?: number
+    took?: number
+    cancelled?: boolean
+    error?: string
+  }>
   replaceInFiles?: (request: unknown) => Promise<{ changed?: number; replaced?: number; took?: number; error?: string }>
 }
 
@@ -99,8 +105,15 @@ export const useProjectSearchStore = create<ProjectSearchState>((set, get) => ({
         folder,
         query,
         ...options,
+        // The native scan stops early when a newer generation has started.
+        generation: token,
       })
       if (token !== sequence) return
+      if (result?.cancelled) {
+        // Keep the last good results; a newer query owns the search state.
+        set({ searching: false })
+        return
+      }
       set({
         matches: result?.matches ?? [],
         files: result?.files ?? 0,

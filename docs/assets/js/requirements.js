@@ -115,10 +115,10 @@
 
   function renderAll() {
     renderBars('ramChart', RAM_ROWS, {
-      tooltipId: 'ramTooltip', title: 'Idle memory (MiB, lower is better)', labelWidth: 116, unit: ' idle RAM',
+      tooltipId: 'ramTooltip', title: 'Idle memory (MiB)', labelWidth: 116, unit: ' idle RAM',
     });
     renderBars('sizeChart', SIZE_ROWS, {
-      tooltipId: 'sizeTooltip', title: 'Typical download size (MB, lower is better)', labelWidth: 116, unit: ' download',
+      tooltipId: 'sizeTooltip', title: 'Typical download size (MB)', labelWidth: 116, unit: ' download',
     });
     renderBars('pssChart', PSS_ROWS, {
       tooltipId: 'pssTooltip', title: 'FlintQode memory while working (PSS, MiB)', labelWidth: 92, rowH: 42, unit: ' PSS',

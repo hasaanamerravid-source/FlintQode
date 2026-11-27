@@ -162,8 +162,12 @@ pub fn app_info(app: AppHandle) -> Result<AppInfo, String> {
 }
 
 #[tauri::command]
-pub fn settings_load(app: AppHandle) -> Result<Option<Value>, String> {
-    Ok(read_value(&store_path(&app, "settings.json")?))
+pub async fn settings_load(app: AppHandle) -> Result<Option<Value>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        Ok(read_value(&store_path(&app, "settings.json")?))
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
@@ -221,29 +225,43 @@ fn recent_write(app: &AppHandle, list: &[String]) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn recent_list(app: AppHandle) -> Vec<String> {
-    recent_read(&app)
+pub async fn recent_list(app: AppHandle) -> Vec<String> {
+    tauri::async_runtime::spawn_blocking(move || recent_read(&app))
+        .await
+        .unwrap_or_default()
 }
 
 #[tauri::command]
-pub fn recent_add(app: AppHandle, path: String) -> Result<Vec<String>, String> {
-    let lower = path.to_lowercase();
-    let mut list = recent_read(&app);
-    list.retain(|entry| entry.to_lowercase() != lower);
-    list.insert(0, path);
-    list.truncate(30);
-    recent_write(&app, &list)?;
-    Ok(list)
+pub async fn recent_add(app: AppHandle, path: String) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let lower = path.to_lowercase();
+        let mut list = recent_read(&app);
+        list.retain(|entry| entry.to_lowercase() != lower);
+        list.insert(0, path);
+        list.truncate(30);
+        recent_write(&app, &list)?;
+        Ok(list)
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-pub fn recent_clear(app: AppHandle) -> Result<(), String> {
-    recent_write(&app, &[])
+pub async fn recent_clear(app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || recent_write(&app, &[]))
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-pub fn plugins_list(app: AppHandle) -> Result<Vec<PluginManifest>, String> {
-    let root = app_data(&app)?.join("plugins");
+pub async fn plugins_list(app: AppHandle) -> Result<Vec<PluginManifest>, String> {
+    tauri::async_runtime::spawn_blocking(move || plugins_list_blocking(&app))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn plugins_list_blocking(app: &AppHandle) -> Result<Vec<PluginManifest>, String> {
+    let root = app_data(app)?.join("plugins");
     let Ok(entries) = fs::read_dir(&root) else {
         return Ok(Vec::new());
     };
@@ -285,8 +303,14 @@ pub fn plugins_list(app: AppHandle) -> Result<Vec<PluginManifest>, String> {
 
 /// Write a renderer failure into the native log.
 #[tauri::command]
-pub fn report_error(app: AppHandle, message: String) {
-    let Ok(directory) = app_data(&app) else {
+pub async fn report_error(app: AppHandle, message: String) {
+    tauri::async_runtime::spawn_blocking(move || report_error_blocking(&app, &message))
+        .await
+        .unwrap_or_default()
+}
+
+fn report_error_blocking(app: &AppHandle, message: &str) {
+    let Ok(directory) = app_data(app) else {
         return;
     };
     let log_directory = directory.join("logs");

@@ -3,9 +3,17 @@ import type { Command } from '@shared/types'
 const registry = new Map<string, Command>()
 const listeners = new Set<() => void>()
 
+/** The default shortcut map is derived from the registry, so it is built once. */
+let shortcutCache: Record<string, string> | undefined
+
+function invalidateShortcutCache(): void {
+  shortcutCache = undefined
+}
+
 /** Register a single command. Later registrations replace earlier ones with the same id. */
 export function registerCommand(command: Command): void {
   registry.set(command.id, command)
+  invalidateShortcutCache()
   listeners.forEach((l) => l())
 }
 
@@ -18,6 +26,7 @@ export function registerCommands(commands: Command[]): void {
 /** Remove a command. */
 export function unregisterCommand(id: string): void {
   registry.delete(id)
+  invalidateShortcutCache()
   listeners.forEach((l) => l())
 }
 
@@ -38,11 +47,38 @@ export function getCommand(id: string): Command | undefined {
  * the project win over them.
  */
 export function getShortcutMap(): Record<string, string> {
+  if (shortcutCache) return shortcutCache
   const out: Record<string, string> = {}
   for (const command of registry.values()) {
     if (command.shortcut) out[command.id] = command.shortcut
   }
+  shortcutCache = out
   return out
+}
+
+/**
+ * Build the chord -> command lookup used by the global keydown handler.
+ *
+ * User bindings win over the defaults, and the first binding of a chord wins
+ * within either group - exactly the order of the old two scans. The caller
+ * supplies the normalizer so a shortcut string becomes the same chord that
+ * `shortcutOf(event)` produces; lookup on a key press is then O(1).
+ */
+export function buildShortcutLookup(
+  bindings: Record<string, string>,
+  defaults: Record<string, string>,
+  normalize: (shortcut: string) => string | null,
+): Map<string, string> {
+  const lookup = new Map<string, string>()
+  for (const [command, shortcut] of Object.entries(bindings)) {
+    const chord = normalize(shortcut)
+    if (chord && !lookup.has(chord)) lookup.set(chord, command)
+  }
+  for (const [command, shortcut] of Object.entries(defaults)) {
+    const chord = normalize(shortcut)
+    if (chord && !lookup.has(chord)) lookup.set(chord, command)
+  }
+  return lookup
 }
 
 /**
