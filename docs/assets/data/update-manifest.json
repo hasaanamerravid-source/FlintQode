@@ -1,41 +1,41 @@
 {
-  "version": "1.5.1",
-  "tag": "v1.5.1",
+  "version": "1.5.2",
+  "tag": "v1.5.2",
   "assets": [
     {
-      "name": "FlintQode_1.5.1_amd64.deb",
-      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.1/FlintQode_1.5.1_amd64.deb",
-      "sha256": "12c77452c49305cdb767c3bf5b9cdf1e4df7f73d24f2243987ae33ca77790249"
+      "name": "FlintQode_1.5.2_amd64.deb",
+      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.2/FlintQode_1.5.2_amd64.deb",
+      "sha256": "3078464fa8a803e4d89bde0db8d532aa448cb856f84552a3fe6d0f6167987d87"
     },
     {
-      "name": "FlintQode_1.5.1_amd64.AppImage",
-      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.1/FlintQode_1.5.1_amd64.AppImage",
-      "sha256": "88c26c2489e8fee4bc3f921c45e74c5cd267b55c5ff9cc8ed7a268b96b77c3cb"
+      "name": "FlintQode_1.5.2_amd64.AppImage",
+      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.2/FlintQode_1.5.2_amd64.AppImage",
+      "sha256": "51bfd092e5f3bf6c146639eefa33db87eb250a96d848285c572237165ae17f67"
     },
     {
-      "name": "FlintQode-1.5.1-1.x86_64.rpm",
-      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.1/FlintQode-1.5.1-1.x86_64.rpm",
-      "sha256": "cbb4049a1975d1b709d15e8d46476769fb82ae0d339c48f6db6337fac86fb676"
+      "name": "FlintQode-1.5.2-1.x86_64.rpm",
+      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.2/FlintQode-1.5.2-1.x86_64.rpm",
+      "sha256": "b25edd525f62950f694f932eed1c934ebf26bbc280eb5c77c51148c5ec3a6e85"
     },
     {
-      "name": "FlintQode_1.5.1_x64-setup.exe",
-      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.1/FlintQode_1.5.1_x64-setup.exe",
-      "sha256": "6762a2b1c3940269aa725efb8a3d95c832079d106f0a39fa21c458dbf4cc8351"
+      "name": "FlintQode_1.5.2_x64-setup.exe",
+      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.2/FlintQode_1.5.2_x64-setup.exe",
+      "sha256": "d4527c9d5b89d7c9a01cf46d5ce95e72d59fd9fe95ef14c89bd208ee9d0a8689"
     },
     {
-      "name": "FlintQode_1.5.1_x64_en-US.msi",
-      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.1/FlintQode_1.5.1_x64_en-US.msi",
-      "sha256": "c4bd742e211ce3090c908994be6a4b68f89ba4d23b38e270cbd32194f7d31c2f"
+      "name": "FlintQode_1.5.2_x64_en-US.msi",
+      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.2/FlintQode_1.5.2_x64_en-US.msi",
+      "sha256": "8c96a7690e6e89fddab4ef1ee12ef30ac6eec3f2cbbee10440896ff71346d93f"
     },
     {
-      "name": "FlintQode_1.5.1_aarch64.dmg",
-      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.1/FlintQode_1.5.1_aarch64.dmg",
-      "sha256": "24e69aea0d569ccaf1abd41009c57e221f8280aeba9ed5bdadec5287eb9af937"
+      "name": "FlintQode_1.5.2_aarch64.dmg",
+      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.2/FlintQode_1.5.2_aarch64.dmg",
+      "sha256": "a7dfcf65261ff56337854945bfa2227f9f0341d9282cfe3e20d70cc5538aba35"
     },
     {
       "name": "FlintQode_aarch64.app.tar.gz",
-      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.1/FlintQode_aarch64.app.tar.gz",
-      "sha256": "68634cdd9e5b0054a17a90172f62eada6002aaafca443eb4578ec9df964f8c18"
+      "url": "https://github.com/hasaanamerravid-source/FlintQode/releases/download/v1.5.2/FlintQode_aarch64.app.tar.gz",
+      "sha256": "23f31bea0dbaa15d07b211f9251025392c2991de1dceacecc35511be107dcb9c"
     }
   ]
 }
