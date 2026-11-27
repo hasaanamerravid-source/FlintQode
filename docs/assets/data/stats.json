@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-27T16:41:39.145Z",
+  "updatedAt": "2026-11-27T17:45:31.501Z",
   "repository": "hasaanamerravid-source/FlintQode",
   "trafficUpdated": true,
   "trafficError": null,
@@ -160,6 +160,41 @@
   "downloads": {
     "total": 191,
     "releases": [
+      {
+        "tag": "v1.6.0",
+        "date": "2026-11-27T17:45:19Z",
+        "total": 0,
+        "assets": [
+          {
+            "name": "FlintQode-1.6.0-1.x86_64.rpm",
+            "downloads": 0
+          },
+          {
+            "name": "FlintQode_1.6.0_aarch64.dmg",
+            "downloads": 0
+          },
+          {
+            "name": "FlintQode_1.6.0_amd64.AppImage",
+            "downloads": 0
+          },
+          {
+            "name": "FlintQode_1.6.0_amd64.deb",
+            "downloads": 0
+          },
+          {
+            "name": "FlintQode_1.6.0_x64-setup.exe",
+            "downloads": 0
+          },
+          {
+            "name": "FlintQode_1.6.0_x64_en-US.msi",
+            "downloads": 0
+          },
+          {
+            "name": "FlintQode_aarch64.app.tar.gz",
+            "downloads": 0
+          }
+        ]
+      },
       {
         "tag": "v1.5.2",
         "date": "2026-11-27T12:17:25Z",
@@ -671,37 +706,37 @@
       }
     ],
     "latest": {
-      "tag": "v1.5.2",
-      "date": "2026-11-27T12:17:25Z",
-      "total": 21,
+      "tag": "v1.6.0",
+      "date": "2026-11-27T17:45:19Z",
+      "total": 0,
       "assets": [
         {
-          "name": "FlintQode-1.5.2-1.x86_64.rpm",
-          "downloads": 3
+          "name": "FlintQode-1.6.0-1.x86_64.rpm",
+          "downloads": 0
         },
         {
-          "name": "FlintQode_1.5.2_aarch64.dmg",
-          "downloads": 3
+          "name": "FlintQode_1.6.0_aarch64.dmg",
+          "downloads": 0
         },
         {
-          "name": "FlintQode_1.5.2_amd64.AppImage",
-          "downloads": 3
+          "name": "FlintQode_1.6.0_amd64.AppImage",
+          "downloads": 0
         },
         {
-          "name": "FlintQode_1.5.2_amd64.deb",
-          "downloads": 3
+          "name": "FlintQode_1.6.0_amd64.deb",
+          "downloads": 0
         },
         {
-          "name": "FlintQode_1.5.2_x64-setup.exe",
-          "downloads": 3
+          "name": "FlintQode_1.6.0_x64-setup.exe",
+          "downloads": 0
         },
         {
-          "name": "FlintQode_1.5.2_x64_en-US.msi",
-          "downloads": 3
+          "name": "FlintQode_1.6.0_x64_en-US.msi",
+          "downloads": 0
         },
         {
           "name": "FlintQode_aarch64.app.tar.gz",
-          "downloads": 3
+          "downloads": 0
         }
       ]
     }
