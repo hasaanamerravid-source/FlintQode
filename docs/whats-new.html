@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>What's new — FlintQode</title>
-  <meta name="description" content="Fixes and changes in FlintQode v1.5.2." />
+  <meta name="description" content="Fixes and changes in FlintQode v1.6.0." />
   <link rel="canonical" href="https://hasaanamerravid-source.github.io/FlintQode/whats-new.html" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -41,32 +41,27 @@
     <div class="section-inner">
       <div class="section-head">
         <span class="kicker">Release notes</span>
-        <h2>What's new in FlintQode 1.5.2</h2>
+        <h2>What's new in FlintQode 1.6.0</h2>
         <p>Released 2026-11-27.</p>
       </div>
       <div class="whats-new">
-        <h3>Fixed in this release</h3>
+        <h3>Added</h3>
         <ul>
-          <li><strong>Markdown preview stops competing with typing.</strong> Parsing runs only while the preview is visible and waits 180 ms after the last edit. The previous render stays on screen while the new one is prepared.</li>
-          <li><strong>Split views sync changed text only.</strong> A keystroke sends one small document change to the peer editor. Moving the cursor does no peer work, and the peer state is no longer replaced on every transaction.</li>
-          <li><strong>Returning to a tab restores its problems.</strong> Recreated editors get a fresh diagnostics check, the git gutter waits for a pause before its first diff, and teardown skips writes when the text and cursor have not changed.</li>
-          <li><strong>The status bar and shortcuts do less work.</strong> Unchanged cursor and zoom values are ignored, and key presses resolve through a cached shortcut map instead of scanning every binding.</li>
-          <li><strong>Search and Explorer stay responsive on large projects.</strong> Search shows 200 hits at a time with a “More” control. Explorer lowercases each entry name once, then reuses that value for later filter changes.</li>
-          <li><strong>Startup makes one existence check.</strong> Recent files and restored tabs are checked in a single native call, and the session is loaded once for both restore and crash recovery.</li>
-          <li><strong>Superseded searches are cancelled.</strong> A newer query sends a generation token to the native scan, which stops before serializing results from the older query.</li>
-          <li><strong>More native work runs off the main thread.</strong> File stats, existence checks, reads and writes, folder operations, settings, recent files, plugin listing and error logging use blocking worker threads. Text reads keep the existing 24 MB cap.</li>
+          <li><strong>Path commands.</strong> Copy the active file's absolute path, copy its path relative to the open workspace, or reveal the file in your file manager. All three are in the File menu and the command palette.</li>
+          <li><strong>Workspace recall.</strong> Recent workspace folders appear in the command palette. “Reopen last workspace” brings back the most recent folder without opening a picker.</li>
+          <li><strong>Selection tools.</strong> Expand the selection to a word or a line, and select every match of the word under the caret. They use the existing editor state and need no new panel.</li>
+          <li><strong>Opt-in save behaviour.</strong> Save all changed files before Run File, or save the active file when the window loses focus. Both settings are off by default.</li>
         </ul>
         <h3>Changed</h3>
         <ul>
-          <li>User-facing copy in the app, website, release notes and documentation now uses plain, specific descriptions. Translations were updated to match, including the update strings that were still in English.</li>
-          <li>The About dialog lists the current renderer stack. The welcome and settings text no longer claims that update checks are disabled; checks stay opt-in in Settings.</li>
+          <li>Opening a workspace records the folder in settings. Recent workspaces whose folders no longer exist are dropped at startup.</li>
         </ul>
         <h3>Verification</h3>
         <ul>
-          <li>New regression tests cover the preview scheduler, split sync, status no-ops, diagnostics after tab switches, the git gutter delay, search result limits, Explorer filtering, startup batching and native threading. The full frontend gate and Rust checks pass.</li>
+          <li>New regression tests cover path handling, workspace recall, selection ranges and the two save settings. The full frontend gate and Rust checks pass.</li>
         </ul>
         <p style="margin-top:var(--space-4);">
-          <a href="downloads.html" class="btn btn-primary" data-download="primary">Download 1.5.2</a>
+          <a href="downloads.html" class="btn btn-primary" data-download="primary">Download 1.6.0</a>
           <a href="https://github.com/hasaanamerravid-source/FlintQode/blob/main/CHANGELOG.md" class="btn btn-ghost" target="_blank" rel="noopener">Full changelog</a>
         </p>
       </div>

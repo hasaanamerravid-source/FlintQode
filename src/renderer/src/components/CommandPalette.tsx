@@ -36,6 +36,7 @@ export function CommandPalette(props: PaletteProps): JSX.Element {
   let inputRef: HTMLInputElement | undefined
   const workspaceRoot = createMemo(() => useAppStore().workspaceRoot)
   const recentFiles = createMemo(() => useAppStore().settings.recentFiles)
+  const recentWorkspaces = createMemo(() => useAppStore().settings.recentWorkspaces ?? [])
   const t = useT()
   const tWith = useTWith()
   const [projectFiles, setProjectFiles] = createSignal<string[]>([])
@@ -92,15 +93,30 @@ export function CommandPalette(props: PaletteProps): JSX.Element {
     const currentQuery = query()
     if (props.mode === 'commands') {
       const recentIds = getRecentCommands()
-      return getCommands()
+      const commands = getCommands()
         .filter((c) => !c.hidden)
         .map((c) => ({
           id: c.id,
           title: tWith(commandKey(c.id), c.title),
           category: c.category ?? '',
           shortcut: c.shortcut ?? '',
+          score: undefined as number | undefined,
         }))
-        .map((c) => ({ ...c, score: fuzzyScore(currentQuery, `${c.category} ${c.title}`) }))
+      // With an empty query, give recent workspaces a high score so they are
+      // visible before the 60-item limit; a typed query scores them normally.
+      const workspaces = recentWorkspaces().map((folder) => {
+        const title = folder.split(/[\\/]/).filter(Boolean).pop() ?? folder
+        const category = t('palette.recentWorkspace')
+        return {
+          id: `workspace.recent:${folder}`,
+          title,
+          category,
+          shortcut: '',
+          score: currentQuery ? fuzzyScore(currentQuery, `${category} ${title}`) : 900,
+        }
+      })
+      return [...commands, ...workspaces]
+        .map((c) => ({ ...c, score: c.score ?? fuzzyScore(currentQuery, `${c.category} ${c.title}`) }))
         .filter((c) => c.score >= 0)
         .sort((a, b) => {
           // The commands that were used last come first, as long as the user
@@ -146,7 +162,14 @@ export function CommandPalette(props: PaletteProps): JSX.Element {
     if (!item) return
     props.onClose()
     if (props.mode === 'commands') {
-      void runCommand(item.id)
+      if (item.id.startsWith('workspace.recent:')) {
+        const folder = item.id.slice('workspace.recent:'.length)
+        const state = useAppStore.getState()
+        state.setWorkspaceRoot(folder)
+        state.toast(`Opened ${folder.split(/[\\/]/).filter(Boolean).pop() ?? folder} as a workspace`, 'success')
+      } else {
+        void runCommand(item.id)
+      }
     } else {
       void useAppStore.getState().openPath(item.id)
     }

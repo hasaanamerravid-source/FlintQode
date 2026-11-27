@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-11-27
+
+### Added
+- Path commands: copy the active file's absolute path, copy its path relative to the open workspace, and reveal the file in the file manager.
+- Workspace recall: recent workspace folders appear in the command palette, and “Reopen last workspace” brings back the most recent one.
+- Selection commands: expand the selection to a word or a line, and select every match of the word under the caret.
+- Two opt-in save settings: save all changed files before Run File, and save the active file when the window loses focus. Both stay off until you enable them.
+
+### Changed
+- Opening a workspace records the folder in settings. Recent workspaces whose folders no longer exist are dropped at startup.
+
 ## [1.5.2] - 2026-11-27
 
 ### Fixed

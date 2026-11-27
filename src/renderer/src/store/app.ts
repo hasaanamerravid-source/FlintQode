@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS, mergeDiagnostics } from '../core/defaults'
 import { getEditor } from '../core/editors'
 import { runCommand } from '../core/commands'
 import { sfx } from '../core/soundFx'
+import { rememberWorkspace } from '../core/recentWorkspaces'
 
 /**
  * The text of a message in the language of the user. The store must not
@@ -496,16 +497,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (sessionFailed) session = null
 
     const recentPaths = settings.recentFiles ?? []
+    const recentWorkspaces = settings.recentWorkspaces ?? []
     const restoreTabs = settings.restoreSession ? (session?.tabs ?? []) : []
     const pathsToCheck = [
       ...recentPaths,
+      ...recentWorkspaces,
       ...restoreTabs.map((tab) => tab.path).filter((path): path is string => Boolean(path)),
     ]
     const fs = window.api.fs as typeof window.api.fs & { existsMany(paths: string[]): Promise<boolean[]> }
     const present = pathsToCheck.length ? await fs.existsMany(pathsToCheck) : []
     // Drop every recent entry that points at a missing file: a deleted recent
-    // file must never break the start-up.
+    // file or workspace must never break the start-up.
     settings.recentFiles = recentPaths.filter((_, index) => present[index]).slice(0, 20)
+    settings.recentWorkspaces = recentWorkspaces.filter((_, index) => present[recentPaths.length + index]).slice(0, 10)
     if (!settings.syntaxTheme) settings.syntaxTheme = DEFAULT_SETTINGS.syntaxTheme
 
     set({
@@ -521,7 +525,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       // Only restore tabs whose file still exists — a deleted file would
       // otherwise show up as an empty, broken editor.
       const tabs: Tab[] = []
-      let index = recentPaths.length
+      let index = recentPaths.length + recentWorkspaces.length
       for (const tab of restoreTabs) {
         if (!tab.path) {
           tabs.push(tab)
@@ -830,13 +834,23 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
-  setWorkspaceRoot: (root) =>
-    set((s) => {
-      if (!root) return { workspaceRoot: null, workspaceRoots: [] }
-      const roots = s.workspaceRoots.filter((r) => r !== root)
-      return { workspaceRoot: root, workspaceRoots: [...roots, root] }
-    }),
-  setWorkspaceRoots: (roots) => set({ workspaceRoot: roots[roots.length - 1] ?? null, workspaceRoots: roots }),
+  setWorkspaceRoot: (root) => {
+    set((s) => ({
+      workspaceRoot: root,
+      workspaceRoots: root ? [...s.workspaceRoots.filter((r) => r !== root), root] : [],
+      settings: { ...s.settings, recentWorkspaces: rememberWorkspace(s.settings.recentWorkspaces, root) },
+    }))
+    void get().saveSettings()
+  },
+  setWorkspaceRoots: (roots) => {
+    const last = roots[roots.length - 1] ?? null
+    set((s) => ({
+      workspaceRoot: last,
+      workspaceRoots: roots,
+      settings: { ...s.settings, recentWorkspaces: rememberWorkspace(s.settings.recentWorkspaces, last) },
+    }))
+    void get().saveSettings()
+  },
 
   persistSession: async () => {
     const { tabs, activeTabId, settings } = get()

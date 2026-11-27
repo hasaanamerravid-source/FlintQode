@@ -43,6 +43,9 @@ import {
 } from './lspCommands'
 import { FILE_FILTERS } from './defaults'
 import { projectFolder } from './projectConfig'
+import { relativeToWorkspace } from './pathUtils'
+import { expandToLine, expandToWord, findAllMatches, wordRangeAt } from './selectionTools'
+import { lastWorkspace } from './recentWorkspaces'
 import { cursorMatchingBracket } from '@codemirror/commands'
 import { EditorSelection } from '@codemirror/state'
 
@@ -374,6 +377,51 @@ export const builtinCommands: Command[] = [
       if (!last) return
       const id = store().newTab({ path: last.path, name: last.name, content: last.content, language: last.language })
       void id
+    },
+  },
+  {
+    id: 'file.copyAbsolutePath',
+    title: 'Copy absolute path',
+    category: 'File',
+    run: async () => {
+      const path = activeFilePath()
+      if (!path) {
+        store().toast('There is no active file', 'error')
+        return
+      }
+      await window.api.clipboard.writeText(path)
+      store().toast('Absolute path copied', 'success')
+    },
+  },
+  {
+    id: 'file.copyRelativePath',
+    title: 'Copy path relative to workspace',
+    category: 'File',
+    run: async () => {
+      const relative = relativeToWorkspace(activeFilePath(), store().workspaceRoot)
+      if (!relative) {
+        store().toast('Open a workspace folder first', 'error')
+        return
+      }
+      await window.api.clipboard.writeText(relative)
+      store().toast('Relative path copied', 'success')
+    },
+  },
+  {
+    id: 'file.revealInFolder',
+    title: 'Reveal active file in folder',
+    category: 'File',
+    run: async () => {
+      const path = activeFilePath()
+      if (!path) {
+        store().toast('There is no active file', 'error')
+        return
+      }
+      try {
+        await window.api.fs.showInFolder(path)
+      } catch (error) {
+        store().toast(`Could not reveal the file: ${String(error)}`, 'error')
+      }
     },
   },
 
@@ -721,6 +769,54 @@ export const builtinCommands: Command[] = [
       view.focus()
     },
   },
+  {
+    id: 'edit.expandSelectionToWord',
+    title: 'Expand selection to word',
+    category: 'Edit',
+    run: () => {
+      const view = activeView()
+      if (!view) return
+      const { from, to } = view.state.selection.main
+      const range = expandToWord(view.state.doc.toString(), from, to)
+      if (!range) return
+      view.dispatch({ selection: EditorSelection.range(range.from, range.to) })
+      view.focus()
+    },
+  },
+  {
+    id: 'edit.expandSelectionToLine',
+    title: 'Expand selection to line',
+    category: 'Edit',
+    run: () => {
+      const view = activeView()
+      if (!view) return
+      const { from, to } = view.state.selection.main
+      const range = expandToLine(view.state.doc.toString(), from, to)
+      view.dispatch({ selection: EditorSelection.range(range.from, range.to) })
+      view.focus()
+    },
+  },
+  {
+    id: 'edit.selectAllMatchesOfWord',
+    title: 'Select all matches of current word',
+    category: 'Edit',
+    run: () => {
+      const view = activeView()
+      if (!view) return
+      const text = view.state.doc.toString()
+      const word = wordRangeAt(text, view.state.selection.main.head)
+      if (!word) return
+      const ranges = findAllMatches(text, text.slice(word.from, word.to))
+      if (ranges.length <= 1) return
+      view.dispatch({
+        selection: EditorSelection.create(
+          ranges.map((range) => EditorSelection.range(range.from, range.to)),
+          0,
+        ),
+      })
+      view.focus()
+    },
+  },
 
   /* ------------------------------ Search ----------------------------- */
   {
@@ -936,6 +1032,20 @@ export const builtinCommands: Command[] = [
       const roots = useAppStore.getState().workspaceRoots
       const root = useAppStore.getState().workspaceRoot
       if (roots.length > 1 && root) useAppStore.getState().setWorkspaceRoots(roots.filter((r) => r !== root))
+    },
+  },
+  {
+    id: 'workspace.reopenLast',
+    title: 'Reopen last workspace',
+    category: 'File',
+    run: () => {
+      const folder = lastWorkspace(store().settings)
+      if (!folder) {
+        store().toast('There is no recent workspace', 'error')
+        return
+      }
+      store().setWorkspaceRoot(folder)
+      store().toast(`Opened ${folder.split(/[\\/]/).pop()} as a workspace`, 'success')
     },
   },
   {

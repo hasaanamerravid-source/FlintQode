@@ -210,7 +210,7 @@ export function createApi(): FlintQodeApi {
     info: (): Promise<AppInfo> => {
       if (!isTauri()) {
         return Promise.resolve({
-          version: '1.5.2',
+          version: '1.6.0',
           build: 'dev',
           commit: 'browser',
           tauri: 'browser preview',

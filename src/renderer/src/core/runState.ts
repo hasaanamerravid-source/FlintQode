@@ -12,6 +12,7 @@ import { create } from '@/state/compat'
 import { useAppStore } from '../store/app'
 import { cachedProjectConfig, resolveTool } from './projectConfig'
 import { useTerminalStore } from './terminalState'
+import { shouldSaveAllBeforeRun } from './saveBehavior'
 
 export interface RunLine {
   type: 'stdout' | 'stderr' | 'system'
@@ -179,10 +180,18 @@ async function gradleRoot(file: string): Promise<string | null> {
 /** Save the active buffer and run it. */
 export async function runActiveFile(): Promise<boolean> {
   const state = useAppStore.getState()
-  const tab = state.tabs.find((entry) => entry.id === state.activeTabId)
+  let tab = state.tabs.find((entry) => entry.id === state.activeTabId)
   if (!tab) {
     state.toast('There is no file to run.', 'error')
     return false
+  }
+  if (shouldSaveAllBeforeRun(state.settings)) {
+    await state.saveAll()
+    tab = useAppStore.getState().tabs.find((entry) => entry.id === state.activeTabId)
+    if (!tab) {
+      state.toast('There is no file to run.', 'error')
+      return false
+    }
   }
 
   const file = tab.path ?? ''

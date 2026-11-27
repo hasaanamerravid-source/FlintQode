@@ -1111,6 +1111,20 @@ export function SettingsDialog(): JSX.Element {
                 onChange={(e) => patch({ closeOnPanelHide: e.currentTarget.checked })}
               />
             </Row>
+            <Row label={t('settings.saveAllBeforeRun')} hint={t('settings.saveAllBeforeRunHint')}>
+              <input
+                type="checkbox"
+                checked={settings().saveAllBeforeRun ?? false}
+                onChange={(e) => patch({ saveAllBeforeRun: e.currentTarget.checked })}
+              />
+            </Row>
+            <Row label={t('settings.saveOnBlur')} hint={t('settings.saveOnBlurHint')}>
+              <input
+                type="checkbox"
+                checked={settings().saveOnBlur ?? false}
+                onChange={(e) => patch({ saveOnBlur: e.currentTarget.checked })}
+              />
+            </Row>
             <div class="hint">
               The native Windows menu bar stays reachable with the <kbd>Alt</kbd> key, exactly like other open-source
               editors. Every command is also available in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+

@@ -263,6 +263,12 @@ export interface Settings {
   showSidebar: boolean
   sidebarWidth: number
   recentFiles: string[]
+  /** Workspace folders opened recently, newest first. */
+  recentWorkspaces?: string[]
+  /** Save every dirty file before Run File (off by default). */
+  saveAllBeforeRun?: boolean
+  /** Save the active file when the window loses focus (off by default). */
+  saveOnBlur?: boolean
   plugins: string[]
   /** Right-to-left text direction for the editor and panels. */
   direction: 'ltr' | 'rtl'

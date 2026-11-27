@@ -26,6 +26,7 @@ import { WelcomeDialog } from './components/WelcomeDialog'
 import { Toasts } from './components/Toasts'
 import { PromptHost } from './components/PromptHost'
 import { registerBuiltinCommands } from './core/builtinCommands'
+import { saveTargetOnBlur } from './core/saveBehavior'
 import {
   buildShortcutLookup,
   getShortcutMap,
@@ -387,6 +388,18 @@ export default function App(): JSX.Element {
       return () => window.clearInterval(timer)
     },
   )
+
+  /* ----------------------------- save on blur ------------------------ */
+  // Opt-in: when the window loses focus, save the active file if it is dirty.
+  onSettled(() => {
+    const onBlur = (): void => {
+      const state = useAppStore.getState()
+      const id = saveTargetOnBlur(state.settings, state.tabs, state.activeTabId)
+      if (id) void state.saveTab(id)
+    }
+    window.addEventListener('blur', onBlur)
+    return () => window.removeEventListener('blur', onBlur)
+  })
 
   /* ------------------------------- zoom ------------------------------ */
   // Zoom polling is cheap on its own, but it is pure background work: stretch

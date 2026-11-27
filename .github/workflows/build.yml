@@ -129,19 +129,17 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'FlintQode v__VERSION__'
           releaseBody: |
-            FlintQode v1.5.2 — lag fixes for typing, tab switches, search and startup.
+            FlintQode v1.6.0 — small path, workspace and selection tools.
 
-            Changes:
-            - Markdown preview parses only while visible, 180 ms after typing stops.
-            - Split editors send changed text to the peer instead of replacing its state.
-            - Tab switches reapply diagnostics, delay the first git gutter diff and skip unchanged writes.
-            - Status and shortcut updates do less work on each key press.
-            - Search shows 200 hits at a time; Explorer caches lowercase names.
-            - Startup batches existence checks and loads the session once.
-            - Superseded native searches are cancelled.
-            - More file I/O and store commands run on blocking worker threads.
+            Added:
+            - Copy the active file's absolute path or its path relative to the open workspace.
+            - Reveal the active file in the file manager.
+            - Recent workspaces in the command palette and a Reopen last workspace command.
+            - Expand selection to word or line, and select all matches of the current word.
+            - Two opt-in settings: save all files before Run File, and save the active file when the window loses focus. Both are off by default.
 
-            User-facing copy in the app, website and docs was rewritten in plain language, and the four translations were updated to match.
+            Changed:
+            - Opening a workspace records it in settings; missing folders are dropped at startup.
 
             Installers: Linux (.deb, .AppImage, .rpm), Windows (.exe, .msi) and macOS (.dmg).
             See CHANGELOG.md for the full release notes.
