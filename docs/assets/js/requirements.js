@@ -89,6 +89,7 @@
   const RAM_ROWS = [
     { label: 'FlintQode', value: 300, display: '~300 MiB', color: COLOR.primary },
     { label: 'VS Code', value: 600, display: '~400–800 MiB', color: COLOR.muted },
+    { label: 'IntelliJ IDEA', value: 1227, display: '~1.2 GiB', color: COLOR.muted },
     { label: 'Sublime Text', value: 90, display: '~60–120 MiB', color: COLOR.muted },
     { label: 'Vim / Neovim', value: 28, display: '~15–40 MiB', color: COLOR.muted },
     { label: 'Notepad++', value: 35, display: '~20–50 MiB', color: COLOR.muted },
@@ -96,6 +97,7 @@
   const SIZE_ROWS = [
     { label: 'FlintQode', value: 3, display: '~3 MiB', color: COLOR.primary },
     { label: 'VS Code', value: 100, display: '~80–120 MB', color: COLOR.muted },
+    { label: 'IntelliJ IDEA', value: 1108, display: '~1.1 GB', color: COLOR.muted },
     { label: 'Sublime Text', value: 30, display: '~30 MB', color: COLOR.muted },
     { label: 'Vim / Neovim', value: 10, display: '~5–15 MB', color: COLOR.muted },
     { label: 'Notepad++', value: 10, display: '~10 MB', color: COLOR.muted },

@@ -200,6 +200,12 @@
               <td>Electron (bundled Chromium)</td>
             </tr>
             <tr>
+              <td><strong><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h8M8 12h5M8 16h8"/></svg> IntelliJ IDEA</strong></td>
+              <td>~1.2 GiB (welcome-screen RSS)</td>
+              <td>~1.1 GB (Windows installer)</td>
+              <td>JetBrains Runtime (bundled JVM)</td>
+            </tr>
+            <tr>
               <td><strong><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Sublime Text</strong></td>
               <td>~60–120 MiB</td>
               <td>~30 MB</td>
@@ -228,7 +234,7 @@
             </div>
           </div>
           <div class="req-chart-wrap">
-            <div class="chart-canvas chart-canvas-lg" id="ramChart" role="img" aria-label="Horizontal bar chart comparing idle memory use of FlintQode, VS Code, Sublime Text, Vim and Notepad++"></div>
+            <div class="chart-canvas chart-canvas-lg" id="ramChart" role="img" aria-label="Horizontal bar chart comparing idle memory use of FlintQode, VS Code, IntelliJ IDEA, Sublime Text, Vim and Notepad++"></div>
             <div class="chart-tooltip" id="ramTooltip" hidden></div>
           </div>
         </article>
@@ -241,12 +247,12 @@
             </div>
           </div>
           <div class="req-chart-wrap">
-            <div class="chart-canvas chart-canvas-lg" id="sizeChart" role="img" aria-label="Horizontal bar chart comparing download sizes of FlintQode, VS Code, Sublime Text, Vim and Notepad++"></div>
+            <div class="chart-canvas chart-canvas-lg" id="sizeChart" role="img" aria-label="Horizontal bar chart comparing download sizes of FlintQode, VS Code, IntelliJ IDEA, Sublime Text, Vim and Notepad++"></div>
             <div class="chart-tooltip" id="sizeTooltip" hidden></div>
           </div>
         </article>
 
-        <p class="note">VS Code and Sublime Text figures are widely cited community estimates; terminal editors like Vim use almost no GUI memory. FlintQode’s measured number comes from a real Linux session sampled over 12 seconds, and is higher than a terminal editor because it includes a GUI webview process — the trade-off for a modern, graphical editor that still stays well below Electron’s footprint.</p>
+        <p class="note">VS Code and Sublime Text figures are widely cited community estimates. IntelliJ IDEA uses JetBrains’ published <a href="https://blog.jetbrains.com/idea/2026/11/where-did-the-saved-bytes-go-compact-object-headers-in-intellij-idea/" rel="noopener">welcome-screen RSS measurement</a> and <a href="https://data.services.jetbrains.com/products/releases?code=IIC&amp;latest=true&amp;type=release&amp;platform=linux" rel="noopener">Windows installer size</a>. Terminal editors like Vim use almost no GUI memory. FlintQode’s measured number comes from a real Linux session sampled over 12 seconds, and is higher than a terminal editor because it includes a GUI webview process — the trade-off for a modern, graphical editor that still stays well below Electron’s footprint.</p>
       </div>
     </section>
 
